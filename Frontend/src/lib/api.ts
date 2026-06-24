@@ -1107,22 +1107,12 @@ class ApiService {
       formData.append("resume", resumeFile);
     }
 
-    const response = await fetch(`${this.baseURL}/hiring/candidates`, {
+    const response = await this.request("/hiring/candidates", {
       method: "POST",
-      headers: {
-        ...this.getAuthHeader(),
-      },
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.detail || `HTTP error! status: ${response.status}`,
-      );
-    }
-
-    return await response.json();
+    return response;
   }
 
   async updateCandidate(candidateId: number, candidateData: any) {
@@ -1180,29 +1170,19 @@ class ApiService {
     if (resumeFile) {
       formData.append("resume", resumeFile);
     }
-    if (resumeUrl) {
+    if (resumeUrl !== undefined) {
       formData.append("resume_external_url", resumeUrl);
     }
 
-    const response = await fetch(
-      `${this.baseURL}/hiring/candidates/${candidateId}/resume`,
+    const response = await this.request(
+      `/hiring/candidates/${candidateId}/resume`,
       {
         method: "PUT",
-        headers: {
-          ...this.getAuthHeader(),
-        },
         body: formData,
       },
     );
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.detail || `HTTP error! status: ${response.status}`,
-      );
-    }
-
-    return await response.json();
+    return response;
   }
 
   async getCandidateResume(candidateId: number) {
@@ -1415,10 +1395,13 @@ class ApiService {
     });
   }
 
-  async getDepartmentScheduleWeek(startDate: string, endDate?: string) {
+  async getDepartmentScheduleWeek(startDate: string, endDate?: string, department?: string) {
     const params = new URLSearchParams({ start_date: startDate });
     if (endDate) {
       params.append("end_date", endDate);
+    }
+    if (department) {
+      params.append("department", department);
     }
     return this.request(`/shift/schedule/department/week?${params.toString()}`);
   }
@@ -1554,22 +1537,12 @@ class ApiService {
       formData.append("file", file);
     }
 
-    const response = await fetch(`${this.baseURL}/tasks/${taskId}/comments`, {
+    const response = await this.request(`/tasks/${taskId}/comments`, {
       method: "POST",
-      headers: {
-        ...this.getAuthHeader(),
-      },
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.detail || `HTTP error! status: ${response.status}`,
-      );
-    }
-
-    return await response.json();
+    return response;
   }
 
   async deleteTaskComment(taskId: number, commentId: number) {
@@ -1824,12 +1797,16 @@ class ApiService {
     month: string;
     year: string;
     department?: string;
+    employee_id?: string;
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
     queryParams.append("month", params.month);
     queryParams.append("year", params.year);
     if (params.department && params.department !== "all") {
       queryParams.append("department", params.department);
+    }
+    if (params.employee_id) {
+      queryParams.append("employee_id", params.employee_id);
     }
 
     return this.download(
@@ -1842,12 +1819,16 @@ class ApiService {
     month: string;
     year: string;
     department?: string;
+    employee_id?: string;
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
     queryParams.append("month", params.month);
     queryParams.append("year", params.year);
     if (params.department && params.department !== "all") {
       queryParams.append("department", params.department);
+    }
+    if (params.employee_id) {
+      queryParams.append("employee_id", params.employee_id);
     }
 
     return this.download(
@@ -1860,12 +1841,16 @@ class ApiService {
     month: string;
     year: string;
     department?: string;
+    employee_id?: string;
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
     queryParams.append("month", params.month);
     queryParams.append("year", params.year);
     if (params.department && params.department !== "all") {
       queryParams.append("department", params.department);
+    }
+    if (params.employee_id) {
+      queryParams.append("employee_id", params.employee_id);
     }
 
     return this.download(
@@ -1878,12 +1863,16 @@ class ApiService {
     month: string;
     year: string;
     department?: string;
+    employee_id?: string;
   }): Promise<Blob> {
     const queryParams = new URLSearchParams();
     queryParams.append("month", params.month);
     queryParams.append("year", params.year);
     if (params.department && params.department !== "all") {
       queryParams.append("department", params.department);
+    }
+    if (params.employee_id) {
+      queryParams.append("employee_id", params.employee_id);
     }
 
     return this.download(

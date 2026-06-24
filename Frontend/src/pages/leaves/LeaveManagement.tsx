@@ -200,9 +200,7 @@ export default function LeaveManagement() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState<
     "all" | "approved" | "rejected"
   >("all");
-  const [historyRoleFilter, setHistoryRoleFilter] = useState<
-    "all" | "hr" | "manager" | "team_lead" | "employee"
-  >("all");
+
 
   const [formData, setFormData] = useState({
     type: "sick",
@@ -1688,15 +1686,7 @@ export default function LeaveManagement() {
       });
     }
 
-    // 3. Apply User Selected Role Filter
-    if (historyRoleFilter !== "all") {
-      const normalizeRole = (r: string) =>
-        (r || "").toLowerCase().replace(/[\s_]+/g, "");
-      const filterRole = normalizeRole(historyRoleFilter);
-      filtered = filtered.filter(
-        (req) => normalizeRole(req.role || "") === filterRole,
-      );
-    }
+
 
     return filtered.sort((a, b) => {
       const timeA = new Date(a.requestDate).getTime();
@@ -1709,7 +1699,6 @@ export default function LeaveManagement() {
     customHistoryStartDate,
     customHistoryEndDate,
     historyStatusFilter,
-    historyRoleFilter,
     user,
   ]);
 
@@ -1797,7 +1786,6 @@ export default function LeaveManagement() {
     customHistoryStartDate,
     customHistoryEndDate,
     historyStatusFilter,
-    historyRoleFilter,
   ]);
 
   useEffect(() => {
@@ -3433,32 +3421,7 @@ export default function LeaveManagement() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Role</span>
-                        <Select
-                          value={historyRoleFilter}
-                          onValueChange={(val: any) => setHistoryRoleFilter(val)}
-                        >
-                          <SelectTrigger className="w-[130px] h-9 bg-white dark:bg-gray-950 text-[14px] text-black dark:text-white font-bold border-2 border-[#000000]" style={{}}>
-                            <SelectValue placeholder="Role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Roles</SelectItem>
-                            {user?.role === "admin" && (
-                              <SelectItem value="hr">HR</SelectItem>
-                            )}
-                            {(user?.role === "admin" || user?.role === "hr") && (
-                              <SelectItem value="manager">Manager</SelectItem>
-                            )}
-                            {(user?.role === "admin" || user?.role === "hr" || user?.role === "manager") && (
-                              <SelectItem value="team_lead">Team Lead</SelectItem>
-                            )}
-                            {(user?.role === "admin" || user?.role === "hr" || user?.role === "manager") && (
-                              <SelectItem value="employee">Employee</SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
+
                     </div>
 
                     {getFilteredApprovalHistory.length === 0 ? (

@@ -147,14 +147,6 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleRemovePhoto = () => {
-    setSelectedImage(null);
-    updateUser({ ...editedUser, profilePhoto: '' });
-    toast({
-      title: 'Profile Photo Removed',
-      description: 'Your profile photo has been removed.',
-    });
-  };
 
   const handleSavePin = async () => {
     if (newPin.length !== 4) {
@@ -294,9 +286,7 @@ const Profile: React.FC = () => {
                     Create Task
                   </Button>
                 )}
-                <Button onClick={handleRemovePhoto} variant="outline" className="shadow-lg">
-                  Remove Photo
-                </Button>
+
               </div>
             </div>
           </CardContent>

@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
+import { API_BASE_URL } from '@/lib/api';
+
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -16,8 +18,9 @@ interface MessageBubbleProps {
   onReply?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
-  onImageClick?: (url: string) => void;
+  onImageClick?: (url: string, name?: string) => void;
 }
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,6 +53,29 @@ function extractFileParts(text: string) {
   }
   return { name: fileNameFromUrl(text), url: text };
 }
+
+function resolveMediaUrl(content: string, type: string) {
+  const trimmed = content.trim();
+  let { url, name } = extractFileParts(trimmed);
+
+  // If the message is explicitly a media type OR has a known media extension, 
+  // and it's a relative path (doesn't start with http/data:), prepend the API base URL.
+  // This prevents relative images from 404ing.
+  const isMediaByPath = isImageUrl(url) || isPdfUrl(url);
+  if ((type === 'image' || type === 'file' || isMediaByPath) && !url.startsWith('http') && !url.startsWith('data:') && url.length > 0) {
+    // Only prefix if it actually looks like a path (has no spaces)
+    if (!url.includes(' ')) {
+      let base = API_BASE_URL || '';
+      // If we have a full URL ending in /api, we remove it to get the domain root.
+      if (base.includes('://') && base.endsWith('/api')) {
+        base = base.replace(/\/api$/, '');
+      }
+      url = url.startsWith('/') ? `${base}${url}` : `${base}/${url}`;
+    }
+  }
+  return { url, name };
+}
+
 
 // ─── Blob helpers (needed because browsers block data: URLs in new tabs) ───────
 
@@ -129,6 +155,7 @@ interface LightboxProps {
   onClose: () => void;
 }
 
+
 export const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) => {
   const [scale, setScale] = useState(1);
 
@@ -166,17 +193,18 @@ export const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) =>
 
 
   const handleShare = useCallback(async () => {
+    const filename = alt || fileNameFromUrl(src);
     // Try to share as a file first (better UX on mobile)
     if (navigator.share && navigator.canShare) {
       try {
         const response = await fetch(src);
         const blob = await response.blob();
-        const file = new File([blob], fileNameFromUrl(src), { type: blob.type });
+        const file = new File([blob], filename, { type: blob.type });
 
         if (navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: alt || 'Shared Image',
+            title: filename,
             text: 'Check out this image from Staffly'
           });
           return;
@@ -191,13 +219,14 @@ export const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) =>
       try {
         await navigator.share({
           url: src,
-          title: alt || 'Shared Image',
+          title: filename,
         });
         return;
       } catch (err) {
         console.error("URL share failed:", err);
       }
     }
+
 
     // Fallback 2: Copy to clipboard
     try {
@@ -223,7 +252,8 @@ export const ImageLightbox: React.FC<LightboxProps> = ({ src, alt, onClose }) =>
     >
       {/* Top bar - Now a regular flex child to prevent overlapping */}
       <div className="w-full flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/80 to-transparent z-20 shrink-0">
-        <span className="text-white/90 text-sm font-semibold truncate max-w-[300px] drop-shadow-sm">{fileNameFromUrl(src)}</span>
+        <span className="text-white/90 text-sm font-semibold truncate max-w-[300px] drop-shadow-sm">{alt || fileNameFromUrl(src)}</span>
+
         <div className="flex items-center gap-3">
           <button
             className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-all active:scale-90 border border-white/5"
@@ -293,44 +323,26 @@ interface ContentProps {
   content: string;
   isOwn: boolean;
   isDark: boolean;
-  onImageClick: (url: string) => void;
+  onImageClick: (url: string, name?: string) => void;
   messageType: string;
 }
 
-import { API_BASE_URL } from '@/lib/api';
 
 const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImageClick, messageType }) => {
-  const trimmed = content.trim();
-  let { url: finalUrl, name: finalName } = extractFileParts(trimmed);
-
-  // If the message is explicitly a media type OR has a known media extension, 
-  // and it's a relative path (doesn't start with http/data:), prepend the API base URL.
-  // This prevents relative images from 404ing and intentionally triggering the onError fallback link.
-  const isMediaByPath = isImageUrl(finalUrl) || isPdfUrl(finalUrl);
-  if ((messageType === 'image' || messageType === 'file' || isMediaByPath) && !finalUrl.startsWith('http') && !finalUrl.startsWith('data:') && finalUrl.length > 0) {
-    // Prevent accidentally prefixing normal text sentences that happen to not start with http
-    // Only prefix if it actually looks like a path (has no spaces)
-    if (!finalUrl.includes(' ')) {
-      let base = API_BASE_URL;
-      // If we have a full URL ending in /api, we remove it to get the domain root.
-      // But if we just have "/api" (the proxy path), we keep it so the proxy catches the static file.
-      if (base.includes('://') && base.endsWith('/api')) {
-        base = base.replace(/\/api$/, '');
-      }
-      finalUrl = finalUrl.startsWith('/') ? `${base}${finalUrl}` : `${base}/${finalUrl}`;
-    }
-  }
+  const { url: finalUrl, name: finalName } = resolveMediaUrl(content, messageType);
 
   // Image message
   if (messageType === 'image' || isImageUrl(finalUrl)) {
+
     return (
       <div className="relative group/img">
         <img
           src={finalUrl}
-          alt="Shared image"
+          alt={finalName}
           className="rounded-2xl max-w-[280px] max-h-[320px] w-auto h-auto object-cover cursor-zoom-in hover:brightness-90 transition-all shadow-md"
-          onClick={() => onImageClick(finalUrl)}
+          onClick={() => onImageClick(finalUrl, finalName)}
           onError={(e) => {
+
             // Safely show a broken state instead of mutating the DOM into a raw text link
             (e.target as HTMLImageElement).src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="%23e2e8f0"/><text x="50" y="50" font-family="sans-serif" font-size="10" text-anchor="middle" dominant-baseline="middle" fill="%2364748b">Image failed to load</text></svg>';
           }}
@@ -528,23 +540,29 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                       className="h-8 w-8 rounded-xl hover:bg-purple-500/10 hover:text-purple-500 transition-all active:scale-90"
                       onClick={(e) => {
                         e.stopPropagation();
-                        const url = trimmed.startsWith('data:image/') ? trimmed : extractFileParts(trimmed).url;
-                        onImageClick?.(url);
+                        const { url, name } = resolveMediaUrl(message.content, message.messageType);
+                        onImageClick?.(url, name);
                       }}
                       title="View full image"
                     >
+
                       <ZoomIn className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost" size="icon"
                       className="h-8 w-8 rounded-xl hover:bg-teal-500/10 hover:text-teal-500 transition-all active:scale-90"
                       title="Download image"
-                      onClick={(e) => { e.stopPropagation(); const { url, name } = extractFileParts(trimmed); downloadBlob(url, name); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const { url, name } = resolveMediaUrl(message.content, message.messageType);
+                        downloadBlob(url, name);
+                      }}
                     >
                       <Download className="h-4 w-4" />
                     </Button>
                   </>
                 )}
+
 
                 {isOwn && (
                   <>

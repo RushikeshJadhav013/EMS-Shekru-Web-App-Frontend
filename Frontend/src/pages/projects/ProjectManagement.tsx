@@ -141,7 +141,7 @@ const TaskFormSection = ({
               className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-[#000000] space-y-3 shadow-sm"
             >
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div className="md:col-span-4 space-y-1.5">
+                <div className="md:col-span-6 space-y-1.5">
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Name</p>
                   <Input
                     placeholder="Task name *"
@@ -149,39 +149,17 @@ const TaskFormSection = ({
                     onChange={(e) =>
                       updateTaskRow(index, "task_name", e.target.value)
                     }
-                    className="shadow-inner"
+                    className="h-12 shadow-inner text-sm"
                   />
                 </div>
-                <div className="md:col-span-3 space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Start Date</p>
-                  <Input
-                    type="date"
-                    value={task.start_date || ""}
-                    onChange={(e) =>
-                      updateTaskRow(index, "start_date", e.target.value)
-                    }
-                    className="shadow-inner"
-                  />
-                </div>
-                <div className="md:col-span-3 space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Due Date</p>
-                  <Input
-                    type="date"
-                    value={task.due_date || ""}
-                    onChange={(e) =>
-                      updateTaskRow(index, "due_date", e.target.value)
-                    }
-                    className="shadow-inner"
-                  />
-                </div>
-                <div className="md:col-span-2 space-y-1.5">
+                <div className="md:col-span-6 space-y-1.5">
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Priority</p>
                   <div className="flex gap-2">
                     <Select
                       value={task.priority}
                       onValueChange={(v) => updateTaskRow(index, "priority", v)}
                     >
-                      <SelectTrigger className="h-10 text-xs shadow-inner">
+                      <SelectTrigger className="h-12 text-sm shadow-inner">
                         <SelectValue placeholder="Priority" />
                       </SelectTrigger>
                       <SelectContent>
@@ -197,7 +175,7 @@ const TaskFormSection = ({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 hover:bg-red-50 hover:text-red-600 border border-slate-100 dark:border-slate-800 rounded-lg flex-shrink-0"
+                        className="h-12 w-12 hover:bg-red-50 hover:text-red-600 border border-slate-100 dark:border-slate-800 rounded-lg flex-shrink-0"
                         onClick={() => removeTaskRow(index)}
                       >
                         <Trash2 className="h-5 w-5" />
@@ -205,6 +183,29 @@ const TaskFormSection = ({
                     )}
                   </div>
                 </div>
+                <div className="md:col-span-6 space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Start Date</p>
+                  <Input
+                    type="date"
+                    value={task.start_date || ""}
+                    onChange={(e) =>
+                      updateTaskRow(index, "start_date", e.target.value)
+                    }
+                    className="h-12 shadow-inner text-sm"
+                  />
+                </div>
+                <div className="md:col-span-6 space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Due Date</p>
+                  <Input
+                    type="date"
+                    value={task.due_date || ""}
+                    onChange={(e) =>
+                      updateTaskRow(index, "due_date", e.target.value)
+                    }
+                    className="h-12 shadow-inner text-sm"
+                  />
+                </div>
+
               </div>
               {/* Description */}
               <Input
@@ -519,12 +520,13 @@ function TaskRow({
     return "employee";
   }, [user?.role]);
 
-  const canManage = Boolean(
+  // isAssigner: user is admin/hr/manager/team_lead OR the person who assigned the task
+  const isAssigner = Boolean(
     user?.id &&
     (String(task.assigned_by) === String(user.id) ||
-      ["admin", "hr", "manager"].includes(normalizedUserRole))
+      ["admin", "hr", "manager", "team_lead"].includes(normalizedUserRole))
   );
-  const isAssigner = canManage;
+  // isAssignee: the task is directly assigned to the logged-in user
   const isAssignedToMe = String(task.user_id || task.assigned_to) === String(user?.id);
 
   return (
@@ -594,14 +596,7 @@ function TaskRow({
                   In Progress
                 </span>
               </SelectItem>
-              {effectiveStatus === "Overdue" && (
-                <SelectItem value="Overdue" disabled>
-                  <span className="flex items-center gap-1.5 text-rose-600 font-medium font-bold">
-                    <AlertCircle className="h-3 w-3" />
-                    Overdue
-                  </span>
-                </SelectItem>
-              )}
+
               <SelectItem value="Completed">
                 <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
                   <CheckCircle2 className="h-3 w-3" />
@@ -794,43 +789,48 @@ function ProjectCard({
               )}
             </div>
             <div className="flex-1 flex justify-center">
-              {canManageProjects && (
-                <Select
-                  value={normalizeStatus(project.status)}
-                  onValueChange={(v) => onProjectStatusChange(project.project_id, v)}
-                >
-                  <SelectTrigger className="h-7 border-none bg-slate-50 dark:bg-slate-900/40 rounded-full px-1.5 text-[9px] font-bold uppercase tracking-tighter w-fit min-w-[75px] focus:ring-0 shadow-sm border-slate-100 dark:border-slate-800">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl shadow-xl border-slate-100 dark:border-slate-800">
-                    <SelectItem value="Pending">
-                      <span className="flex items-center gap-1 text-amber-600 text-[9px] font-black uppercase">
-                        <Clock className="h-3 w-3" /> Pending
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="In Progress">
-                      <span className="flex items-center gap-1 text-blue-600 text-[9px] font-black uppercase">
-                        <Clock className="h-3 w-3" /> In Progress
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="Completed">
-                      <span className="flex items-center gap-1 text-emerald-600 text-[9px] font-black uppercase">
-                        <CheckCircle2 className="h-3 w-3" /> Completed
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="Archived">
-                      <span className="flex items-center gap-1 text-slate-600 text-[9px] font-black uppercase">
-                        <ArchiveIcon className="h-3 w-3" /> Archived
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="Cancelled">
-                      <span className="flex items-center gap-1 text-red-600 text-[9px] font-black uppercase">
-                        <XCircle className="h-3 w-3" /> Cancelled
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
+              {(() => {
+                const role = normalizeRole(user?.role);
+                const isPIC = String(user?.id) === String(project.person_in_charge_id || project.pic_id);
+                if (role === 'manager') return isPIC;
+                return canManageProjects;
+              })() && (
+                  <Select
+                    value={normalizeStatus(project.status)}
+                    onValueChange={(v) => onProjectStatusChange(project.project_id, v)}
+                  >
+                    <SelectTrigger className="h-7 border-none bg-slate-50 dark:bg-slate-900/40 rounded-full px-1.5 text-[9px] font-bold uppercase tracking-tighter w-fit min-w-[75px] focus:ring-0 shadow-sm border-slate-100 dark:border-slate-800">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl shadow-xl border-slate-100 dark:border-slate-800">
+                      <SelectItem value="Pending">
+                        <span className="flex items-center gap-1 text-amber-600 text-[9px] font-black uppercase">
+                          <Clock className="h-3 w-3" /> Pending
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="In Progress">
+                        <span className="flex items-center gap-1 text-blue-600 text-[9px] font-black uppercase">
+                          <Clock className="h-3 w-3" /> In Progress
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="Completed">
+                        <span className="flex items-center gap-1 text-emerald-600 text-[9px] font-black uppercase">
+                          <CheckCircle2 className="h-3 w-3" /> Completed
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="Archived">
+                        <span className="flex items-center gap-1 text-slate-600 text-[9px] font-black uppercase">
+                          <ArchiveIcon className="h-3 w-3" /> Archived
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="Cancelled">
+                        <span className="flex items-center gap-1 text-red-600 text-[9px] font-black uppercase">
+                          <XCircle className="h-3 w-3" /> Cancelled
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
             </div>
 
             {/* Actions */}
@@ -845,82 +845,147 @@ function ProjectCard({
                 <Eye className="h-5 w-5" />
               </Button>
 
-              {canManageProjects && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
-                    title="Manage Team Members"
-                    onClick={onManageMembers}
-                  >
-                    <UserPlus className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                    title="Remove Employee"
-                    onClick={onRemoveMembers}
-                  >
-                    <UserMinus className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-amber-50 hover:text-amber-600"
-                    title="Assign Tasks"
-                    onClick={onAssignTasks}
-                  >
-                    <ClipboardList className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
-                    title="Edit Project"
-                    onClick={onEdit}
-                  >
-                    <Edit className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                    title="Delete Project"
-                    disabled={isDeleting === project.project_id}
-                    onClick={onDelete}
-                  >
-                    {isDeleting === project.project_id ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-5 w-5" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-8 w-8 ${project.is_active === false ? "hover:bg-green-50 hover:text-green-600 text-slate-400" : "hover:bg-orange-50 hover:text-orange-600"}`}
-                    title={
-                      project.is_active === false
-                        ? "Activate Project"
-                        : "Deactivate Project"
-                    }
-                    onClick={() =>
-                      onToggleActive(
-                        project.project_id,
-                        project.is_active === false,
-                      )
-                    }
-                  >
-                    {project.is_active === false ? (
-                      <CheckCircle2 className="h-5 w-5" />
-                    ) : (
-                      <XCircle className="h-5 w-5" />
-                    )}
-                  </Button>
-                </>
-              )}
+              {(() => {
+                const role = normalizeRole(user?.role);
+                const isPIC = String(user?.id) === String(project.person_in_charge_id || project.pic_id);
+                const isMember = members.some(m => String(m.user_id) === String(user?.id));
+
+                if (role === 'manager') {
+                  return (
+                    <>
+                      {/* Managers can always view (covered above) and assign tasks if they are PIC or Member */}
+                      {(isPIC || isMember) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-amber-50 hover:text-amber-600"
+                          title="Assign Tasks"
+                          onClick={onAssignTasks}
+                        >
+                          <ClipboardList className="h-5 w-5" />
+                        </Button>
+                      )}
+
+                      {/* If PIC, they also get Member Management and Edit */}
+                      {isPIC && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                            title="Manage Team Members"
+                            onClick={onManageMembers}
+                          >
+                            <UserPlus className="h-5 w-5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                            title="Remove Employee"
+                            onClick={onRemoveMembers}
+                          >
+                            <UserMinus className="h-5 w-5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
+                            title="Edit Project"
+                            onClick={onEdit}
+                          >
+                            <Edit className="h-5 w-5" />
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Managers can't Delete, Activate, or Deactivate - buttons completely omitted */}
+                    </>
+                  );
+                }
+
+                // Default behavior for Admin/HR/others using canManageProjects
+                if (canManageProjects) {
+                  return (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                        title="Manage Team Members"
+                        onClick={onManageMembers}
+                      >
+                        <UserPlus className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                        title="Remove Employee"
+                        onClick={onRemoveMembers}
+                      >
+                        <UserMinus className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-amber-50 hover:text-amber-600"
+                        title="Assign Tasks"
+                        onClick={onAssignTasks}
+                      >
+                        <ClipboardList className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
+                        title="Edit Project"
+                        onClick={onEdit}
+                      >
+                        <Edit className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                        title="Delete Project"
+                        disabled={isDeleting === project.project_id}
+                        onClick={onDelete}
+                      >
+                        {isDeleting === project.project_id ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-5 w-5" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-8 w-8 ${project.is_active === false ? "hover:bg-green-50 hover:text-green-600 text-slate-400" : "hover:bg-orange-50 hover:text-orange-600"}`}
+                        title={
+                          project.is_active === false
+                            ? "Activate Project"
+                            : "Deactivate Project"
+                        }
+                        onClick={() =>
+                          onToggleActive(
+                            project.project_id,
+                            project.is_active === false,
+                          )
+                        }
+                      >
+                        {project.is_active === false ? (
+                          <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                          <XCircle className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </>
+                  );
+                }
+
+                return null;
+              })()}
             </div>
           </div>
 
@@ -935,78 +1000,6 @@ function ProjectCard({
               </span>
             </div>
 
-            {/* Task counts */}
-            {tasks.length > 0 && (
-              <>
-                <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-full">
-                  <Clock className="h-5 w-5 text-amber-500" />
-                  <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                    {
-                      tasks.filter(
-                        (t) => {
-                          const s = normalizeStatus(t.status);
-                          return s === "Pending" || s === "todo";
-                        }
-                      ).length
-                    }{" "}
-                    Pending
-                  </span>
-                </div>
-                {overdueCount > 0 && (
-                  <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full border border-red-100/50">
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                    <span className="text-xs font-bold text-red-600 dark:text-red-400">
-                      {overdueCount} Overdue
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 px-2.5 py-1 rounded-full">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                    {completedCount} / {project.task_count ?? tasks.length} Done
-                  </span>
-                </div>
-                {cancelledCount > 0 && (
-                  <div className="flex items-center gap-1.5 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full">
-                    <XCircle className="h-5 w-5 text-red-400" />
-                    <span className="text-xs font-medium text-red-500 dark:text-red-400">
-                      {cancelledCount} Cancelled
-                    </span>
-                  </div>
-                )}
-              </>
-            )}
-            {/* Meetings */}
-            {(project.meetings?.length ?? 0) > 0 && (
-              <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1 rounded-full">
-                <Video className="h-5 w-5 text-rose-500" />
-                <span className="text-xs font-medium text-rose-600 dark:text-rose-400">
-                  {project.meetings?.length} Meeting
-                  {(project.meetings?.length ?? 0) !== 1 ? "s" : ""}
-                </span>
-              </div>
-            )}
-
-            {/* Expansion toggle (only if content exists) */}
-            {(tasks.length > 0 || members.length > 0) && (
-              <button
-                onClick={() => {
-                  if (!expanded && tasks.length === 0 && (project.task_count || 0) > 0) {
-                    onView(); // Trigger load internally which updates projects list
-                  }
-                  setExpanded((e) => !e);
-                }}
-                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                title={expanded ? "Hide quick view" : "Show quick view"}
-              >
-                {expanded ? (
-                  <ChevronUp className="h-5 w-5" />
-                ) : (
-                  <ChevronDown className="h-5 w-5" />
-                )}
-              </button>
-            )}
-
             {/* Full View Details Link (Always visible for all profiles) */}
             <button
               onClick={onView}
@@ -1018,111 +1011,6 @@ function ProjectCard({
             </button>
           </div>
         </div>
-
-        {/* ── Expanded section ── */}
-        {expanded && (
-          <div className="border-t border-slate-100 dark:border-slate-800">
-            {/* Members row */}
-            {members.length > 0 && (
-              <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Users className="h-5 w-5" /> Team Members
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {members.map((m) => (
-                    <div
-                      key={m.user_id}
-                      className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 pl-2.5 pr-1 py-1 rounded-full group/member"
-                    >
-                      <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-[9px] font-bold text-white shadow-sm group-hover/member:bg-blue-600 transition-colors">
-                        {m.name?.[0]?.toUpperCase()}
-                      </div>
-                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                        {m.name}
-                      </span>
-                      {(m.designation || m.role) && (
-                        <span className="text-[10px] text-blue-400 capitalize bg-white/50 dark:bg-black/10 px-1 rounded-md">
-                          {m.designation || m.role}
-                        </span>
-                      )}
-                      <button
-                        onClick={() => onRemoveMember(m.user_id)}
-                        className="ml-0.5 h-4 w-4 rounded-full flex items-center justify-center text-blue-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all"
-                        title={`Remove ${m.name} from project`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tasks table */}
-            {tasks.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-5 pt-3 mb-2 flex items-center gap-1.5">
-                  <ClipboardList className="h-5 w-5" /> Tasks
-                </p>
-                <Table
-                  wrapperClassName="w-full border-2 border-[#000000] rounded-2xl shadow-sm overflow-x-auto scrollbar-visible max-h-[400px]"
-                  className="w-[1100px] table-fixed"
-                >
-                  <colgroup>
-                    <col className="w-[200px]" />
-                    <col className="w-[140px]" />
-                    <col className="w-[140px]" />
-                    <col className="w-[120px]" />
-                    <col className="w-[120px]" />
-                    <col className="w-[130px]" />
-                    <col className="w-[140px]" />
-                  </colgroup>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50/80 dark:bg-slate-900/40">
-                      <TableHead className="pl-4 text-[11px] font-bold uppercase text-slate-600">Task</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Assigned To</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Assigned By</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Start Date</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Due Date</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase text-slate-600">Status</TableHead>
-                      <TableHead className="text-[11px] font-bold uppercase text-right pr-6 text-slate-600">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tasks.map((task, idx) => (
-                      <TaskRow
-                        key={task.task_id ?? task.id ?? idx}
-                        task={task}
-                        project={project}
-                        canManageProjects={canManageProjects}
-                        onStatusChange={(taskId, status) =>
-                          onTaskStatusChange(
-                            project.project_id,
-                            taskId,
-                            status,
-                          )
-                        }
-                        onReassign={(t) =>
-                          onReassignTask?.(t, project.project_id)
-                        }
-                        onView={onViewTask}
-                        onEdit={onEditTask}
-                        onPass={onPassTask}
-                        onDelete={(t) => onDeleteTask?.(t, project.project_id)}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            {tasks.length === 0 && (
-              <div className="py-6 text-center text-xs text-slate-400">
-                No tasks assigned yet.
-              </div>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -1191,6 +1079,10 @@ export default function ProjectManagement() {
     new_assignee_id: "",
     note: "",
   });
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   const fetchProjects = async () => {
     setIsLoading(true);
@@ -1309,6 +1201,16 @@ export default function ProjectManagement() {
       }),
     [projects, searchQuery, statusFilter],
   );
+
+  const totalPages = Math.ceil(filteredProjects.length / itemsPerPage);
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredProjects.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredProjects, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   // ── Helpers ──
   const resetForm = () => {
@@ -1972,27 +1874,14 @@ export default function ProjectManagement() {
         description: task.description || "",
         status: reassignForm.status,
         assigned_to: Number(reassignForm.assigned_to),
-        project_id: projectId
+        project_id: projectId,
+        start_date: task.start_date || null,
+        due_date: task.due_date || null,
+        priority: task.priority || "Medium"
       };
 
-      const token = localStorage.getItem("token");
-      const authHeader = token
-        ? { Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}` }
-        : {};
-
-      // 1. Perform the general task PUT which handles assignee and status
-      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeader,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update task (${response.status})`);
-      }
+      // Use apiService which handles company_slug and auth headers correctly
+      await apiService.updateTask(taskId, payload);
 
       // 2. Also call the specific project task status endpoint to ensure project-level sync 
       if (reassignForm.status !== task.status) {
@@ -2288,15 +2177,7 @@ export default function ProjectManagement() {
             iconColor: "text-blue-600",
             iconBg: "bg-blue-100",
           },
-          {
-            label: "Overdue",
-            value: filteredProjects.filter(
-              (p) => normalizeStatus(p.status) === "Overdue",
-            ).length,
-            icon: AlertCircle,
-            iconColor: "text-red-600",
-            iconBg: "bg-red-100",
-          },
+
           {
             label: "Complete",
             value: filteredProjects.filter(
@@ -2360,7 +2241,7 @@ export default function ProjectManagement() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {filteredProjects.map((project) => (
+          {paginatedProjects.map((project) => (
             <ProjectCard
               key={project.project_id}
               project={project}
@@ -2425,6 +2306,76 @@ export default function ProjectManagement() {
               }}
             />
           ))}
+        </div>
+      )}
+
+      {/* ── Pagination ── */}
+      {filteredProjects.length > itemsPerPage && (
+        <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-6 py-4 rounded-2xl border-2 border-[#000000] shadow-sm mt-4">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-slate-500">
+              Showing <span className="text-slate-900 dark:text-white">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+              <span className="text-slate-900 dark:text-white">
+                {Math.min(currentPage * itemsPerPage, filteredProjects.length)}
+              </span>{" "}
+              of <span className="text-slate-900 dark:text-white">{filteredProjects.length}</span> projects
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="rounded-xl border-2 border-[#000000] font-bold h-9 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Previous
+            </Button>
+            <div className="flex items-center gap-1 mx-2">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                // Show first page, last page, and pages around current page
+                if (
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-9 w-9 rounded-xl border-2 border-[#000000] font-bold ${currentPage === page
+                        ? "bg-slate-900 text-white hover:bg-slate-800"
+                        : "bg-white text-slate-900 hover:bg-slate-50"
+                        }`}
+                    >
+                      {page}
+                    </Button>
+                  );
+                } else if (
+                  (page === currentPage - 2 && page > 1) ||
+                  (page === currentPage + 2 && page < totalPages)
+                ) {
+                  return (
+                    <span key={page} className="text-slate-400 font-bold px-1">
+                      ...
+                    </span>
+                  );
+                }
+                return null;
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded-xl border-2 border-[#000000] font-bold h-9 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Next
+            </Button>
+          </div>
         </div>
       )}
 
@@ -2567,24 +2518,31 @@ export default function ProjectManagement() {
                             </p>
                           </div>
 
-                          {canManageProjects && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="ml-auto h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (
-                                  confirm(`Remove ${m.name} from this project?`)
-                                ) {
-                                  handleRemoveMember(m.user_id);
-                                }
-                              }}
-                              title="Remove member"
-                            >
-                              <Trash2 className="h-5 w-5" />
-                            </Button>
-                          )}
+                          {(() => {
+                            const role = normalizeRole(user?.role);
+                            const isPIC = String(user?.id) === String(selectedProject?.person_in_charge_id || selectedProject?.pic_id);
+                            if (role === 'manager') {
+                              return isPIC;
+                            }
+                            return canManageProjects;
+                          })() && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="ml-auto h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    confirm(`Remove ${m.name} from this project?`)
+                                  ) {
+                                    handleRemoveMember(m.user_id);
+                                  }
+                                }}
+                                title="Remove member"
+                              >
+                                <Trash2 className="h-5 w-5" />
+                              </Button>
+                            )}
                         </div>
                       ))}
                     </div>
@@ -2605,18 +2563,26 @@ export default function ProjectManagement() {
                         </span>
                       </h3>
                     </div>
-                    {canManageProjects && (
-                      <Button
-                        size="sm"
-                        className="rounded-full bg-amber-500 hover:bg-amber-600 text-white gap-1.5 h-8 px-3 text-xs shadow-md shadow-amber-100 dark:shadow-none"
-                        onClick={() => {
-                          setIsViewDialogOpen(false);
-                          if (selectedProject) handleOpenAssignTasks(selectedProject);
-                        }}
-                      >
-                        <Plus className="h-3.5 w-3.5" /> Assign New Task
-                      </Button>
-                    )}
+                    {(() => {
+                      const role = normalizeRole(user?.role);
+                      const isPIC = String(user?.id) === String(selectedProject?.person_in_charge_id || selectedProject?.pic_id);
+                      const isMember = selectedProject?.members?.some(m => String(m.user_id) === String(user?.id));
+                      if (role === 'manager') {
+                        return isPIC || isMember;
+                      }
+                      return canManageProjects;
+                    })() && (
+                        <Button
+                          size="sm"
+                          className="rounded-full bg-amber-500 hover:bg-amber-600 text-white gap-1.5 h-8 px-3 text-xs shadow-md shadow-amber-100 dark:shadow-none"
+                          onClick={() => {
+                            setIsViewDialogOpen(false);
+                            if (selectedProject) handleOpenAssignTasks(selectedProject);
+                          }}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Assign New Task
+                        </Button>
+                      )}
                   </div>
 
                   {!selectedProject?.tasks?.length ? (
@@ -2671,6 +2637,7 @@ export default function ProjectManagement() {
                             <TaskRow
                               key={task.task_id}
                               task={task}
+                              project={selectedProject}
                               canManageProjects={canManageProjects}
                               onStatusChange={(taskId, status) =>
                                 handleTaskStatusChange(
@@ -2849,11 +2816,12 @@ export default function ProjectManagement() {
                     }
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label>Start Date</Label>
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">Start Date</Label>
                     <Input
                       type="date"
+                      className="h-12 rounded-xl text-sm shadow-inner"
                       value={formData.start_date}
                       onChange={(e) =>
                         setFormData({ ...formData, start_date: e.target.value })
@@ -2861,9 +2829,10 @@ export default function ProjectManagement() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>End Date</Label>
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">End Date</Label>
                     <Input
                       type="date"
+                      className="h-12 rounded-xl text-sm shadow-inner"
                       value={formData.end_date}
                       onChange={(e) =>
                         setFormData({ ...formData, end_date: e.target.value })
@@ -3023,11 +2992,12 @@ export default function ProjectManagement() {
                 }
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Start Date</Label>
+                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">Start Date</Label>
                 <Input
                   type="date"
+                  className="h-12 rounded-xl text-sm shadow-inner"
                   value={formData.start_date}
                   onChange={(e) =>
                     setFormData({ ...formData, start_date: e.target.value })
@@ -3035,9 +3005,10 @@ export default function ProjectManagement() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>End Date</Label>
+                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">End Date</Label>
                 <Input
                   type="date"
+                  className="h-12 rounded-xl text-sm shadow-inner"
                   value={formData.end_date}
                   onChange={(e) =>
                     setFormData({ ...formData, end_date: e.target.value })
@@ -3565,21 +3536,21 @@ export default function ProjectManagement() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">Start Date</Label>
                 <Input
                   type="date"
                   value={editingTask?.start_date ? editingTask.start_date.split('T')[0] : ""}
                   onChange={(e) => setEditingTask(t => t ? ({ ...t, start_date: e.target.value }) : null)}
-                  className="rounded-xl"
+                  className="h-12 rounded-xl text-sm shadow-inner"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Due Date</Label>
+                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">Due Date</Label>
                 <Input
                   type="date"
                   value={editingTask?.due_date ? editingTask.due_date.split('T')[0] : ""}
                   onChange={(e) => setEditingTask(t => t ? ({ ...t, due_date: e.target.value }) : null)}
-                  className="rounded-xl"
+                  className="h-12 rounded-xl text-sm shadow-inner"
                 />
               </div>
             </div>

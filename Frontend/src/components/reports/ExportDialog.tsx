@@ -20,12 +20,7 @@ interface ExportDialogProps {
 type ExportFormat = 'csv' | 'pdf';
 type TimeRange = 'monthly' | 'last3months' | 'last6months' | 'yearly' | 'custom';
 
-interface Employee {
-  id: string;
-  name: string;
-  employee_id?: string;
-  department: string;
-}
+
 
 export default function ExportDialog({ open, onOpenChange, selectedEmployee }: ExportDialogProps) {
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
@@ -33,35 +28,6 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
   const [customStartDate, setCustomStartDate] = useState<Date>();
   const [customEndDate, setCustomEndDate] = useState<Date>();
   const [isExporting, setIsExporting] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<string>('all');
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isLoadingEmps, setIsLoadingEmps] = useState(false);
-
-  // Load employees on mount
-  useEffect(() => {
-    loadAllEmployees();
-  }, []);
-
-
-
-  const loadAllEmployees = async () => {
-    setIsLoadingEmps(true);
-    try {
-      const data = await apiService.getAllEmployees();
-      const emps = Array.isArray(data) ? data : data.employees || [];
-      setEmployees(emps.map((emp: any) => ({
-        id: String(emp.id || emp.user_id || ""),
-        name: emp.name,
-        employee_id: emp.employee_id || emp.employeeId,
-        department: emp.department,
-      })));
-    } catch (error) {
-      console.error('Failed to load employees:', error);
-      setEmployees([]);
-    } finally {
-      setIsLoadingEmps(false);
-    }
-  };
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -107,7 +73,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
 
       const employeeId = selectedEmployee?.employee_id ||
         selectedEmployee?.id ||
-        (selectedUser !== 'all' ? (employees.find(e => e.id === selectedUser)?.employee_id || selectedUser) : undefined);
+        undefined;
 
       const blob = await apiService.exportPerformanceReport({
         format: exportFormat,
@@ -122,9 +88,6 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
       let filename = 'performance_report';
       if (selectedEmployee) {
         filename = `performance_${selectedEmployee.name}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
-      } else if (selectedUser !== 'all') {
-        const user = employees.find(e => e.id === selectedUser);
-        filename = `performance_${user?.name || 'employee'}_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
       } else {
         filename = `performance_all_employees_${format(startDate, 'yyyy-MM-dd')}_to_${format(endDate, 'yyyy-MM-dd')}`;
       }
@@ -240,21 +203,7 @@ export default function ExportDialog({ open, onOpenChange, selectedEmployee }: E
 
 
 
-            {/* User Selection */}
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Select User</Label>
-              <Select value={selectedUser} onValueChange={setSelectedUser} disabled={isLoadingEmps}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Users</SelectItem>
-                  {employees.map(emp => (
-                    <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
 
             {/* Custom Date Range */}
             {timeRange === 'custom' && (

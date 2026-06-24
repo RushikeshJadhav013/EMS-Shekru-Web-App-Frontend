@@ -13,7 +13,6 @@ import { toast } from '@/hooks/use-toast';
 import {
   Plus,
   Edit,
-  Trash2,
   Building2,
   Users,
   Search,
@@ -259,37 +258,6 @@ export default function BranchManagement() {
       .finally(() => setIsSaving(false));
   };
 
-  const handleDeleteBranch = (id: string) => {
-    const dept = departments.find(d => String(d.id) === id);
-    if (dept && (dept.employeeCount || 0) > 0) {
-      toast({
-        title: 'Error',
-        description: 'Cannot delete department with active employees',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    apiService
-      .deleteBranch(Number(id))
-      .then(() => {
-        setBranchs((prev) => prev.filter((dept) => String(dept.id) !== id));
-        toast({
-          title: 'Success',
-          description: 'Branch deleted successfully',
-          variant: 'success',
-        });
-      })
-      .catch((error) => {
-        console.error('Failed to delete department:', error);
-        toast({
-          title: 'Error',
-          description:
-            error instanceof Error ? error.message : 'Failed to delete department',
-          variant: 'destructive',
-        });
-      });
-  };
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -328,16 +296,28 @@ export default function BranchManagement() {
     setIsViewDialogOpen(true);
   };
 
-  // Compute real employee count from actual employee records (not stale DB field)
-  const totalEmployees = allEmployees.length;
+  // Compute real employee count from actual employee records
+  const totalEmployees = useMemo(() => {
+    return allEmployees.length;
+  }, [allEmployees]);
 
-  // Per-department live count: match employees whose department name equals dept name
-  const getEmployeeCountForDept = (deptName: string) =>
-    allEmployees.filter((emp: any) =>
-      (emp.department || '').toLowerCase().trim() === deptName.toLowerCase().trim()
-    ).length;
+  // Per-department live count: match employees whose department list includes this dept name
+  const getEmployeeCountForDept = (deptName: string) => {
+    const target = (deptName || '').toLowerCase().trim();
+    if (!target) return 0;
+
+    return allEmployees.filter((emp: any) => {
+      // Check if department matches (strict or in comma-separated list)
+      const deptField = String(emp.department || '').toLowerCase();
+      if (!deptField) return false;
+
+      const depts = deptField.split(',').map(d => d.trim());
+      return depts.includes(target);
+    }).length;
+  };
 
   const activeBranchs = departments.filter(dept => dept.status === 'active').length;
+  const inactiveBranchs = departments.filter(dept => dept.status === 'inactive').length;
 
   // Stable handlers to prevent input focus loss
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,9 +353,20 @@ export default function BranchManagement() {
     setFormData((prev) => ({ ...prev, description: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }));
   }, []);
 
+  const loadEmployees = useCallback(async () => {
+    try {
+      const employees = await apiService.getEmployees();
+      setAllEmployees(employees || []);
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+    }
+  }, []);
+
   const loadBranchs = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Refresh employees first for accurate counts
+      await loadEmployees();
       const data = await apiService.getBranchs();
       const mapped: ExtendedBranch[] = (data || []).map((dept: Branch) => ({
         id: dept.id,
@@ -444,18 +435,7 @@ export default function BranchManagement() {
     initializeBranchs();
   }, [loadBranchs]);
 
-  // Load all employees for auto-calculation
-  useEffect(() => {
-    const loadEmployees = async () => {
-      try {
-        const employees = await apiService.getEmployees();
-        setAllEmployees(employees || []);
-      } catch (error) {
-        console.error('Failed to load employees:', error);
-      }
-    };
-    loadEmployees();
-  }, []);
+
 
   const loadManagers = useCallback(async () => {
     setIsManagersLoading(true);
@@ -637,11 +617,11 @@ export default function BranchManagement() {
         />
 
         <SummaryCard
-          title="System Health"
-          value="100%"
-          icon={Activity}
-          iconColor="text-indigo-600"
-          iconBg="bg-indigo-100"
+          title="Inactive Departments"
+          value={inactiveBranchs}
+          icon={AlertCircle}
+          iconColor="text-rose-600"
+          iconBg="bg-rose-100"
         />
       </div>
 
@@ -816,16 +796,8 @@ export default function BranchManagement() {
                                 ? <ToggleRight className="h-5 w-5 text-green-600 dark:text-green-400" />
                                 : <ToggleLeft className="h-5 w-5 text-slate-400 dark:text-slate-500" />}
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteBranch(String(department.id))}
-                              className="h-8 w-8 p-0 hover:bg-red-100 dark:hover:bg-red-900"
-                              title="Delete department"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
+
                         </TableCell>
                       </TableRow>
                     );

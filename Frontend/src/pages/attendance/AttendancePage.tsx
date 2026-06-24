@@ -136,7 +136,7 @@ const AttendancePage: React.FC = () => {
           checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || '',
           checkOutSelfie: todayRecord.checkOutSelfie || '',
           status: 'present',
-          workHours: todayRecord.total_hours || (todayRecord.check_in && todayRecord.check_out ? (new Date(todayRecord.check_out).getTime() - new Date(todayRecord.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
+          workHours: todayRecord.total_online_hours !== undefined ? todayRecord.total_online_hours : (todayRecord.total_hours || (todayRecord.check_in && todayRecord.check_out ? (new Date(todayRecord.check_out).getTime() - new Date(todayRecord.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0),
           // New fields
           employeeId: todayRecord.employee_id,
           name: todayRecord.name,
@@ -177,7 +177,7 @@ const AttendancePage: React.FC = () => {
               checkInSelfie: rec.checkInSelfie || rec.selfie || '',
               checkOutSelfie: rec.checkOutSelfie || '',
               status: status,
-              workHours: rec.total_hours || (rec.check_in && rec.check_out ? (new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
+              workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : (rec.total_hours || (rec.check_in && rec.check_out ? (new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0),
               // New fields
               employeeId: rec.employee_id,
               name: rec.name,
@@ -218,7 +218,7 @@ const AttendancePage: React.FC = () => {
               checkInSelfie: rec.checkInSelfie || rec.selfie || '',
               checkOutSelfie: rec.checkOutSelfie || '',
               status: status,
-              workHours: rec.total_hours || (rec.check_in && rec.check_out ? (new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0,
+              workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : (rec.total_hours || (rec.check_in && rec.check_out ? (new Date(rec.check_out).getTime() - new Date(rec.check_in).getTime()) / (1000 * 60 * 60) : 0) || 0),
               // New fields
               employeeId: rec.employee_id,
               name: rec.name,
@@ -914,20 +914,59 @@ const AttendancePage: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string, checkInTime?: string, checkOutTime?: string) => {
-    if (status === 'absent') {
-      return <Badge variant="destructive" className="bg-red-600">Absent (No Checkout)</Badge>;
+  const getStatusBadge = (status: string, checkInTime?: string, checkOutTime?: string, recordDate?: string) => {
+    const badges: React.ReactNode[] = [];
+    const normalizedStatus = (status || "").toLowerCase();
+    const today = todayIST();
+
+    // Absent status - only show if there's no check-in at all
+    if (normalizedStatus === 'absent' && !checkInTime) {
+      return <Badge variant="destructive" className="bg-red-600">Absent</Badge>;
     }
-    if (status === 'late' || (checkInTime && checkInTime > '09:30:00')) {
-      return <Badge variant="destructive" className="text-sm">Late</Badge>;
+
+    // Check-In Status
+    if (checkInTime) {
+      const isLate = normalizedStatus === 'late' || (checkInTime && checkInTime > '09:30:00');
+      badges.push(
+        <Badge
+          key="checkin"
+          variant={isLate ? "destructive" : "default"}
+          className={isLate ? "text-sm bg-red-600" : "bg-green-500 text-sm"}
+        >
+          {isLate ? `In: Late` : `In: On Time`}
+        </Badge>
+      );
+    } else if (recordDate && recordDate < today) {
+      badges.push(
+        <Badge key="checkin-absent" variant="destructive" className="bg-red-600">In: Absent</Badge>
+      );
     }
-    if (checkOutTime && checkOutTime < '18:00:00') {
-      return <Badge variant="outline" className="border-orange-500 text-orange-500 text-[14px]">Early</Badge>;
+
+    // Check-Out Status
+    if (checkOutTime) {
+      const isEarly = checkOutTime < '18:00:00';
+      badges.push(
+        <Badge
+          key="checkout"
+          variant={isEarly ? "outline" : "default"}
+          className={isEarly ? "border-orange-500 text-orange-500 text-[14px]" : "bg-green-500 text-sm"}
+        >
+          {isEarly ? `Out: Early` : `Out: On Time`}
+        </Badge>
+      );
+    } else {
+      if (recordDate === today || (recordDate && recordDate > today)) {
+        badges.push(
+          <Badge key="checkout-awaiting" className="bg-blue-500 text-sm">Out: Awaiting</Badge>
+        );
+      } else if (recordDate && recordDate < today && (checkInTime || normalizedStatus !== 'absent')) {
+        badges.push(
+          <Badge key="checkout-absent" variant="destructive" className="bg-red-600">Out: Absent</Badge>
+        );
+      }
     }
-    if (status === 'present') {
-      return <Badge variant="default" className="bg-green-500 text-sm">On Time</Badge>;
-    }
-    return null;
+
+    return <div className="flex gap-1">{badges}</div>;
   };
 
   const formatAttendanceTime = (dateString: string, timeString?: string) => {
@@ -1181,7 +1220,7 @@ const AttendancePage: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <LogIn className="h-4 w-4 text-green-500" />
                           <span className="text-sm font-bold text-black">Check-in Time</span>
-                          {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime)}
+                          {getStatusBadge(currentAttendance.status, currentAttendance.checkInTime, undefined, currentAttendance.date)}
                         </div>
                         <p className="text-[16px] font-bold text-black" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>
                           {formatAttendanceTime(currentAttendance.date, currentAttendance.checkInTime)}
@@ -1193,7 +1232,7 @@ const AttendancePage: React.FC = () => {
                           <LogOut className="h-4 w-4 text-red-500" />
                           <span className="text-sm font-bold text-black">Check-out Time</span>
                           {currentAttendance.checkOutTime &&
-                            getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime)}
+                            getStatusBadge(currentAttendance.status, undefined, currentAttendance.checkOutTime, currentAttendance.date)}
                         </div>
                         <p className="text-[16px] font-bold text-black" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>
                           {currentAttendance.checkOutTime
@@ -1286,7 +1325,7 @@ const AttendancePage: React.FC = () => {
                                 className="h-10 w-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
                               />
                             )}
-                            {getStatusBadge(record.status, record.checkInTime, record.checkOutTime)}
+                            {getStatusBadge(record.status, record.checkInTime, record.checkOutTime, record.date)}
                           </div>
                         </div>
                       ))}

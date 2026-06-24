@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+
 import {
   Dialog,
   DialogContent,
@@ -55,7 +55,7 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
   userId
 }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
+
   const [warnings, setWarnings] = useState<TaskWarning[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -69,12 +69,10 @@ const TaskDeadlineWarnings: React.FC<TaskDeadlineWarningsProps> = ({
       const data = await apiService.getTaskDeadlineWarnings(targetUserId);
       setWarnings(data.warnings || []);
     } catch (error) {
-      console.error('Failed to fetch task warnings:', error);
-      toast({
-        title: 'Warning fetch failed',
-        description: 'Unable to load task deadline warnings.',
-        variant: 'destructive',
-      });
+      // Silently handle the error — Admin users may not have personal task deadlines.
+      // Do not show an error toast; just show the dialog with no warnings.
+      console.warn('Task deadline warnings not available:', error);
+      setWarnings([]);
     } finally {
       setIsLoading(false);
     }

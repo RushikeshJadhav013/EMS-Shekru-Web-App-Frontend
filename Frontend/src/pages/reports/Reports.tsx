@@ -26,6 +26,8 @@ import {
   Edit,
   Check,
   ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
   Loader2,
   Calendar as CalendarIcon
 } from 'lucide-react';
@@ -113,6 +115,10 @@ export default function Reports() {
   const [executiveSummary, setExecutiveSummary] = useState<any>(null);
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [perfPage, setPerfPage] = useState(1);
+  const [deptPage, setDeptPage] = useState(1);
+  const ITEMS_PER_PAGE_PERF = 5;
+  const ITEMS_PER_PAGE_DEPT = 6;
 
 
   // Load ratings from localStorage on mount
@@ -138,6 +144,8 @@ export default function Reports() {
   // Load report data when filters change
   useEffect(() => {
     loadReportData();
+    setPerfPage(1);
+    setDeptPage(1);
   }, [selectedMonth, selectedYear]);
 
   const loadDepartments = async () => {
@@ -672,6 +680,12 @@ export default function Reports() {
                           employees.reduce((sum, emp) => sum + calculateOverallRating(emp), 0) / employees.length
                         );
 
+                        const paginatedEmployees = employees.slice(
+                          (perfPage - 1) * ITEMS_PER_PAGE_PERF,
+                          perfPage * ITEMS_PER_PAGE_PERF
+                        );
+                        const totalPerfPages = Math.ceil(employees.length / ITEMS_PER_PAGE_PERF);
+
                         return (
                           <div key={department} className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden transition-all">
                             {/* Department Header - Clickable */}
@@ -705,7 +719,7 @@ export default function Reports() {
                             {/* Employee List - Collapsible */}
                             {isExpanded && (
                               <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                                {employees.map((employee) => {
+                                {paginatedEmployees.map((employee) => {
                                   const productivity = calculateProductivity(employee.employeeId);
                                   const qualityScore = calculateQualityScore(employee.employeeId);
                                   const overallRating = calculateOverallRating(employee);
@@ -769,7 +783,7 @@ export default function Reports() {
                                             </span>
                                             <span className="text-xs text-slate-400 font-medium">%</span>
                                           </div>
-                                          <Progress value={employee.attendanceScore} className="h-1 mt-1.5 bg-slate-200 dark:bg-slate-700" />
+                                          < Progress value={employee.attendanceScore} className="h-1 mt-1.5 bg-slate-200 dark:bg-slate-700" />
                                         </div>
 
                                         <div className="bg-slate-50/50 dark:bg-slate-800/20 rounded-lg p-2.5 border border-slate-100/50 dark:border-slate-800/50">
@@ -907,6 +921,42 @@ export default function Reports() {
                                     </div>
                                   );
                                 })}
+
+                                {totalPerfPages > 1 && (
+                                  <div className="flex items-center justify-center gap-2 mt-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setPerfPage(p => Math.max(1, p - 1))}
+                                      disabled={perfPage === 1}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                      {Array.from({ length: totalPerfPages }, (_, i) => i + 1).map((p) => (
+                                        <Button
+                                          key={p}
+                                          variant={perfPage === p ? "default" : "ghost"}
+                                          size="sm"
+                                          onClick={() => setPerfPage(p)}
+                                          className={`h-8 w-8 p-0 ${perfPage === p ? 'bg-blue-600 text-white' : ''}`}
+                                        >
+                                          {p}
+                                        </Button>
+                                      ))}
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setPerfPage(p => Math.min(totalPerfPages, p + 1))}
+                                      disabled={perfPage === totalPerfPages}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -943,6 +993,7 @@ export default function Reports() {
                       // Filter for Core Departments (case-insensitive)
                       return CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.department.toLowerCase());
                     })
+                    .slice((deptPage - 1) * ITEMS_PER_PAGE_DEPT, deptPage * ITEMS_PER_PAGE_DEPT)
                     .map((dept) => {
                       const badge = getPerformanceBadge(dept.performanceScore);
                       return (
@@ -1011,6 +1062,40 @@ export default function Reports() {
                       );
                     })}
                 </div>
+                {Math.ceil(departmentMetrics.filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.department.toLowerCase())).length / ITEMS_PER_PAGE_DEPT) > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-8 py-4 border-t border-slate-100 dark:border-slate-800">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeptPage(p => Math.max(1, p - 1))}
+                      disabled={deptPage === 1}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.ceil(departmentMetrics.filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.department.toLowerCase())).length / ITEMS_PER_PAGE_DEPT) }, (_, i) => i + 1).map((p) => (
+                        <Button
+                          key={p}
+                          variant={deptPage === p ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setDeptPage(p)}
+                          className={`h-8 w-8 p-0 ${deptPage === p ? 'bg-blue-600 text-white' : ''}`}
+                        >
+                          {p}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeptPage(p => Math.min(Math.ceil(departmentMetrics.filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.department.toLowerCase())).length / ITEMS_PER_PAGE_DEPT), p + 1))}
+                      disabled={deptPage === Math.ceil(departmentMetrics.filter(dept => CORE_DEPARTMENTS.some(core => core.toLowerCase() === dept.department.toLowerCase())).length / ITEMS_PER_PAGE_DEPT)}
+                      className="h-8 w-8 p-0"
+                    >
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>

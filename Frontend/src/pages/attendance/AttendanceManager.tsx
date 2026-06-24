@@ -290,6 +290,7 @@ const AttendanceManager: React.FC = () => {
 
   // Ref for scrolling to department form when editing
   const departmentFormRef = useRef<HTMLDivElement>(null);
+  const globalFormRef = useRef<HTMLDivElement>(null);
   const timePickerRefs = {
     globalStart: useRef<HTMLDivElement>(null),
     globalEnd: useRef<HTMLDivElement>(null),
@@ -735,21 +736,6 @@ const AttendanceManager: React.FC = () => {
   useEffect(() => {
     if (activeTab === "wfh-requests" && isAdmin) {
       loadAdminWfhRequests();
-
-      // Refresh sample data every 30 seconds to keep timestamps current
-      const dataInterval = setInterval(() => {
-        loadAdminWfhRequests();
-      }, 30000);
-
-      // Force re-render every minute to update relative timestamps
-      const renderInterval = setInterval(() => {
-        setAllWfhRequests((prev) => [...prev]); // Trigger re-render
-      }, 60000);
-
-      return () => {
-        clearInterval(dataInterval);
-        clearInterval(renderInterval);
-      };
     }
   }, [activeTab, isAdmin]);
 
@@ -1031,43 +1017,82 @@ const AttendanceManager: React.FC = () => {
   };
 
   const handleDepartmentTimingEdit = (timing: OfficeTiming) => {
-    setDepartmentTimingForm({
-      department: timing.department || "",
-      startTime: (timing.start_time || "").slice(0, 5) || "10:00",
-      endTime: (timing.end_time || "").slice(0, 5) || "19:00",
-      checkInGrace: timing.check_in_grace_minutes ?? 0,
-      checkOutGrace: timing.check_out_grace_minutes ?? 0,
-    });
+    const isGlobal = !timing.department || timing.department === "";
 
-    // Scroll to the form and provide visual feedback
-    setTimeout(() => {
-      if (departmentFormRef.current) {
-        departmentFormRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
+    if (isGlobal) {
+      setGlobalTimingForm({
+        startTime: (timing.start_time || "").slice(0, 5) || "10:00",
+        endTime: (timing.end_time || "").slice(0, 5) || "19:00",
+        checkInGrace: timing.check_in_grace_minutes ?? 0,
+        checkOutGrace: timing.check_out_grace_minutes ?? 0,
+      });
 
-        // Add a brief highlight effect
-        departmentFormRef.current.classList.add(
-          "ring-4",
-          "ring-purple-400",
-          "ring-opacity-50",
-        );
-        setTimeout(() => {
-          departmentFormRef.current?.classList.remove(
+      // Scroll to the global form
+      setTimeout(() => {
+        if (globalFormRef.current) {
+          globalFormRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          // Add highlight effect
+          globalFormRef.current.classList.add(
+            "ring-4",
+            "ring-blue-400",
+            "ring-opacity-50",
+          );
+          setTimeout(() => {
+            globalFormRef.current?.classList.remove(
+              "ring-4",
+              "ring-blue-400",
+              "ring-opacity-50",
+            );
+          }, 2000);
+        }
+      }, 100);
+
+      toast({
+        title: "Editing Global Timing",
+        description: "Form populated with global settings. Scroll up to edit.",
+      });
+    } else {
+      setDepartmentTimingForm({
+        department: timing.department || "",
+        startTime: (timing.start_time || "").slice(0, 5) || "10:00",
+        endTime: (timing.end_time || "").slice(0, 5) || "19:00",
+        checkInGrace: timing.check_in_grace_minutes ?? 0,
+        checkOutGrace: timing.check_out_grace_minutes ?? 0,
+      });
+
+      // Scroll to the department form
+      setTimeout(() => {
+        if (departmentFormRef.current) {
+          departmentFormRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+
+          // Add highlight effect
+          departmentFormRef.current.classList.add(
             "ring-4",
             "ring-purple-400",
             "ring-opacity-50",
           );
-        }, 2000);
-      }
-    }, 100);
+          setTimeout(() => {
+            departmentFormRef.current?.classList.remove(
+              "ring-4",
+              "ring-purple-400",
+              "ring-opacity-50",
+            );
+          }, 2000);
+        }
+      }, 100);
 
-    // Show toast notification
-    toast({
-      title: "Editing Branch Timing",
-      description: `Form populated with settings for ${timing.department || "All Branches"}. Scroll up to edit.`,
-    });
+      toast({
+        title: "Editing Department Timing",
+        description: `Form populated with settings for ${timing.department}. Scroll up to edit.`,
+      });
+    }
   };
 
   const handleDepartmentTimingDelete = async (timing: OfficeTiming) => {
@@ -1260,7 +1285,7 @@ const AttendanceManager: React.FC = () => {
                 rec.checkout_selfie_url,
               ),
               status: (status as any) || "present",
-              workHours: rec.total_hours || rec.workHours || (checkIn && checkOut ? (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60) : 0) || 0,
+              workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : (rec.total_hours || rec.workHours || (checkIn && checkOut ? (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60) : 0) || 0),
               checkInStatus: checkInStatus || undefined,
               checkOutStatus: checkOutStatus || undefined,
               scheduledStart: scheduledStart || undefined,
@@ -1423,9 +1448,10 @@ const AttendanceManager: React.FC = () => {
 
   const getStatusBadge = (record: EmployeeAttendance) => {
     const badges: React.ReactNode[] = [];
+    const today = todayIST();
 
-    // Absent status
-    if (record.status === "absent" || (record.date < todayIST() && !record.checkInTime)) {
+    // Absent status - only show if there's no check-in at all
+    if (record.status === "absent" && !record.checkInTime) {
       return [
         <Badge
           key="absent"
@@ -1451,23 +1477,22 @@ const AttendanceManager: React.FC = () => {
           {isLate ? `In: ${t.attendance.late}` : `In: ${t.attendance.onTime}`}
         </Badge>,
       );
+    } else if (record.date < today) {
+      // Past date with no check-in
+      badges.push(
+        <Badge
+          key="checkin-absent"
+          variant="destructive"
+          className="bg-red-500 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
+        >
+          <XCircle className="h-2.5 w-2.5" />
+          {`In: ${t.attendance.absent}`}
+        </Badge>,
+      );
     }
 
     // Check-Out Status
-    if (!record.checkOutTime) {
-      if (record.date === todayIST() || record.date >= todayIST()) {
-        badges.push(
-          <Badge
-            key="checkout-awaiting"
-            variant="default"
-            className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
-          >
-            <Timer className="h-2.5 w-2.5" />
-            {`Out: ${t.attendance.awaiting}`}
-          </Badge>,
-        );
-      }
-    } else {
+    if (record.checkOutTime) {
       const isEarly = record.checkOutStatus === "early";
       badges.push(
         <Badge
@@ -1479,6 +1504,32 @@ const AttendanceManager: React.FC = () => {
           {isEarly ? `Out: ${t.attendance.early}` : `Out: ${t.attendance.onTime}`}
         </Badge>,
       );
+    } else {
+      // No check-out time
+      if (record.date === today || record.date >= today) {
+        badges.push(
+          <Badge
+            key="checkout-awaiting"
+            variant="default"
+            className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
+          >
+            <Timer className="h-2.5 w-2.5" />
+            {`Out: ${t.attendance.awaiting}`}
+          </Badge>,
+        );
+      } else if (record.date < today && (record.checkInTime || record.status !== "absent")) {
+        // Past date, checked in but no checkout
+        badges.push(
+          <Badge
+            key="checkout-absent"
+            variant="destructive"
+            className="bg-red-500 text-white text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 shadow-sm"
+          >
+            <XCircle className="h-2.5 w-2.5" />
+            {`Out: ${t.attendance.absent}`}
+          </Badge>,
+        );
+      }
     }
 
     return badges;
@@ -1656,12 +1707,13 @@ const AttendanceManager: React.FC = () => {
         end_date?: string;
       } = {};
 
+      if (selectedDepartmentFilter) {
+        exportParams.department = selectedDepartmentFilter;
+      }
+
       if (employeeFilter === "specific" && selectedEmployee) {
-        // Use user_id as it's the standard for filtering across most APIs
-        exportParams.employee_id = selectedEmployee.user_id.toString();
-        if (selectedDepartmentFilter) {
-          exportParams.department = selectedDepartmentFilter;
-        }
+        // Use employee_id code if available (e.g. EMP001), fallback to database user_id
+        exportParams.employee_id = selectedEmployee.employee_id || selectedEmployee.user_id.toString();
       }
 
       // Enforce department scope for Manager exports
@@ -1687,11 +1739,13 @@ const AttendanceManager: React.FC = () => {
               month: gridMonth,
               year: gridYear,
               department: exportParams.department,
+              employee_id: exportParams.employee_id,
             })
             : await apiService.exportMonthlyGridPDF({
               month: gridMonth,
               year: gridYear,
               department: exportParams.department,
+              employee_id: exportParams.employee_id,
             });
       } else if (reportLayout === "detailed_grid") {
         // Detailed Grid export also uses selected month and year
@@ -1701,11 +1755,13 @@ const AttendanceManager: React.FC = () => {
               month: gridMonth,
               year: gridYear,
               department: exportParams.department,
+              employee_id: exportParams.employee_id,
             })
             : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
               month: gridMonth,
               year: gridYear,
               department: exportParams.department,
+              employee_id: exportParams.employee_id,
             });
       } else {
         blob =
@@ -2872,7 +2928,7 @@ const AttendanceManager: React.FC = () => {
                           <SelectValue placeholder="Select Year" />
                         </SelectTrigger>
                         <SelectContent className="border-2 border-black rounded-xl">
-                          {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
+                          {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
                             <SelectItem key={yr} value={String(yr)} className="font-bold">{yr}</SelectItem>
                           ))}
                         </SelectContent>
@@ -3048,7 +3104,10 @@ const AttendanceManager: React.FC = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-xl border-2 border-[#000000] rounded-2xl overflow-hidden">
+        <Card
+          ref={globalFormRef}
+          className="shadow-xl border-2 border-[#000000] rounded-2xl overflow-hidden transition-all duration-300"
+        >
           <CardHeader className="space-y-1 pb-4 bg-slate-50/50 dark:bg-slate-800/50 border-b-2 border-black">
             <CardTitle className="text-sm font-black text-black dark:text-white uppercase tracking-widest font-outfit">
               Office Hours
@@ -3393,8 +3452,7 @@ const AttendanceManager: React.FC = () => {
                 onClick={handleDepartmentTimingSave}
                 disabled={
                   isDeptSaving ||
-                  officeFormLoading ||
-                  !departmentTimingForm.department.trim()
+                  officeFormLoading
                 }
                 className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-black text-white hover:bg-[#333333]"
               >

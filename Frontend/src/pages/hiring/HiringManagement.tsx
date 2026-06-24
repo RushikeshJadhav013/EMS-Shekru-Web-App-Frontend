@@ -75,9 +75,6 @@ interface Candidate {
   name: string;
   email: string;
   phone?: string;
-  address?: string;
-  linkedin_url?: string;
-  portfolio_url?: string;
   resume_url?: string;
   resume_external_url?: string;
   cover_letter?: string;
@@ -206,9 +203,6 @@ export default function HiringManagement() {
     last_name: '',
     email: '',
     phone: '',
-    address: '',
-    linkedin_url: '',
-    portfolio_url: '',
     vacancy_id: '',
     resume_external_url: '',
     status: 'applied',
@@ -765,15 +759,15 @@ export default function HiringManagement() {
 
       await apiService.updateCandidate(selectedCandidate.candidate_id, payload);
 
-      // If a new resume file or URL was provided, use the resume update API
-      if (candidateResumeFile || candidateFormData.resume_external_url) {
-        if (candidateResumeFile || (candidateFormData.resume_external_url !== selectedCandidate.resume_external_url)) {
-          await apiService.updateCandidateResume(
-            selectedCandidate.candidate_id,
-            candidateResumeFile || undefined,
-            candidateFormData.resume_external_url
-          );
-        }
+      // Only call resume update API if a new file is uploaded or the external URL has changed
+      const resumeUrlChanged = (candidateFormData.resume_external_url || '') !== (selectedCandidate.resume_external_url || '');
+
+      if (candidateResumeFile || resumeUrlChanged) {
+        await apiService.updateCandidateResume(
+          selectedCandidate.candidate_id,
+          candidateResumeFile || undefined,
+          candidateFormData.resume_external_url
+        );
       }
 
       toast({
@@ -1235,9 +1229,6 @@ export default function HiringManagement() {
       last_name: '',
       email: '',
       phone: '',
-      address: '',
-      linkedin_url: '',
-      portfolio_url: '',
       vacancy_id: '',
       resume_external_url: '',
       status: 'applied',
@@ -1945,9 +1936,6 @@ export default function HiringManagement() {
                                     last_name: lNm,
                                     email: candidate.email || '',
                                     phone: candidate.phone || '',
-                                    address: candidate.address || '',
-                                    linkedin_url: candidate.linkedin_url || '',
-                                    portfolio_url: candidate.portfolio_url || '',
                                     vacancy_id: candidate.vacancy_id ? String(candidate.vacancy_id) : '',
                                     resume_external_url: candidate.resume_external_url || '',
                                     status: candidate.status || 'applied',
@@ -2682,26 +2670,6 @@ export default function HiringManagement() {
                         <span>{selectedCandidate.phone}</span>
                       </div>
                     )}
-                    {selectedCandidate.address && (
-                      <div className="flex items-start gap-2 text-xs">
-                        <span className="text-muted-foreground">Address:</span>
-                        <span className="flex-1">{selectedCandidate.address}</span>
-                      </div>
-                    )}
-                    {(selectedCandidate.linkedin_url || selectedCandidate.portfolio_url) && (
-                      <div className="flex gap-3 pt-2">
-                        {selectedCandidate.linkedin_url && (
-                          <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:opacity-80 transition-opacity">
-                            <Linkedin className="h-5 w-5" />
-                          </a>
-                        )}
-                        {selectedCandidate.portfolio_url && (
-                          <a href={selectedCandidate.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-slate-600 dark:text-slate-400 hover:opacity-80 transition-opacity">
-                            <ExternalLink className="h-5 w-5" />
-                          </a>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -2948,38 +2916,7 @@ export default function HiringManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="c_address">Address</Label>
-              <Input
-                id="c_address"
-                value={candidateFormData.address}
-                onChange={(e) => setCandidateFormData({ ...candidateFormData, address: e.target.value })}
-                placeholder="State, City, Country"
-                className="border-2 border-[#000000]"
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="c_linkedin">LinkedIn Profile URL</Label>
-                <Input
-                  id="c_linkedin"
-                  value={candidateFormData.linkedin_url}
-                  onChange={(e) => setCandidateFormData({ ...candidateFormData, linkedin_url: e.target.value })}
-                  placeholder="https://linkedin.com/in/..."
-                  className="border-2 border-[#000000]"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="c_portfolio">Portfolio URL</Label>
-                <Input
-                  id="c_portfolio"
-                  value={candidateFormData.portfolio_url}
-                  onChange={(e) => setCandidateFormData({ ...candidateFormData, portfolio_url: e.target.value })}
-                  placeholder="https://github.com/..."
-                  className="border-2 border-[#000000]"
-                />
-              </div>
-            </div>
+
             <div className="border-t pt-4 space-y-4">
               <h4 className="text-sm font-semibold">Resume Submission</h4>
               <div className="space-y-2">
@@ -3244,7 +3181,23 @@ export default function HiringManagement() {
                     type="datetime-local"
                     className="rounded-xl border-2 border-[#000000]"
                     value={interviewFormData.start_time}
-                    onChange={(e) => setInterviewFormData({ ...interviewFormData, start_time: e.target.value })}
+                    onChange={(e) => {
+                      const newStartTime = e.target.value;
+                      let newEndTime = interviewFormData.end_time;
+                      if (newStartTime && interviewFormData.duration_minutes) {
+                        const start = new Date(newStartTime);
+                        if (!isNaN(start.getTime())) {
+                          const end = new Date(start.getTime() + interviewFormData.duration_minutes * 60000);
+                          // Adjust for local timezone to get proper local ISO string for datetime-local
+                          const offset = end.getTimezoneOffset() * 60000;
+                          const localEnd = new Date(end.getTime() - offset);
+                          newEndTime = localEnd.toISOString().slice(0, 16);
+                        }
+                      } else if (!newStartTime) {
+                        newEndTime = '';
+                      }
+                      setInterviewFormData({ ...interviewFormData, start_time: newStartTime, end_time: newEndTime });
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -3254,7 +3207,21 @@ export default function HiringManagement() {
                     type="datetime-local"
                     className="rounded-xl border-2 border-[#000000]"
                     value={interviewFormData.end_time}
-                    onChange={(e) => setInterviewFormData({ ...interviewFormData, end_time: e.target.value })}
+                    onChange={(e) => {
+                      const newEndTime = e.target.value;
+                      let newDuration = interviewFormData.duration_minutes;
+                      if (interviewFormData.start_time && newEndTime) {
+                        const start = new Date(interviewFormData.start_time);
+                        const end = new Date(newEndTime);
+                        if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+                          newDuration = Math.round((end.getTime() - start.getTime()) / 60000);
+                        }
+                      } else if (!newEndTime) {
+                        // Maybe reset duration to default or keep as is? 
+                        // If end_time is cleared, we don't have enough info to calc duration, but we can leave it.
+                      }
+                      setInterviewFormData({ ...interviewFormData, end_time: newEndTime, duration_minutes: newDuration });
+                    }}
                   />
                 </div>
               </div>
@@ -3386,7 +3353,20 @@ export default function HiringManagement() {
                     max={240}
                     step={15}
                     value={[interviewFormData.duration_minutes]}
-                    onValueChange={(vals) => setInterviewFormData({ ...interviewFormData, duration_minutes: vals[0] })}
+                    onValueChange={(vals) => {
+                      const newDuration = vals[0];
+                      let newEndTime = interviewFormData.end_time;
+                      if (interviewFormData.start_time) {
+                        const start = new Date(interviewFormData.start_time);
+                        if (!isNaN(start.getTime())) {
+                          const end = new Date(start.getTime() + newDuration * 60000);
+                          const offset = end.getTimezoneOffset() * 60000;
+                          const localEnd = new Date(end.getTime() - offset);
+                          newEndTime = localEnd.toISOString().slice(0, 16);
+                        }
+                      }
+                      setInterviewFormData({ ...interviewFormData, duration_minutes: newDuration, end_time: newEndTime });
+                    }}
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground mt-1 px-2.5">
                     <span>15m</span>

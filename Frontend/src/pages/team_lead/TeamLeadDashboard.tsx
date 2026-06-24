@@ -90,7 +90,7 @@ const TeamLeadDashboard: React.FC = () => {
 
         // Filter by department: include only 'Employee' role from fetched list
         const departmentEmployees = employees.filter((emp: any) =>
-          emp.department === user.department &&
+          (emp.department || '').trim().toLowerCase() === (user.department || '').trim().toLowerCase() &&
           emp.role?.toLowerCase() === 'employee' &&
           emp.is_active !== false &&
           emp.id !== user.id // Avoid duplicates if TL is also in employee list
@@ -575,6 +575,7 @@ const TeamLeadDashboard: React.FC = () => {
           teamSize: allTrackedMembers.length,
           employeeCount: departmentEmployees.length,
           presentToday: teamMembersData.filter(m => m.status === 'present').length,
+          onLeave: teamMembersData.filter(m => m.status === 'on-leave').length,
           tasksInProgress: activeTasks,
           pendingReviews: pendingReviewsCount,
           teamEfficiency: efficiency
@@ -597,7 +598,6 @@ const TeamLeadDashboard: React.FC = () => {
           }
           return prev;
         });
-
       } catch (error) {
         console.error('Failed to fetch team members:', error);
       } finally {
@@ -664,13 +664,6 @@ const TeamLeadDashboard: React.FC = () => {
               iconBg: 'bg-blue-50',
             },
             {
-              label: t.navigation.teamEfficiency,
-              value: `${stats.teamEfficiency}%`,
-              icon: TrendingUp,
-              iconColor: 'text-emerald-600',
-              iconBg: 'bg-emerald-50',
-            },
-            {
               label: 'Active Tasks',
               value: stats.tasksInProgress,
               icon: ClipboardList,
@@ -684,7 +677,15 @@ const TeamLeadDashboard: React.FC = () => {
               icon: AlertCircle,
               iconColor: 'text-amber-600',
               iconBg: 'bg-amber-50',
-              path: '/team_lead/tasks'
+              path: '/team_lead/tasks',
+              pathState: { filter: 'review' }
+            },
+            {
+              label: 'Team Efficiency',
+              value: `${stats.teamEfficiency}%`,
+              icon: TrendingUp,
+              iconColor: 'text-emerald-600',
+              iconBg: 'bg-emerald-50',
             },
           ].map((stat, i) => (
             <SummaryCard

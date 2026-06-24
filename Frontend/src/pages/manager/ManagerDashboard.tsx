@@ -93,7 +93,7 @@ const ManagerDashboard: React.FC = () => {
         // Avoid duplicate check-ins/outs as we fetch fresh ones next
         const type = (a.type || '').toLowerCase();
         if (['check-in', 'check-out', 'attendance', 'checkin', 'checkout'].includes(type)) return false;
-        return a.time.split('T')[0] === todayDateStr;
+        return true;
       });
 
       // 2. Fetch fresh attendance records for today to get accurate timings
@@ -110,7 +110,7 @@ const ManagerDashboard: React.FC = () => {
             const checkOutTime = rec.check_out || rec.checkOutTime;
 
             // Add Check-In Activity
-            if (checkInTime && checkInTime.split('T')[0] === todayDateStr) {
+            if (checkInTime) {
               attendanceActivities.push({
                 id: `in-${recId}`,
                 type: 'check-in',
@@ -122,7 +122,7 @@ const ManagerDashboard: React.FC = () => {
             }
 
             // Add Check-Out Activity
-            if (checkOutTime && checkOutTime.split('T')[0] === todayDateStr) {
+            if (checkOutTime) {
               attendanceActivities.push({
                 id: `out-${recId}`,
                 type: 'check-out',

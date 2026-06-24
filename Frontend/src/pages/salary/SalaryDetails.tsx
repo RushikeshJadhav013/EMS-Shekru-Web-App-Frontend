@@ -997,25 +997,48 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             is_active: true
         };
 
-        // If a specific month is selected and we have history, try to use the net_salary from history
-        let inHand = (base.monthlyGross || 0) - (base.monthlyDeductions || 0);
+        // Recalculate base structural totals
+        const structGross = (base.monthlyBasic || 0) + (base.hra || 0) + (base.specialAllowance || 0) +
+            (base.medicalAllowance || 0) + (base.conveyanceAllowance || 0) + (base.otherAllowance || 0);
+        const structDeductions = (base.professionalTax || 0) + (base.pfEmployee || 0) + (base.otherDeduction || 0);
+
+        let finalInHand = structGross - structDeductions;
+        let finalGross = structGross;
+        let finalDeductions = structDeductions;
+        let finalSpecialAllowance = base.specialAllowance || 0;
+        let finalOtherDeduction = base.otherDeduction || 0;
+
+        // If a specific month is selected and we have a slip in history for it, use those values
         if (selectedMonth !== "all" && salarySlipHistory.length > 0) {
             const slip = salarySlipHistory.find(s => s.month.toString() === selectedMonth && s.year === selectedYear);
-            if (slip && slip.net_salary) {
-                inHand = slip.net_salary;
+            if (slip) {
+                if (slip.net_salary !== undefined && slip.net_salary !== null) {
+                    finalInHand = slip.net_salary;
+                }
+                if (slip.gross_salary !== undefined && slip.gross_salary !== null) {
+                    finalGross = slip.gross_salary;
+                }
+                finalDeductions = finalGross - finalInHand;
+
+                // Adjust balancing components to maintain consistency in the breakdown table
+                // For Gross: Special Allowance = finalGross - (Basic + HRA + Medical + Conveyance + OtherAllowance)
+                const fixedEarnings = (base.monthlyBasic || 0) + (base.hra || 0) + (base.medicalAllowance || 0) +
+                    (base.conveyanceAllowance || 0) + (base.otherAllowance || 0);
+                finalSpecialAllowance = Math.max(0, finalGross - fixedEarnings);
+
+                // For Deductions: Other Deductions = finalDeductions - (PT + PF_Employee)
+                const fixedDeductions = (base.professionalTax || 0) + (base.pfEmployee || 0);
+                finalOtherDeduction = Math.max(0, finalDeductions - fixedDeductions);
             }
         }
 
-        // Ensure totals match components if not overridden by slip
-        const calculatedGross = (base.monthlyBasic || 0) + (base.hra || 0) + (base.specialAllowance || 0) +
-            (base.medicalAllowance || 0) + (base.conveyanceAllowance || 0) + (base.otherAllowance || 0);
-        const calculatedDeductions = (base.professionalTax || 0) + (base.pfEmployee || 0) + (base.otherDeduction || 0);
-
         return {
             ...base,
-            monthlyGross: calculatedGross > 0 ? calculatedGross : base.monthlyGross,
-            monthlyDeductions: calculatedDeductions > 0 ? calculatedDeductions : base.monthlyDeductions,
-            monthlyInHand: inHand > 0 ? inHand : (calculatedGross - calculatedDeductions)
+            monthlyGross: finalGross,
+            monthlyDeductions: finalDeductions,
+            monthlyInHand: finalInHand,
+            specialAllowance: finalSpecialAllowance,
+            otherDeduction: finalOtherDeduction
         };
     }, [salaryData, targetUserId, selectedMonth, selectedYear, salarySlipHistory]);
 

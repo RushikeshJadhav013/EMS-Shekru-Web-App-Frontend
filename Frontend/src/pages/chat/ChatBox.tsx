@@ -113,6 +113,8 @@ const ChatBox: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [lightboxName, setLightboxName] = useState<string | undefined>(undefined);
+
   const typingPulseRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +169,10 @@ const ChatBox: React.FC = () => {
     const found = chats.find(c => c.id?.toString() === chatId?.toString());
     return found || activeChat;
   }, [activeChat, chats, chatId]);
+
+  const isCreator = useMemo(() => {
+    return displayedChat?.createdBy?.toString() === user?.id?.toString();
+  }, [displayedChat, user]);
 
   useEffect(() => {
     if (activeChat && messages.length > 0) {
@@ -480,9 +486,14 @@ const ChatBox: React.FC = () => {
       {lightboxUrl && (
         <ImageLightbox
           src={lightboxUrl}
-          onClose={() => setLightboxUrl(null)}
+          alt={lightboxName}
+          onClose={() => {
+            setLightboxUrl(null);
+            setLightboxName(undefined);
+          }}
         />
       )}
+
       {/* Dynamic Background Patterns (WhatsApp Style) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className={cn(
@@ -522,12 +533,14 @@ const ChatBox: React.FC = () => {
 
           <div className="flex-1 min-w-0">
             <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate tracking-tight leading-none">{chatName}</h2>
-            <div className="flex items-center gap-1.5 mt-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-              <p style={{ color: "#22C55E", fontSize: "12px", fontWeight: "bold" }} className="uppercase tracking-widest leading-none">
-                Online
+            {displayedChat?.type === 'group' && (
+              <p className="text-[11px] text-slate-500 truncate mt-1">
+                {displayedChat.participants?.map((p: any) => {
+                  const userDetails = availableUsers?.find((u: any) => u.id?.toString() === p.userId?.toString());
+                  return userDetails?.name || p.userName || 'Member';
+                }).join(', ')}
               </p>
-            </div>
+            )}
           </div>
         </div>
 
@@ -544,54 +557,77 @@ const ChatBox: React.FC = () => {
                 Chat Options
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {displayedChat.type === 'group' && (
+              {displayedChat.type === 'group' ? (
                 <>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setNewGroupName(displayedChat.name || '');
-                      setIsGroupSettingsOpen(true);
-                    }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <Settings className="h-4 w-4 text-slate-500" />
-                    <span style={{ color: "#000000", fontSize: "14px" }}>Group Settings</span>
-                  </DropdownMenuItem>
-                  {user?.role && ['admin', 'hr', 'manager'].includes(user.role) && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSelectedNewUsers([]);
-                        setIsAddingMembers(true);
-                      }}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <UserPlus className="h-4 w-4 text-slate-500" />
-                      <span style={{ color: "#000000", fontSize: "14px" }}>Add Members</span>
-                    </DropdownMenuItem>
+                  {isCreator ? (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setNewGroupName(displayedChat.name || '');
+                          setIsGroupSettingsOpen(true);
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <Settings className="h-4 w-4 text-slate-500" />
+                        <span style={{ color: "#000000", fontSize: "14px" }}>Group Settings</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedNewUsers([]);
+                          setIsAddingMembers(true);
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <UserPlus className="h-4 w-4 text-slate-500" />
+                        <span style={{ color: "#000000", fontSize: "14px" }}>Add Members</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setIsDeletingGroup(true)}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                        <span style={{ color: "#EF4444", fontSize: "14px" }}>Delete Group</span>
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setNewGroupName(displayedChat.name || '');
+                          setIsGroupSettingsOpen(true);
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <Info className="h-4 w-4 text-slate-500" />
+                        <span style={{ color: "#000000", fontSize: "14px" }}>View Group</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const slug = localStorage.getItem('company_slug');
+                          const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
+                          navigate(chatBase);
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4 text-slate-500" />
+                        <span style={{ color: "#000000", fontSize: "14px" }}>Exit Chat</span>
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </>
-              )}
-              <DropdownMenuItem
-                onClick={() => {
-                  const slug = localStorage.getItem('company_slug');
-                  const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
-                  navigate(chatBase);
-                }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <LogOut className="h-4 w-4 text-slate-500" />
-                <span style={{ color: "#000000", fontSize: "14px" }}>Exit Chat</span>
-              </DropdownMenuItem>
-              {displayedChat.type === 'group' && (displayedChat.participants?.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setIsDeletingGroup(true)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                    <span style={{ color: "#EF4444", fontSize: "14px" }}>Delete Group</span>
-                  </DropdownMenuItem>
-                </>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => {
+                    const slug = localStorage.getItem('company_slug');
+                    const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
+                    navigate(chatBase);
+                  }}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <LogOut className="h-4 w-4 text-slate-500" />
+                  <span style={{ color: "#000000", fontSize: "14px" }}>Exit Chat</span>
+                </DropdownMenuItem>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -636,8 +672,12 @@ const ChatBox: React.FC = () => {
                     onReply={() => setReplyingTo(message.id)}
                     onEdit={() => handleEditClick(message)}
                     onDelete={() => handleDeleteClick(message)}
-                    onImageClick={(url) => setLightboxUrl(url)}
+                    onImageClick={(url, name) => {
+                      setLightboxUrl(url);
+                      setLightboxName(name);
+                    }}
                     replyMessage={message.replyTo ? enrichedMessages.find(m => m.id === message.replyTo) : undefined}
+
                   />
                 </div>
               );
@@ -823,11 +863,11 @@ const ChatBox: React.FC = () => {
           <DialogHeader className="p-6 pb-0">
             <div className="flex items-center gap-4 mb-2">
               <div className="h-12 w-12 rounded-2xl bg-green-500 shadow-lg shadow-green-500/20 flex items-center justify-center text-white">
-                <Settings className="h-6 w-6" />
+                {isCreator ? <Settings className="h-6 w-6" /> : <Info className="h-6 w-6" />}
               </div>
               <div>
-                <DialogTitle className="text-2xl font-black tracking-tight">Group Settings</DialogTitle>
-                <DialogDescription className="font-medium">Manage members and group identity</DialogDescription>
+                <DialogTitle className="text-2xl font-black tracking-tight">{isCreator ? 'Group Settings' : 'Group Details'}</DialogTitle>
+                <DialogDescription className="font-medium">{isCreator ? 'Manage members and group identity' : 'View group information and members'}</DialogDescription>
               </div>
             </div>
           </DialogHeader>
@@ -841,21 +881,24 @@ const ChatBox: React.FC = () => {
                   onChange={(e) => setNewGroupName(e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                   className="rounded-xl border-2 font-bold"
                   placeholder="Enter group name"
+                  disabled={!isCreator}
                 />
-                <Button
-                  onClick={handleUpdateGroupName}
-                  disabled={isUpdatingGroup || !newGroupName.trim() || newGroupName === activeChat?.name}
-                  className="bg-green-500 hover:bg-green-600 text-white font-black rounded-xl"
-                >
-                  {isUpdatingGroup ? '...' : 'Update'}
-                </Button>
+                {isCreator && (
+                  <Button
+                    onClick={handleUpdateGroupName}
+                    disabled={isUpdatingGroup || !newGroupName.trim() || newGroupName === activeChat?.name}
+                    className="bg-green-500 hover:bg-green-600 text-white font-black rounded-xl"
+                  >
+                    {isUpdatingGroup ? '...' : 'Update'}
+                  </Button>
+                )}
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Members ({(activeChat?.participants || []).length})</label>
-                {user?.role && ['admin', 'hr', 'manager'].includes(user.role) && (
+                {isCreator && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -869,42 +912,46 @@ const ChatBox: React.FC = () => {
 
               <ScrollArea className="h-[200px] rounded-2xl border-2 p-2">
                 <div className="space-y-1">
-                  {(activeChat?.participants || []).map((p) => (
-                    <div key={p.userId} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={availableUsers.find(u => u.id === p.userId)?.profilePhoto} />
-                          <AvatarFallback className="bg-slate-100 font-bold text-xs">{p.userName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-bold leading-none mb-1">{p.userName} {p.userId === user?.id && <span className="text-[10px] text-green-500 font-black ml-1">(You)</span>}</p>
-                          <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{p.branch} • {p.userRole}</p>
+                  {(activeChat?.participants || []).map((p) => {
+                    const memberDetails = availableUsers.find(u => u.id?.toString() === p.userId?.toString());
+                    const memberDesignation = memberDetails?.designation || p.userRole;
+                    return (
+                      <div key={p.userId} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-9 w-9">
+                            <AvatarImage src={memberDetails?.profilePhoto} />
+                            <AvatarFallback className="bg-slate-100 font-bold text-xs">{p.userName.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-bold leading-none mb-1">{memberDetails?.name || p.userName} {p.userId === user?.id && <span className="text-[10px] text-green-500 font-black ml-1">(You)</span>}</p>
+                            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tighter">{memberDesignation}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {p.isAdmin && (
+                            <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
+                          )}
+                          {isCreator && p.userId !== user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveMember(p.userId)}
+                              className="h-8 w-8 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <UserMinus className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {p.isAdmin && (
-                          <Badge variant="outline" className="text-[8px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200">Admin</Badge>
-                        )}
-                        {(displayedChat.participants?.find(part => part.userId === user?.id)?.isAdmin || (user?.role && ['admin', 'hr', 'manager'].includes(user.role))) && p.userId !== user?.id && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveMember(p.userId)}
-                            className="h-8 w-8 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
           </div>
 
           <div className="p-6 bg-slate-50 dark:bg-slate-900 border-t mt-auto flex flex-col gap-3">
-            {(displayedChat.participants?.find(p => p.userId === user?.id)?.isAdmin || user?.role === 'admin' || user?.role === 'hr') && (
+            {isCreator ? (
               <Button
                 variant="destructive"
                 className="w-full rounded-xl font-bold py-6 bg-red-500 hover:bg-red-600 text-white border-none shadow-lg shadow-red-500/20"
@@ -913,13 +960,26 @@ const ChatBox: React.FC = () => {
                 <TrashIcon className="h-4 w-4 mr-2" />
                 Delete Group
               </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                className="w-full rounded-xl font-bold py-6 bg-red-500 hover:bg-red-600 text-white border-none shadow-lg shadow-red-500/20"
+                onClick={() => {
+                  const slug = localStorage.getItem('company_slug');
+                  const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
+                  navigate(chatBase);
+                }}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Exit Chat
+              </Button>
             )}
             <Button
               variant="outline"
               className="w-full rounded-xl font-bold border-2"
               onClick={() => setIsGroupSettingsOpen(false)}
             >
-              Close Settings
+              {isCreator ? 'Close Settings' : 'Close Details'}
             </Button>
           </div>
         </DialogContent>

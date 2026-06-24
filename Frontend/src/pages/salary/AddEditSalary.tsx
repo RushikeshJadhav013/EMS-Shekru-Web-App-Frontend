@@ -51,7 +51,6 @@ const salarySchema = z.object({
     pfValue: z.preprocess(preprocessNumber, z.number().optional().default(0)),
     // Bank & Statutory Details
     uanNumber: z.string().optional().or(z.literal('')).default(''),
-    panNumber: z.string().optional().or(z.literal('')).default(''),
     pfNo: z.string().optional().or(z.literal('')).default(''),
     bankName: z.string().optional().or(z.literal('')).default(''),
     bankAccount: z.string().optional().or(z.literal('')).default(''),
@@ -68,6 +67,12 @@ const salarySchema = z.object({
     otherDeductionAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
     pfAnnual: z.preprocess(preprocessNumber, z.number().optional().default(0)),
     variablePayAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+    // Decoupled Manual Mode Fields
+    manualWorkingDays: z.preprocess(preprocessNumber, z.number().min(1).max(31).default(22)),
+    manualPfType: z.enum(['none', 'fixed', 'percentage']).default('none'),
+    manualPfValue: z.preprocess(preprocessNumber, z.number().optional().default(0)),
+    manualVariablePayType: z.enum(['none', 'percentage', 'fixed']).default('none'),
+    manualVariablePayValue: z.preprocess(preprocessNumber, z.number().min(0).default(0)),
 }).refine((data) => {
     // Only validate variable pay rules for 'auto' mode if ctc is present
     if (data.annualCtc > 0) {
@@ -146,7 +151,6 @@ const AddEditSalary = () => {
             pfType: 'none',
             pfValue: 0,
             uanNumber: '',
-            panNumber: '',
             pfNo: '',
             bankName: '',
             bankAccount: '',
@@ -162,6 +166,11 @@ const AddEditSalary = () => {
             otherDeductionAnnual: 0,
             pfAnnual: 0,
             variablePayAnnual: 0,
+            manualWorkingDays: 22,
+            manualPfType: 'none',
+            manualPfValue: 0,
+            manualVariablePayType: 'none',
+            manualVariablePayValue: 0,
         }
     });
 
@@ -173,6 +182,13 @@ const AddEditSalary = () => {
     const watchPfType = form.watch('pfType');
     const watchPfValue = form.watch('pfValue');
     const watchPfNo = form.watch('pfNo');
+
+    // Manual Watchers
+    const watchManualWorkingDays = form.watch('manualWorkingDays');
+    const watchManualPfType = form.watch('manualPfType');
+    const watchManualPfValue = form.watch('manualPfValue');
+    const watchManualVarType = form.watch('manualVariablePayType');
+    const watchManualVarValue = form.watch('manualVariablePayValue');
 
     useEffect(() => {
         loadEmployees();
@@ -227,17 +243,24 @@ const AddEditSalary = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             if (activeTab === "manual") {
+                // In manual mode, only trigger if relevant manual fields change
                 handleCalculatePreview();
             } else if (parseNumber(watchCtc) > 0) {
+                // In guided mode, only trigger if relevant guided fields change
                 handleCalculatePreview();
             }
-        }, 400); // Reduced from 800 for better reactivity
+        }, 400);
         return () => clearTimeout(timer);
     }, [
-        watchCtc, watchVarType, watchVarValue, watchWorkingDays,
+        // Optimized dependency list to prevent cross-mode calculation triggers
+        activeTab === "manual" ? watchManualWorkingDays : watchWorkingDays,
+        activeTab === "manual" ? watchManualPfType : watchPfType,
+        activeTab === "manual" ? watchManualPfValue : watchPfValue,
+        activeTab === "manual" ? watchManualVarType : watchVarType,
+        activeTab === "manual" ? watchManualVarValue : watchVarValue,
         watchBasicAnn, watchHraAnn, watchSpecialAnn, watchPFAnn,
         watchVarPayAnn, watchConveyanceAnn, watchMedicalAnn, watchOtherAnn,
-        watchPTAnn, watchDeductionAnn, activeTab, watchPfNo
+        watchPTAnn, watchDeductionAnn, activeTab, watchPfNo, watchCtc
     ]);
 
     // Note: Automatic syncing between Guided and Manual modes has been removed to keep modes separate.
@@ -344,22 +367,46 @@ const AddEditSalary = () => {
                 }
                 const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
 
-                // PF Calculation: Annual Total represents sum of both shares (12% + 12%)
-                const pfAnnTotal = parseNumber(values.pfAnnual || 0);
-                const pfEmp = Math.round(pfAnnTotal / 24);
-                const pfEmpr = Math.round(pfAnnTotal / 24);
+                // PF Calculation for Manual Mode
+                const manualPfType = values.manualPfType;
+                const manualPfValue = parseNumber(values.manualPfValue);
+                let pfEmp = 0;
+                let pfEmpr = 0;
 
-                const vPay = Math.round(parseNumber(values.variablePayAnnual || 0) / 12);
+                if (manualPfType === 'fixed') {
+                    pfEmp = manualPfValue;
+                    pfEmpr = manualPfValue;
+                } else if (manualPfType === 'percentage') {
+                    pfEmp = Math.round(basic * (manualPfValue / 100));
+                    pfEmpr = Math.round(basic * (manualPfValue / 100));
+                } else {
+                    // Fallback to pfAnnual if pfType is none but pfAnnual exists (from backend)
+                    const pfAnnTotal = parseNumber(values.pfAnnual || 0);
+                    pfEmp = Math.round(pfAnnTotal / 24);
+                    pfEmpr = Math.round(pfAnnTotal / 24);
+                }
+
+                // Variable Pay for Manual Mode
+                const mVarType = values.manualVariablePayType;
+                const mVarValue = parseNumber(values.manualVariablePayValue);
+                let vPay = 0;
+                if (mVarType === 'percentage') {
+                    vPay = Math.round(((basic * 12) + (hra * 12) + (special * 12) + (medical * 12) + (conveyance * 12) + (other * 12)) * (mVarValue / 100) / 12);
+                } else if (mVarType === 'fixed') {
+                    vPay = Math.round(mVarValue / 12);
+                } else {
+                    vPay = Math.round(parseNumber(values.variablePayAnnual || 0) / 12);
+                }
 
                 const monthlyGross = basic + hra + special + medical + conveyance + other;
                 const monthlyDeductions = pt + otherDed + pfEmp;
                 const monthlyInHand = monthlyGross - monthlyDeductions;
 
                 // CTC = (Monthly Gross + Employer PF) * 12 + Annual Variable Pay
-                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + parseNumber(values.variablePayAnnual || 0);
+                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + (vPay * 12);
 
                 setPreviewData({
-                    annualCtc: parseNumber(values.annualCtc) > 0 ? parseNumber(values.annualCtc) : calculatedAnnualCtc,
+                    annualCtc: calculatedAnnualCtc,
                     annualBasic: basic * 12,
                     monthlyBasic: basic,
                     hra,
@@ -517,22 +564,29 @@ const AddEditSalary = () => {
                 form.reset({
                     userId: uid,
                     annualCtc: data.annualCtc || 0,
-                    variablePayType: data.variablePayType || 'none',
-                    variablePayValue: data.variablePayValue || 0,
-                    workingDays: data.workingDays || 22,
-
                     // Restore Bank & Statutory Details
                     uanNumber: data.uanNumber || '',
-                    panNumber: data.panNumber || '',
                     pfNo: data.pfNumber || '',
                     bankName: data.bankName || '',
                     bankAccount: data.accountNumber || '',
                     ifscCode: data.ifscCode || '',
                     paymentMode: data.paymentMode || 'Bank Transfer',
 
-                    // Restore PF Settings for Guided Mode
+                    // Restore PF Settings
                     pfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
                     pfValue: data.employer_pf_percentage || data.pfEmployer || 0,
+                    manualPfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
+                    manualPfValue: data.employer_pf_percentage || data.pfEmployer || 0,
+
+                    // Restore Variable Pay Settings
+                    variablePayType: data.variablePayType || 'none',
+                    variablePayValue: data.variablePayValue || 0,
+                    manualVariablePayType: data.variablePayType || 'none',
+                    manualVariablePayValue: data.variablePayValue || 0,
+
+                    // Restore Working Days
+                    workingDays: data.workingDays || 22,
+                    manualWorkingDays: data.workingDays || 22,
 
                     // Manual entry fields (annual values) - from Salary API
                     basicAnnual: (data.monthlyBasic || 0) * 12,
@@ -589,17 +643,25 @@ const AddEditSalary = () => {
             if (data.pfType === 'percentage') {
                 pfPayload.employer_pf_percentage = parseNumber(data.pfValue);
             } else if (data.pfType === 'fixed') {
-                pfPayload.pf_annual = parseNumber(data.pfValue) * 12;
+                pfPayload.pf_annual = parseNumber(data.pfValue) * 12 * 2;
             }
             // If pfType is 'none', pfPayload remains empty {} so neither field is sent.
 
             if (activeTab === "manual") {
+                // Shared PF Payload Logic for Manual Mode
+                const mPfPayload: Record<string, any> = {};
+                if (data.manualPfType === 'percentage') {
+                    mPfPayload.employer_pf_percentage = parseNumber(data.manualPfValue);
+                } else if (data.manualPfType === 'fixed') {
+                    mPfPayload.pf_annual = parseNumber(data.manualPfValue) * 12 * 2; // Multiply by 2 for both shares
+                }
+
                 // Calculate variable pay for manual mode
-                const calculatedVariablePay = data.variablePayType === 'percentage'
+                const calculatedVariablePay = data.manualVariablePayType === 'percentage'
                     ? ((data.basicAnnual || 0) + (data.hraAnnual || 0) + (data.specialAllowanceAnnual || 0) +
-                        (data.conveyanceAnnual || 0) + (data.medicalAllowanceAnnual || 0) + (data.otherAllowanceAnnual || 0)) * (data.variablePayValue / 100)
-                    : data.variablePayType === 'fixed'
-                        ? data.variablePayValue
+                        (data.conveyanceAnnual || 0) + (data.medicalAllowanceAnnual || 0) + (data.otherAllowanceAnnual || 0)) * (data.manualVariablePayValue / 100)
+                    : data.manualVariablePayType === 'fixed'
+                        ? data.manualVariablePayValue
                         : 0;
 
                 // Administrative Manual Entry Payload
@@ -613,17 +675,16 @@ const AddEditSalary = () => {
                     other_allowance_annual: data.otherAllowanceAnnual || 0,
                     professional_tax_annual: data.professionalTaxAnnual || 0,
                     other_deduction_annual: data.otherDeductionAnnual || 0,
-                    pf_annual: data.pfAnnual || 0,
+                    pf_annual: mPfPayload.pf_annual || data.pfAnnual || 0,
                     variable_pay: calculatedVariablePay,
-                    working_days_per_month: data.workingDays || 22,
-                    uan_number: data.uanNumber || "",
-                    pan_number: data.panNumber || "",
-                    pf_no: data.pfNo || "",
+                    working_days_per_month: data.manualWorkingDays || 22,
+                    uan_number: data.uanNumber?.trim() || null,
+                    pf_no: data.pfNo?.trim() || null,
                     bank_name: data.bankName || "",
                     bank_account: data.bankAccount || "",
                     ifsc_code: data.ifscCode || "",
                     payment_mode: data.paymentMode || 'Bank Transfer',
-                    ...pfPayload
+                    ...mPfPayload
                 };
 
                 let response;
@@ -651,7 +712,13 @@ const AddEditSalary = () => {
                 }
 
             } else {
-                // Guided Mode Payload
+                // Shared PF Payload Logic for Guided Mode
+                const guidedPfPayload: Record<string, any> = {};
+                if (data.pfType === 'percentage') {
+                    guidedPfPayload.employer_pf_percentage = parseNumber(data.pfValue);
+                } else if (data.pfType === 'fixed') {
+                    guidedPfPayload.pf_annual = parseNumber(data.pfValue) * 12 * 2; // Prevent halving
+                }
 
                 const payload = {
                     user_id: userIdInt,
@@ -659,14 +726,13 @@ const AddEditSalary = () => {
                     variable_pay_type: data.variablePayType,
                     variable_pay_value: data.variablePayValue,
                     working_days_per_month: data.workingDays,
-                    uan_number: data.uanNumber || "",
-                    pan_number: data.panNumber || "",
-                    pf_no: data.pfNo || "",
+                    uan_number: data.uanNumber?.trim() || null,
+                    pf_no: data.pfNo?.trim() || null,
                     bank_name: data.bankName || "",
                     bank_account: data.bankAccount || "",
                     ifsc_code: data.ifscCode || "",
                     payment_mode: data.paymentMode || 'Bank Transfer',
-                    ...pfPayload,
+                    ...guidedPfPayload,
                 };
 
                 let response;
@@ -688,9 +754,8 @@ const AddEditSalary = () => {
 
                     // Update non-calculated fields (Bank details, PF numbers, etc.)
                     response = await apiService.updateSalaryDetails(data.userId, {
-                        uan_number: data.uanNumber || "",
-                        pan_number: data.panNumber || "",
-                        pf_no: data.pfNo || "",
+                        uan_number: data.uanNumber?.trim() || null,
+                        pf_no: data.pfNo?.trim() || null,
                         bank_name: data.bankName || "",
                         bank_account: data.bankAccount || "",
                         ifsc_code: data.ifscCode || "",
@@ -865,10 +930,18 @@ const AddEditSalary = () => {
                                 }} className="w-full">
                                     {(userRole === 'admin' || userRole === 'hr') && (
                                         <TabsList className="grid w-full grid-cols-2 mb-6 bg-slate-100/50 dark:bg-slate-800/50">
-                                            <TabsTrigger value="auto" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                                            <TabsTrigger
+                                                value="auto"
+                                                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                                                onClick={() => { setActiveTab("auto"); setPreviewData(null); }}
+                                            >
                                                 <Calculator className="h-4 w-4 mr-2" /> Guided Mode
                                             </TabsTrigger>
-                                            <TabsTrigger value="manual" className="data-[state=active]:bg-orange-100 dark:data-[state=active]:bg-orange-900/30 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-300">
+                                            <TabsTrigger
+                                                value="manual"
+                                                className="data-[state=active]:bg-orange-100 dark:data-[state=active]:bg-orange-900/30 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-300"
+                                                onClick={() => { setActiveTab("manual"); setPreviewData(null); }}
+                                            >
                                                 <FileText className="h-4 w-4 mr-2" /> Manual Entry
                                             </TabsTrigger>
                                         </TabsList>
@@ -1129,7 +1202,7 @@ const AddEditSalary = () => {
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Working Days</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("workingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'workingDays')} />
+                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("manualWorkingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'manualWorkingDays')} />
                                                     </div>
                                                     <div className="space-y-2">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Taxes (₹)</Label>
@@ -1142,7 +1215,7 @@ const AddEditSalary = () => {
                                                             <div className="space-y-2">
                                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Type</Label>
                                                                 <Controller
-                                                                    name="pfType"
+                                                                    name="manualPfType"
                                                                     control={form.control}
                                                                     render={({ field }) => (
                                                                         <Select onValueChange={field.onChange} value={field.value}>
@@ -1159,30 +1232,30 @@ const AddEditSalary = () => {
                                                                 />
                                                             </div>
                                                             <div className="space-y-2">
-                                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{watchPfType === 'percentage' ? 'PF Percentage (%)' : watchPfType === 'fixed' ? 'PF Amount (₹/month)' : 'PF Value'}</Label>
+                                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{watchManualPfType === 'percentage' ? 'PF Percentage (%)' : watchManualPfType === 'fixed' ? 'PF Amount (₹/month)' : 'PF Value'}</Label>
                                                                 <div className="relative">
-                                                                    {watchPfType === 'fixed' && (
+                                                                    {watchManualPfType === 'fixed' && (
                                                                         <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                                                                     )}
                                                                     <Input
                                                                         type="text"
-                                                                        className={`h-10 bg-white dark:bg-slate-800 ${watchPfType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
-                                                                        placeholder={watchPfType === 'percentage' ? 'e.g. 12' : watchPfType === 'fixed' ? 'e.g. 1800' : '0'}
-                                                                        disabled={watchPfType === 'none'}
-                                                                        {...form.register("pfValue")}
+                                                                        className={`h-10 bg-white dark:bg-slate-800 ${watchManualPfType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
+                                                                        placeholder={watchManualPfType === 'percentage' ? 'e.g. 12' : watchManualPfType === 'fixed' ? 'e.g. 1800' : '0'}
+                                                                        disabled={watchManualPfType === 'none'}
+                                                                        {...form.register("manualPfValue")}
                                                                         onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                         onFocus={handleNumericFocus}
-                                                                        onBlur={(e) => handleNumericBlur(e, 'pfValue')}
+                                                                        onBlur={(e) => handleNumericBlur(e, 'manualPfValue')}
                                                                     />
-                                                                    {watchPfType === 'percentage' && (
+                                                                    {watchManualPfType === 'percentage' && (
                                                                         <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
                                                                     )}
                                                                 </div>
-                                                                {watchPfType !== 'none' && watchPfValue > 0 && (
+                                                                {watchManualPfType !== 'none' && watchManualPfValue > 0 && (
                                                                     <p className="text-xs text-muted-foreground mt-1">
-                                                                        {watchPfType === 'percentage'
-                                                                            ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(watchPfValue)) / 100)} / year`
-                                                                            : `≈ ${formatCurrency(parseNumber(watchPfValue) * 12)} / year`
+                                                                        {watchManualPfType === 'percentage'
+                                                                            ? `≈ ${formatCurrency((totalCalculatedManualCTC * parseNumber(watchManualPfValue)) / 100)} / year`
+                                                                            : `≈ ${formatCurrency(parseNumber(watchManualPfValue) * 12)} / year`
                                                                         }
                                                                     </p>
                                                                 )}
@@ -1195,7 +1268,7 @@ const AddEditSalary = () => {
                                                             <div className="space-y-2">
                                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Type</Label>
                                                                 <Controller
-                                                                    name="variablePayType"
+                                                                    name="manualVariablePayType"
                                                                     control={form.control}
                                                                     render={({ field }) => (
                                                                         <Select
@@ -1217,35 +1290,35 @@ const AddEditSalary = () => {
                                                             </div>
                                                             <div className="space-y-2">
                                                                 <Label className="text-xs uppercase text-muted-foreground">
-                                                                    {form.watch('variablePayType') === 'percentage' ? 'Percentage (%)' : 'Amount (₹)'}
+                                                                    {form.watch('manualVariablePayType') === 'percentage' ? 'Percentage (%)' : 'Amount (₹)'}
                                                                 </Label>
                                                                 <div className="relative">
-                                                                    {form.watch('variablePayType') === 'fixed' && (
+                                                                    {form.watch('manualVariablePayType') === 'fixed' && (
                                                                         <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                                                                     )}
                                                                     <Input
                                                                         type="text"
-                                                                        className={`h-10 bg-white dark:bg-slate-800 ${form.watch('variablePayType') === 'fixed' ? 'pl-8' : ''}`}
-                                                                        placeholder={form.watch('variablePayType') === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
-                                                                        disabled={form.watch('variablePayType') === 'none'}
-                                                                        {...form.register("variablePayValue")}
+                                                                        className={`h-10 bg-white dark:bg-slate-800 ${form.watch('manualVariablePayType') === 'fixed' ? 'pl-8' : ''}`}
+                                                                        placeholder={form.watch('manualVariablePayType') === 'percentage' ? "e.g. 10" : "e.g. 50 000"}
+                                                                        disabled={form.watch('manualVariablePayType') === 'none'}
+                                                                        {...form.register("manualVariablePayValue")}
                                                                         onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
                                                                         onFocus={handleNumericFocus}
-                                                                        onBlur={(e) => handleNumericBlur(e, 'variablePayValue')}
+                                                                        onBlur={(e) => handleNumericBlur(e, 'manualVariablePayValue')}
                                                                     />
-                                                                    {form.watch('variablePayType') === 'percentage' && (
+                                                                    {form.watch('manualVariablePayType') === 'percentage' && (
                                                                         <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
                                                                     )}
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        {form.watch('variablePayType') !== 'none' && form.watch('variablePayValue') > 0 && (
+                                                        {form.watch('manualVariablePayType') !== 'none' && form.watch('manualVariablePayValue') > 0 && (
                                                             <div className="flex items-center gap-2 mt-2">
                                                                 <div className="h-px flex-1 bg-border" />
                                                                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                                                    {form.watch('variablePayType') === 'percentage'
-                                                                        ? `≈ ${formatCurrency((parseNumber(watchCtc) * parseNumber(form.watch('variablePayValue'))) / 100)} / year`
-                                                                        : `≈ ${((parseNumber(form.watch('variablePayValue')) / parseNumber(watchCtc)) * 100).toFixed(2)}% of CTC`
+                                                                    {form.watch('manualVariablePayType') === 'percentage'
+                                                                        ? `≈ ${formatCurrency((totalCalculatedManualCTC * parseNumber(form.watch('manualVariablePayValue'))) / 100)} / year`
+                                                                        : `≈ ${((parseNumber(form.watch('manualVariablePayValue')) / totalCalculatedManualCTC) * 100).toFixed(2)}% of CTC`
                                                                     }
                                                                 </p>
                                                                 <div className="h-px flex-1 bg-border" />
@@ -1274,11 +1347,6 @@ const AddEditSalary = () => {
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>UAN Number (Optional)</Label>
                                                 <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. 975610472162" {...form.register("uanNumber")} />
                                                 {form.formState.errors.uanNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.uanNumber.message}</p>}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PAN Number (Optional)</Label>
-                                                <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} placeholder="e.g. ABCDE1234F" {...form.register("panNumber")} />
-                                                {form.formState.errors.panNumber && <p className="text-red-500 text-xs mt-1">{form.formState.errors.panNumber.message}</p>}
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PF Number (Optional)</Label>
@@ -1337,7 +1405,7 @@ const AddEditSalary = () => {
                                         {!previewData ? (
                                             <div className="py-12 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 rounded-lg border border-dashed">
                                                 <Calculator className="h-10 w-10 mb-2 opacity-20" />
-                                                <p>Enter Annual CTC to see breakdown</p>
+                                                <p>{activeTab === 'manual' ? 'Enter manual components to see breakdown' : 'Enter Annual CTC to see breakdown'}</p>
                                             </div>
                                         ) : (
                                             <div className="space-y-6">
@@ -1464,7 +1532,7 @@ const AddEditSalary = () => {
                                                     <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Annual CTC</p>
                                                 </div>
                                                 <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
-                                                    {previewData ? formatCurrency(previewData.annualCtc) : formatCurrency(parseNumber(watchCtc))}
+                                                    {previewData ? formatCurrency(previewData.annualCtc) : (activeTab === 'manual' ? formatCurrency(totalCalculatedManualCTC) : formatCurrency(parseNumber(watchCtc)))}
                                                 </p>
                                             </div>
                                             <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border-2 border-[#000000]">

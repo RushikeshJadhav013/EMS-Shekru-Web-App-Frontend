@@ -83,6 +83,7 @@ import {
   ChevronUp,
   ClipboardList,
   LayoutGrid,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -677,11 +678,79 @@ const TaskManagement: React.FC = () => {
       try {
         const data = await apiService.getTaskHistory(taskId);
         setTaskHistory((prev) => ({ ...prev, [taskId]: data }));
+
+        // Update user cache with any potential names found in history details
+        setUserCache((prev) => {
+          const next = new Map(prev);
+          let changed = false;
+
+          data.forEach((entry: any) => {
+            const d = entry.details;
+            if (!d) return;
+
+            const candidates = [
+              { id: entry.user_id, name: d.actor_name || d.user_name },
+              { id: d.from, name: d.from_name },
+              { id: d.to, name: d.to_name }
+            ];
+
+            candidates.forEach(({ id, name }) => {
+              if (id && name && isNaN(Number(name))) {
+                const sid = String(id);
+                const existing = next.get(sid);
+                if (!existing || (existing.name !== name && (existing.name.includes('#') || existing.name === sid))) {
+                  next.set(sid, {
+                    userId: sid,
+                    employeeId: existing?.employeeId || "",
+                    name: String(name),
+                    email: existing?.email || "",
+                    role: (d.actor_role || d.from_role || d.to_role) ? normalizeRole(d.actor_role || d.from_role || d.to_role) : (existing?.role || "employee")
+                  });
+                  changed = true;
+                }
+              }
+            });
+          });
+          return changed ? next : prev;
+        });
+
+        // Also fetch details for any still-unresolved IDs that appear in history
+        const unresolvedIds = new Set<string>();
+        data.forEach((entry: any) => {
+          [entry.user_id, entry.details?.from, entry.details?.to].forEach(id => {
+            if (id && !employeesById.has(String(id)) && !userCache.has(String(id))) {
+              unresolvedIds.add(String(id));
+            }
+          });
+        });
+
+        if (unresolvedIds.size > 0) {
+          unresolvedIds.forEach(async (id) => {
+            try {
+              const userData = await apiService.getEmployeeById(id);
+              if (userData && userData.name) {
+                setUserCache(prev => {
+                  const next = new Map(prev);
+                  next.set(String(id), {
+                    userId: String(id),
+                    employeeId: userData.employee_id || "",
+                    name: userData.name,
+                    email: userData.email || "",
+                    role: normalizeRole(userData.role) || "employee"
+                  });
+                  return next;
+                });
+              }
+            } catch (err) {
+              console.warn(`Could not resolve user name for ID ${id}`);
+            }
+          });
+        }
       } catch (error) {
         console.error("Failed to fetch task history", error);
       }
     },
-    [],
+    [employeesById, userCache, setTaskHistory, setUserCache],
   );
 
   useEffect(() => {
@@ -3651,7 +3720,7 @@ const TaskManagement: React.FC = () => {
 
         <TabsContent value="all" className="space-y-6 mt-6">
           {/* Stats Cards - Clickable Filters */}
-          <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
             {[
               {
                 title: "Total Tasks",
@@ -3660,6 +3729,14 @@ const TaskManagement: React.FC = () => {
                 iconColor: "text-slate-600",
                 iconBg: "bg-slate-100",
                 statusKey: "all",
+              },
+              {
+                title: "To Do",
+                value: taskCountsByStatus.todo,
+                icon: ClipboardList,
+                iconColor: "text-orange-600",
+                iconBg: "bg-orange-100",
+                statusKey: "todo",
               },
               {
                 title: "In Progress",
@@ -4038,9 +4115,6 @@ const TaskManagement: React.FC = () => {
                                       <SelectContent className="border-2 shadow-xl">
                                         <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                         <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                        {task.status === "overdue" && (
-                                          <SelectItem value="overdue" disabled>Overdue</SelectItem>
-                                        )}
                                         <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                         <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                       </SelectContent>
@@ -4071,6 +4145,7 @@ const TaskManagement: React.FC = () => {
                                     <div
                                       className={`flex flex-wrap items-center gap-2 ${task.status === "completed" ? "justify-center" : ""}`}
                                     >
+                                      {/* View Button - for everyone involved */}
                                       <Button
                                         variant="ghost"
                                         size="icon"
@@ -4078,69 +4153,65 @@ const TaskManagement: React.FC = () => {
                                         className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
                                         title="View task details"
                                       >
-                                        👁
+                                        <Eye className="h-4 w-4" />
                                       </Button>
+
+                                      {/* Pass Button - for Assignor and Assignee */}
                                       {canPassTask && (
                                         <Button
                                           variant="ghost"
                                           size="icon"
                                           onClick={() => openPassDialog(task)}
-                                          className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                           title="Pass task"
                                         >
                                           <Share2 className="h-4 w-4" />
                                         </Button>
                                       )}
+
+                                      {/* Edit Button - for Assignor (and Admin/HR as per logic) */}
                                       {((task.status !== "completed" &&
                                         (task.status as string) !== "cancelled") || isCreator) &&
-                                        canManageTask && (
-                                          <>
-                                            {(task.status as string) !==
-                                              "overdue" && (
-                                                <Button
-                                                  variant="ghost"
-                                                  size="icon"
-                                                  onClick={() => handleEditClick(task)}
-                                                  className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                                  title="Edit task"
-                                                >
-                                                  <Pencil className="h-4 w-4" />
-                                                </Button>
-                                              )}
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              onClick={() =>
-                                                handleDeleteTask(task.id)
-                                              }
-                                              disabled={
-                                                deletingTaskId === task.id ||
-                                                !canDeleteTask(task)
-                                              }
-                                              className="h-8 w-8 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                                              title={
-                                                !canDeleteTask(task)
-                                                  ? "Cannot delete task once work has started"
-                                                  : "Delete task"
-                                              }
-                                            >
-                                              {deletingTaskId === task.id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                              ) : (
-                                                <Trash2 className="h-4 w-4" />
-                                              )}
-                                            </Button>
-                                          </>
+                                        canManageTask && (task.status as string) !== "overdue" && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleEditClick(task)}
+                                            className="h-8 w-8 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                            title="Edit task"
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </Button>
                                         )}
+
+                                      {/* Reassign Button - for Assignor (and Admin/HR as per logic) */}
                                       {canReassignTask(task) && (
                                         <Button
                                           variant="ghost"
                                           size="icon"
                                           onClick={() => handleReassignClick(task)}
-                                          className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                                          className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                                           title="Reassign task"
                                         >
                                           <RefreshCcw className="h-4 w-4" />
+                                        </Button>
+                                      )}
+
+                                      {/* Delete Button - for Assignor (and Admin/HR as per logic) */}
+                                      {canDeleteTask(task) && (
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleDeleteTask(task.id)}
+                                          disabled={deletingTaskId === task.id}
+                                          className="h-8 w-8 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-50"
+                                          title="Delete task"
+                                        >
+                                          {deletingTaskId === task.id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-4 w-4" />
+                                          )}
                                         </Button>
                                       )}
                                     </div>
@@ -4270,9 +4341,6 @@ const TaskManagement: React.FC = () => {
                                   <SelectContent className="border-2 shadow-xl">
                                     <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                     <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                    {task.status === "overdue" && (
-                                      <SelectItem value="overdue" disabled>Overdue</SelectItem>
-                                    )}
                                     <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                     <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                   </SelectContent>
@@ -4373,74 +4441,74 @@ const TaskManagement: React.FC = () => {
                               {/* Right Side: Action Buttons */}
                               <div className="flex items-center gap-1">
                                 {/* View Details Button */}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedTask(task);
-                                  }}
-                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                  title="View task details"
-                                >
-                                  👁
-                                </Button>
-
-                                {/* Pass Button */}
-                                {canPassTask && (
+                                <div className="flex items-center gap-1">
+                                  {/* View Button */}
                                   <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      openPassDialog(task);
+                                      setSelectedTask(task);
                                     }}
                                     className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                    title="Pass task"
+                                    title="View task details"
                                   >
-                                    ↪️
+                                    <Eye className="h-4 w-4" />
                                   </Button>
-                                )}
 
-                                {/* Edit Button */}
-                                {((task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled") || isCreator) &&
-                                  canManageTask &&
-                                  ((task.status as string) !== "overdue" || isCreator) && (
+                                  {/* Pass Button */}
+                                  {canPassTask && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleEditClick(task);
+                                        openPassDialog(task);
                                       }}
-                                      className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                      title="Edit Task"
+                                      className="h-8 w-8 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                      title="Pass task"
                                     >
-                                      ✏️
+                                      <Share2 className="h-4 w-4" />
                                     </Button>
                                   )}
 
-                                {/* Reassign Button */}
-                                {canReassignTask(task) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleReassignClick(task);
-                                    }}
-                                    className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-                                    title="Reassign Task"
-                                  >
-                                    🔄
-                                  </Button>
-                                )}
+                                  {/* Edit Button */}
+                                  {((task.status !== "completed" &&
+                                    (task.status as string) !== "cancelled") || isCreator) &&
+                                    canManageTask &&
+                                    ((task.status as string) !== "overdue" || isCreator) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEditClick(task);
+                                        }}
+                                        className="h-8 w-8 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                        title="Edit Task"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    )}
 
-                                {/* Delete Button */}
-                                {((task.status !== "completed" &&
-                                  (task.status as string) !== "cancelled") || isCreator) &&
-                                  canManageTask && (
+                                  {/* Reassign Button */}
+                                  {canReassignTask(task) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleReassignClick(task);
+                                      }}
+                                      className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                      title="Reassign Task"
+                                    >
+                                      <RefreshCcw className="h-4 w-4" />
+                                    </Button>
+                                  )}
+
+                                  {/* Delete Button */}
+                                  {canDeleteTask(task) && (
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -4448,24 +4516,18 @@ const TaskManagement: React.FC = () => {
                                         e.stopPropagation();
                                         handleDeleteTask(task.id);
                                       }}
-                                      disabled={
-                                        deletingTaskId === task.id ||
-                                        !canDeleteTask(task)
-                                      }
-                                      className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
-                                      title={
-                                        !canDeleteTask(task)
-                                          ? "Cannot delete started task"
-                                          : "Delete Task"
-                                      }
+                                      disabled={deletingTaskId === task.id}
+                                      className="h-8 w-8 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-30"
+                                      title="Delete Task"
                                     >
                                       {deletingTaskId === task.id ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                       ) : (
-                                        "🗑"
+                                        <Trash2 className="h-4 w-4" />
                                       )}
                                     </Button>
                                   )}
+                                </div>
                               </div>
                             </div>
                           </CardContent>
@@ -4734,7 +4796,6 @@ const TaskManagement: React.FC = () => {
                                                 <SelectContent className="border-2 shadow-xl">
                                                   <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                                   <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
-                                                  <SelectItem value="overdue" disabled={!isStatusTransitionAllowed(task.status, "overdue")}>Overdue</SelectItem>
                                                   <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                                   <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                                 </SelectContent>
@@ -4750,17 +4811,72 @@ const TaskManagement: React.FC = () => {
                                             </TableCell>
                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                               <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="icon" onClick={() => setSelectedTask(task)} className="h-8 w-8 text-black dark:text-white hover:bg-slate-100" title="View details">👁</Button>
-                                                {canPassTask && <Button variant="ghost" size="icon" onClick={() => openPassDialog(task)} className="h-8 w-8 text-black hover:bg-slate-100" title="Pass task"><Share2 className="h-4 w-4" /></Button>}
-                                                {((task.status !== "completed" && task.status !== "cancelled") || isCreator) && canManageTask && (
-                                                  <Button variant="ghost" size="icon" onClick={() => handleEditClick(task)} className="h-8 w-8 text-blue-600 hover:bg-blue-50" title="Edit task"><Pencil className="h-4 w-4" /></Button>
+                                                {/* View Button - for everyone involved */}
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  onClick={() => setSelectedTask(task)}
+                                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100"
+                                                  title="View details"
+                                                >
+                                                  <Eye className="h-4 w-4" />
+                                                </Button>
+
+                                                {/* Pass Button - for Assignor and Assignee */}
+                                                {canPassTask && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => openPassDialog(task)}
+                                                    className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                                    title="Pass task"
+                                                  >
+                                                    <Share2 className="h-4 w-4" />
+                                                  </Button>
                                                 )}
+
+                                                {/* Edit Button - for Assignor (and Admin/HR as per logic) */}
+                                                {((task.status !== "completed" && task.status !== "cancelled") || isCreator) &&
+                                                  canManageTask && (
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      onClick={() => handleEditClick(task)}
+                                                      className="h-8 w-8 text-amber-600 hover:bg-amber-50"
+                                                      title="Edit task"
+                                                    >
+                                                      <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                  )}
+
+                                                {/* Reassign Button - for Assignor (and Admin/HR as per logic) */}
                                                 {canReassignTask(task) && (
-                                                  <Button variant="ghost" size="icon" onClick={() => handleReassignClick(task)} className="h-8 w-8 text-emerald-600 hover:bg-emerald-50" title="Reassign task"><RefreshCcw className="h-4 w-4" /></Button>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleReassignClick(task)}
+                                                    className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                                                    title="Reassign task"
+                                                  >
+                                                    <RefreshCcw className="h-4 w-4" />
+                                                  </Button>
                                                 )}
-                                                {((task.status !== "completed" && task.status !== "cancelled") || isCreator) && canManageTask && canDeleteTask(task) && (
-                                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} disabled={deletingTaskId === task.id} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Delete task">
-                                                    {deletingTaskId === task.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+
+                                                {/* Delete Button - for Assignor (and Admin/HR as per logic) */}
+                                                {canDeleteTask(task) && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDeleteTask(task.id)}
+                                                    disabled={deletingTaskId === task.id}
+                                                    className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                                                    title="Delete task"
+                                                  >
+                                                    {deletingTaskId === task.id ? (
+                                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    ) : (
+                                                      <Trash2 className="h-4 w-4" />
+                                                    )}
                                                   </Button>
                                                 )}
                                               </div>

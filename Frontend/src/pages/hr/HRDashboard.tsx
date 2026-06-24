@@ -90,11 +90,10 @@ const HRDashboard: React.FC = () => {
       // 1. Initial filter from dashboard data (tasks, leaves, etc.)
       let activities = (Array.isArray(activityFeed) ? activityFeed : []).filter((a: any) => {
         if (!a.time) return false;
-        // Avoid duplicate check-ins/outs as we fetch fresh ones next
-        if (a.type === 'attendance') return false; // In HR dashboard, attendance type is used instead of check-in/out
+        // Avoid duplicate attendance as we fetch fresh ones next
+        if (a.type === 'attendance') return false;
 
-        // Show current day activities only
-        return formatDateIST(a.time) === todayDateStr;
+        return true; // Show all recent activities, not just today's
       });
 
       // 2. Fetch fresh attendance records for today to get accurate timings
@@ -111,7 +110,7 @@ const HRDashboard: React.FC = () => {
             const checkOutTime = rec.check_out || rec.checkOutTime;
 
             // Add Check-In Activity
-            if (checkInTime && formatDateIST(checkInTime) === todayDateStr) {
+            if (checkInTime) {
               attendanceActivities.push({
                 id: `in-${recId}`,
                 type: 'attendance',
@@ -123,7 +122,7 @@ const HRDashboard: React.FC = () => {
             }
 
             // Add Check-Out Activity
-            if (checkOutTime && formatDateIST(checkOutTime) === todayDateStr) {
+            if (checkOutTime) {
               attendanceActivities.push({
                 id: `out-${recId}`,
                 type: 'attendance',

@@ -99,8 +99,12 @@ const MeetingsPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+    const [viewMeeting, setViewMeeting] = useState<Meeting | null>(null);
     const [participantSearchQuery, setParticipantSearchQuery] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const ITEMS_PER_PAGE = 9;
+    const [allPage, setAllPage] = useState(1);
+    const [myPage, setMyPage] = useState(1);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -296,9 +300,28 @@ const MeetingsPage: React.FC = () => {
         fetchData();
     }, []);
 
+
+
     const [dateFilter, setDateFilter] = useState("");
 
+    useEffect(() => {
+        setAllPage(1);
+        setMyPage(1);
+    }, [searchQuery, dateFilter]);
+
     const activeMeetings = mainTab === "my" ? myMeetings : meetings;
+
+    // Reset pages when tab or filter changes
+    const handleMainTabChange = (tab: "all" | "my") => {
+        setMainTab(tab);
+        setAllPage(1);
+        setMyPage(1);
+    };
+    const handleTypeFilterChange = (val: string) => {
+        setTypeFilter(val);
+        setAllPage(1);
+        setMyPage(1);
+    };
 
     const filteredMeetings = activeMeetings.filter((m) => {
         if (!m || !m.title) return false;
@@ -318,6 +341,40 @@ const MeetingsPage: React.FC = () => {
 
         return matchesSearch && matchesDate && matchesType;
     });
+
+    // Pagination helpers
+    const currentPage = mainTab === "my" ? myPage : allPage;
+    const setCurrentPage = mainTab === "my" ? setMyPage : setAllPage;
+    const totalPages = Math.max(1, Math.ceil(filteredMeetings.length / ITEMS_PER_PAGE));
+    const paginatedMeetings = filteredMeetings.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const PaginationBar = ({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) => {
+        if (total <= 1) return null;
+        return (
+            <div className="flex items-center justify-center gap-2 mt-8">
+                <button
+                    onClick={() => onChange(Math.max(1, page - 1))}
+                    disabled={page === 1}
+                    className="h-9 w-9 rounded-xl border-2 border-[#000000] bg-white flex items-center justify-center font-bold text-sm disabled:opacity-30 hover:bg-slate-100 transition-all"
+                >&lt;</button>
+                {Array.from({ length: total }, (_, i) => i + 1).map(p => (
+                    <button
+                        key={p}
+                        onClick={() => onChange(p)}
+                        className={`h-9 w-9 rounded-xl border-2 font-bold text-sm transition-all ${p === page
+                            ? 'bg-slate-900 text-white border-slate-900'
+                            : 'bg-white border-[#000000] hover:bg-slate-100'
+                            }`}
+                    >{p}</button>
+                ))}
+                <button
+                    onClick={() => onChange(Math.min(total, page + 1))}
+                    disabled={page === total}
+                    className="h-9 w-9 rounded-xl border-2 border-[#000000] bg-white flex items-center justify-center font-bold text-sm disabled:opacity-30 hover:bg-slate-100 transition-all"
+                >&gt;</button>
+            </div>
+        );
+    };
 
     const handleCreateMeeting = async () => {
         if (!formData.title || !formData.meeting_url || !formData.start_time || !formData.end_time) {
@@ -480,8 +537,8 @@ const MeetingsPage: React.FC = () => {
                 const targetDeptName = (dept?.name || "").toLowerCase().trim();
                 const targetClean = targetDeptName.replace(/[^\p{L}\p{N}]/gu, "");
 
-                const empDeptId = emp.department_id || emp.departmentId || emp.branch_id || emp.branchId;
-                const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || "").toLowerCase();
+                const empDeptId = emp.department_id || emp.departmentId || emp.branch_id || emp.branchId || (emp as any).department?.id;
+                const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || emp.designation || "").toLowerCase();
                 const empDepts = empDeptStr.split(/[,/]+/).map(d => d.trim().toLowerCase()).filter(Boolean);
                 const empDeptsClean = empDepts.map(d => d.replace(/[^\p{L}\p{N}]/gu, ""));
 
@@ -568,12 +625,16 @@ const MeetingsPage: React.FC = () => {
                                             if (v === 'company') {
                                                 newFormData.participant_ids = employees.map(emp => Number(emp.user_id || emp.id)).filter(id => !isNaN(id));
                                             } else if (v === 'team' && (isTeamLead || isManager) && user?.department) {
-                                                // Handle multi-department strings (e.g., "Engineering, HR")
-                                                const userDepts = (user.department || "").split(',').map(d => d.trim().toLowerCase());
+                                                // Handle multi-department strings (e.g., "Engineering, HR" or "Engineering / HR")
+                                                const userDepts = (user.department || "").split(/[,/]+/).map(d => d.trim().toLowerCase()).filter(Boolean);
                                                 const myDept = departments.find(d => {
                                                     const deptName = (d.name || "").toLowerCase().trim();
-                                                    return userDepts.some(ud => ud && (deptName.includes(ud) || ud.includes(deptName))) ||
-                                                        ((user as any).department_id && d.id === Number((user as any).department_id));
+                                                    const deptClean = deptName.replace(/[^\p{L}\p{N}]/gu, "");
+                                                    return userDepts.some(ud => {
+                                                        if (!ud) return false;
+                                                        const udClean = ud.replace(/[^\p{L}\p{N}]/gu, "");
+                                                        return deptName.includes(ud) || ud.includes(deptName) || (udClean && deptClean && (deptClean.includes(udClean) || udClean.includes(deptClean)));
+                                                    }) || ((user as any).department_id && String(d.id) === String((user as any).department_id));
                                                 });
 
                                                 if (myDept) {
@@ -704,9 +765,11 @@ const MeetingsPage: React.FC = () => {
                                             const targetDeptName = (dept?.name || "").toLowerCase().trim();
                                             const targetClean = targetDeptName.replace(/[^\p{L}\p{N}]/gu, "");
 
-                                            const empDeptId = emp.department_id || emp.departmentId || emp.branch_id || emp.branchId;
-                                            const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || "").toLowerCase();
-                                            const empDepts = empDeptStr.split(/[,/]+/).map(d => d.trim().toLowerCase()).filter(Boolean);
+                                            const empDeptId = emp.department_id || emp.departmentId || emp.branch_id || emp.branchId || (emp as any).department?.id;
+                                            const empDeptStr = (emp.department || emp.department_name || emp.branch || emp.branches || emp.designation || "").toLowerCase();
+
+                                            // Split by common separators and check for matches
+                                            const empDepts = empDeptStr.split(/[,/|]+/).map(d => d.trim().toLowerCase()).filter(Boolean);
                                             const empDeptsClean = empDepts.map(d => d.replace(/[^\p{L}\p{N}]/gu, ""));
 
                                             const matchesId = empDeptId && String(empDeptId) === String(formData.team_id);
@@ -795,11 +858,11 @@ const MeetingsPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-center gap-2 mb-6">
-                        <button onClick={() => setMainTab("all")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>All meetings</button>
-                        <button onClick={() => setMainTab("my")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "my" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>My meetings {myMeetings.length > 0 && <span className="ml-2 bg-blue-600 text-white px-2 rounded-full">{myMeetings.length}</span>}</button>
+                        <button onClick={() => handleMainTabChange("all")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>All meetings</button>
+                        <button onClick={() => handleMainTabChange("my")} className={`h-10 px-6 rounded-2xl transition-all ${mainTab === "my" ? "bg-slate-900 text-white" : "bg-white text-slate-500 shadow-sm"}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>My meetings {myMeetings.length > 0 && <span className="ml-2 bg-blue-600 text-white px-2 rounded-full">{myMeetings.length}</span>}</button>
                     </div>
 
-                    <Tabs value={typeFilter} onValueChange={setTypeFilter} className="w-full">
+                    <Tabs value={typeFilter} onValueChange={handleTypeFilterChange} className="w-full">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                             <TabsList className="h-14 p-1.5 rounded-[1.5rem] bg-white dark:bg-slate-900 shadow-sm border-2 border-[#000000] mx-auto">
                                 <TabsTrigger value="all" className="rounded-2xl px-6 data-[state=active]:bg-slate-900 data-[state=active]:text-white" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "bold" }}>All Meetings</TabsTrigger>
@@ -830,145 +893,122 @@ const MeetingsPage: React.FC = () => {
                             ) : (
                                 <div className="space-y-12">
                                     {typeFilter === 'all' ? (
-                                        (['company', 'team', 'project', 'one-to-one'] as const).map(type => {
-                                            const grouped = filteredMeetings.filter(m => m.type === type);
-                                            if (grouped.length === 0) return null;
-                                            return (
-                                                <div key={type} className="space-y-6">
-                                                    <div className="flex items-center gap-4">
-                                                        <h2 className="text-sm font-black text-slate-400">{getDisplayName(type)}s</h2>
-                                                        <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 opacity-50" />
-                                                        <Badge variant="outline" className="rounded-full px-3 py-0.5 text-[9px] font-black opacity-50">{grouped.length}</Badge>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                                        {grouped.map((meeting) => (
-                                                            <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
-                                                                <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
-                                                                <CardHeader className="p-8 pb-4">
-                                                                    <div className="flex justify-between items-start mb-6">
-                                                                        <Badge className={`rounded-full px-4 py-1 ${getBadgeColor(meeting.type)}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(meeting.type)}</Badge>
-                                                                        <DropdownMenu>
-                                                                            <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
-                                                                            <DropdownMenuContent align="end" className="rounded-xl">
-                                                                                {(isAdmin || Number(meeting.created_by_id) === Number(user?.id)) && (
-                                                                                    <>
-                                                                                        <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="gap-2 uppercase py-3" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}><Edit2 className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
-                                                                                        <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                                                                                    </>
+                                        <>
+                                            {(['company', 'team', 'project', 'one-to-one'] as const).map(type => {
+                                                const grouped = paginatedMeetings.filter(m => m.type === type);
+                                                if (grouped.length === 0) return null;
+                                                return (
+                                                    <div key={type} className="space-y-6">
+                                                        <div className="flex items-center gap-4">
+                                                            <h2 className="text-sm font-black text-slate-400">{getDisplayName(type)}s</h2>
+                                                            <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 opacity-50" />
+                                                            <Badge variant="outline" className="rounded-full px-3 py-0.5 text-[9px] font-black opacity-50">{filteredMeetings.filter(m => m.type === type).length}</Badge>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                            {grouped.map((meeting) => {
+                                                                const isSelfCreated = Number(meeting.created_by_id) === Number(user?.id);
+                                                                return (
+                                                                    <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
+                                                                        <CardHeader className="p-8 pb-4">
+                                                                            <div className="flex justify-between items-start mb-6">
+                                                                                <Badge className={`rounded-full px-4 py-1 ${getBadgeColor(meeting.type)}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(meeting.type)}</Badge>
+                                                                                <DropdownMenu>
+                                                                                    <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
+                                                                                    <DropdownMenuContent align="end" className="rounded-xl">
+                                                                                        <DropdownMenuItem onClick={() => setViewMeeting(meeting)} className="gap-2 uppercase py-3" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}><ExternalLink className="h-3.5 w-3.5" /> View</DropdownMenuItem>
+                                                                                        {isSelfCreated && (
+                                                                                            <>
+                                                                                                <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="gap-2 uppercase py-3" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}><Edit2 className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                                                                                <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                                                                            </>
+                                                                                        )}
+                                                                                    </DropdownMenuContent>
+                                                                                </DropdownMenu>
+                                                                            </div>
+                                                                            <CardTitle className="mb-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>{meeting.title}</CardTitle>
+                                                                            <CardDescription className="line-clamp-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{meeting.description}</CardDescription>
+                                                                        </CardHeader>
+                                                                        <CardContent className="p-8 pt-0 space-y-6">
+                                                                            <div className="space-y-3">
+                                                                                <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
+                                                                                <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
+                                                                                {meeting.type === 'team' && meeting.team_name && (<div className="flex items-center gap-3 text-rose-600"><Users2 className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.team_name}</span></div>)}
+                                                                                {meeting.type === 'project' && meeting.project_name && (<div className="flex items-center gap-3 text-emerald-600"><Briefcase className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.project_name}</span></div>)}
+                                                                                {meeting.type === 'one-to-one' && meeting.created_by_name && (<div className="flex items-center gap-3" style={{ color: "#000000" }}><Users className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.created_by_name}</span></div>)}
+                                                                            </div>
+                                                                            <div className="pt-6 border-t flex items-center justify-between">
+                                                                                <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{((p.user_name || p.name || "?")[0] || "?").toUpperCase()}</div>)}</div>
+                                                                                {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
+                                                                                    <Button disabled className="rounded-2xl bg-slate-200 px-6 h-11 cursor-not-allowed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>Expired</Button>
+                                                                                ) : (
+                                                                                    <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
+                                                                                        <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" /></a>
+                                                                                    </Button>
                                                                                 )}
-                                                                            </DropdownMenuContent>
-                                                                        </DropdownMenu>
-                                                                    </div>
-                                                                    <CardTitle className="mb-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>{meeting.title}</CardTitle>
-                                                                    <CardDescription className="line-clamp-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{meeting.description}</CardDescription>
-                                                                </CardHeader>
-                                                                <CardContent className="p-8 pt-0 space-y-6">
-                                                                    <div className="space-y-3">
-                                                                        <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
-                                                                        <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
-                                                                        {meeting.type === 'team' && meeting.team_name && (
-                                                                            <div className="flex items-center gap-3 text-rose-600">
-                                                                                <Users2 className="h-4 w-4" />
-                                                                                <span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.team_name}</span>
                                                                             </div>
-                                                                        )}
-                                                                        {meeting.type === 'project' && meeting.project_name && (
-                                                                            <div className="flex items-center gap-3 text-emerald-600">
-                                                                                <Briefcase className="h-4 w-4" />
-                                                                                <span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.project_name}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        {meeting.type === 'one-to-one' && meeting.created_by_name && (
-                                                                            <div className="flex items-center gap-3" style={{ color: "#000000" }}>
-                                                                                <Users className="h-4 w-4" />
-                                                                                <span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.created_by_name[0]}</span>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="pt-6 border-t flex items-center justify-between">
-                                                                        <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{((p.user_name || p.name || "?")[0] || "?").toUpperCase()}</div>)}</div>
-                                                                        {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
-                                                                            <Button disabled className="rounded-2xl bg-slate-200 px-6 h-11 cursor-not-allowed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
-                                                                                Expired
-                                                                            </Button>
-                                                                        ) : (
-                                                                            <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
-                                                                                <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
-                                                                                    Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                                                                                </a>
-                                                                            </Button>
-                                                                        )}
-                                                                    </div>
-                                                                </CardContent>
-                                                            </Card>
-                                                        ))}
+                                                                        </CardContent>
+                                                                    </Card>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })
+                                                );
+                                            })}
+                                            <PaginationBar page={currentPage} total={totalPages} onChange={setCurrentPage} />
+                                        </>
                                     ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                            {filteredMeetings.map((meeting) => (
-                                                <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
-                                                    <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
-                                                    <CardHeader className="p-8 pb-4">
-                                                        <div className="flex justify-between items-start mb-6">
-                                                            <Badge className={`rounded-full px-4 py-1 font-black text-[9px] ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="rounded-xl">
-                                                                    {(isAdmin || Number(meeting.created_by_id) === Number(user?.id)) && (
-                                                                        <>
-                                                                            <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
-                                                                        </>
+                                        <>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                {paginatedMeetings.map((meeting) => {
+                                                    const isSelfCreated = Number(meeting.created_by_id) === Number(user?.id);
+                                                    return (
+                                                        <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                            <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
+                                                            <CardHeader className="p-8 pb-4">
+                                                                <div className="flex justify-between items-start mb-6">
+                                                                    <Badge className={`rounded-full px-4 py-1 font-black text-[9px] ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
+                                                                        <DropdownMenuContent align="end" className="rounded-xl">
+                                                                            <DropdownMenuItem onClick={() => setViewMeeting(meeting)} className="gap-2 uppercase py-3" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}><ExternalLink className="h-3.5 w-3.5" /> View</DropdownMenuItem>
+                                                                            {isSelfCreated && (
+                                                                                <>
+                                                                                    <DropdownMenuItem onClick={() => openEditDialog(meeting)} className="gap-2 uppercase py-3" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}><Edit2 className="h-3.5 w-3.5" /> Edit</DropdownMenuItem>
+                                                                                    <DropdownMenuItem onClick={() => handleDeleteMeeting(meeting)} className="gap-2 font-bold text-xs uppercase py-3 text-destructive"><Trash2 className="h-3.5 w-3.5" /> Delete</DropdownMenuItem>
+                                                                                </>
+                                                                            )}
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                </div>
+                                                                <CardTitle className="text-xl font-black mb-2">{meeting.title}</CardTitle>
+                                                                <CardDescription className="line-clamp-2 text-sm">{meeting.description}</CardDescription>
+                                                            </CardHeader>
+                                                            <CardContent className="p-8 pt-0 space-y-6">
+                                                                <div className="space-y-3">
+                                                                    <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
+                                                                    <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
+                                                                    {meeting.type === 'team' && meeting.team_name && (<div className="flex items-center gap-3 text-rose-600"><Users2 className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.team_name}</span></div>)}
+                                                                    {meeting.type === 'project' && meeting.project_name && (<div className="flex items-center gap-3 text-emerald-600"><Briefcase className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.project_name}</span></div>)}
+                                                                    {meeting.type === 'one-to-one' && meeting.created_by_name && (<div className="flex items-center gap-3" style={{ color: "#000000" }}><Users className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.created_by_name}</span></div>)}
+                                                                </div>
+                                                                <div className="pt-6 border-t flex items-center justify-between">
+                                                                    <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{((p.user_name || p.name || "?")[0] || "?").toUpperCase()}</div>)}</div>
+                                                                    {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
+                                                                        <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">Expired</Button>
+                                                                    ) : (
+                                                                        <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
+                                                                            <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" /></a>
+                                                                        </Button>
                                                                     )}
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </div>
-                                                        <CardTitle className="text-xl font-black mb-2">{meeting.title}</CardTitle>
-                                                        <CardDescription className="line-clamp-2 text-sm">{meeting.description}</CardDescription>
-                                                    </CardHeader>
-                                                    <CardContent className="p-8 pt-0 space-y-6">
-                                                        <div className="space-y-3">
-                                                            <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
-                                                            <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
-                                                            {meeting.type === 'team' && meeting.team_name && (
-                                                                <div className="flex items-center gap-3 text-rose-600">
-                                                                    <Users2 className="h-4 w-4" />
-                                                                    <span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.team_name}</span>
                                                                 </div>
-                                                            )}
-                                                            {meeting.type === 'project' && meeting.project_name && (
-                                                                <div className="flex items-center gap-3 text-emerald-600">
-                                                                    <Briefcase className="h-4 w-4" />
-                                                                    <span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{meeting.project_name}</span>
-                                                                </div>
-                                                            )}
-                                                            {meeting.type === 'one-to-one' && meeting.created_by_name && (
-                                                                <div className="flex items-center gap-3" style={{ color: "#000000" }}>
-                                                                    <Users className="h-4 w-4" />
-                                                                    <span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.created_by_name[0]}</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="pt-6 border-t flex items-center justify-between">
-                                                            <div className="flex -space-x-3">{meeting.participants?.slice(0, 3).map((p, i) => <div key={i} className="h-10 w-10 rounded-2xl border-4 border-white bg-slate-100 flex items-center justify-center font-bold text-xs" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", backgroundColor: "#F1F5F9" }}>{((p.user_name || p.name || "?")[0] || "?").toUpperCase()}</div>)}</div>
-                                                            {meeting.end_time && new Date(meeting.end_time) < new Date() ? (
-                                                                <Button disabled className="rounded-2xl bg-slate-200 text-slate-500 font-black text-[10px] uppercase px-6 h-11 cursor-not-allowed">
-                                                                    Expired
-                                                                </Button>
-                                                            ) : (
-                                                                <Button asChild className="rounded-2xl bg-slate-900 hover:bg-blue-600 text-white font-black text-[10px] uppercase px-6 h-11">
-                                                                    <a href={meeting.meeting_url} target="_blank" rel="noopener noreferrer">
-                                                                        Join Meeting <ExternalLink className="ml-2 h-3.5 w-3.5" />
-                                                                    </a>
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                            ))}
-                                        </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    );
+                                                })}
+                                            </div>
+                                            <PaginationBar page={currentPage} total={totalPages} onChange={setCurrentPage} />
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -976,6 +1016,67 @@ const MeetingsPage: React.FC = () => {
                     </Tabs>
                 </div>
             </div>
+
+            {/* View Meeting Dialog */}
+            <Dialog open={!!viewMeeting} onOpenChange={(open) => { if (!open) setViewMeeting(null); }}>
+                <DialogContent className="sm:max-w-[520px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-5 text-white">
+                        <DialogTitle className="text-xl font-black uppercase tracking-tighter">Meeting Details</DialogTitle>
+                        <DialogDescription className="text-slate-300 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">Full meeting information</DialogDescription>
+                    </div>
+                    {viewMeeting && (
+                        <div className="p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Badge className={`rounded-full px-4 py-1 ${getBadgeColor(viewMeeting.type)}`} style={{ fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(viewMeeting.type)}</Badge>
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Title</p>
+                                <p className="font-bold text-base text-slate-900" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.title}</p>
+                            </div>
+                            {viewMeeting.description && (
+                                <div>
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Agenda</p>
+                                    <p className="text-sm text-slate-700" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.description}</p>
+                                </div>
+                            )}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Start Time</p>
+                                    <p className="font-bold text-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.start_time ? format(new Date(viewMeeting.start_time), 'MMM do, yyyy hh:mm a') : 'TBD'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">End Time</p>
+                                    <p className="font-bold text-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.end_time ? format(new Date(viewMeeting.end_time), 'MMM do, yyyy hh:mm a') : 'TBD'}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Created By</p>
+                                <p className="font-bold text-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.created_by_name || 'Unknown'}</p>
+                            </div>
+                            {viewMeeting.meeting_url && (
+                                <div>
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Meeting URL</p>
+                                    <a href={viewMeeting.meeting_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold text-sm underline break-all">{viewMeeting.meeting_url}</a>
+                                </div>
+                            )}
+                            {viewMeeting.participants && viewMeeting.participants.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2">Participants ({viewMeeting.participants.length})</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {viewMeeting.participants.map((p, i) => (
+                                            <span key={i} className="bg-slate-100 text-slate-700 rounded-xl px-3 py-1 text-xs font-bold">{p.user_name || p.name || 'Unknown'}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div className="p-5 bg-slate-50 border-t flex justify-end">
+                        <Button variant="ghost" onClick={() => setViewMeeting(null)} className="rounded-xl h-11 px-6 font-bold text-xs">Close</Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
             <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }` }} />
         </div>
     );

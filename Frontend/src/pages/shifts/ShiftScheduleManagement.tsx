@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Calendar, CalendarDays, Clock, Users, Plus, Edit, Trash2, UserPlus, ArrowRight, AlertCircle, RefreshCw, Search, UserMinus, History } from 'lucide-react';
+import { Calendar, CalendarDays, Clock, Users, Plus, Edit, Trash2, UserPlus, ArrowRight, AlertCircle, RefreshCw, Search, UserMinus, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { formatIST, formatDateIST, nowIST } from '@/utils/timezone';
 import SummaryCard from '@/components/ui/SummaryCard';
@@ -102,6 +102,7 @@ export default function ShiftScheduleManagement() {
     end_time: '18:00',
     description: '',
     is_active: true,
+    department: '',
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,17 +112,23 @@ export default function ShiftScheduleManagement() {
     shift_id: 0,
     assignment_date: selectedDate,
     notes: '',
+    department: '',
   });
 
+  const [shiftsPage, setShiftsPage] = useState(1);
+  const [leavesPage, setLeavesPage] = useState(1);
+  const [unassignedPage, setUnassignedPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
   useEffect(() => {
-    if (user?.role === 'admin' || user?.role === 'hr') {
+    if (user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager' || user?.role === 'team_lead' || user?.role === 'teamlead') {
       loadDepartments();
     }
   }, [user]);
 
   const loadDepartments = async () => {
     try {
-      const data = await apiService.getDepartments();
+      const data = await apiService.getDepartmentNames();
       setDepartmentsList((data || []).map((d: any) => d.name));
     } catch (error) {
       console.error('Failed to load departments:', error);
@@ -130,12 +137,16 @@ export default function ShiftScheduleManagement() {
   useEffect(() => {
     loadShifts();
     loadSchedule();
-  }, [selectedDate]);
+    setShiftsPage(1);
+    setLeavesPage(1);
+    setUnassignedPage(1);
+  }, [selectedDate, selectedDepartmentFilter]);
 
   const loadShifts = async () => {
     try {
       setIsLoading(true);
-      const data = await apiService.getShifts();
+      const dept = selectedDepartmentFilter === 'all' ? undefined : selectedDepartmentFilter;
+      const data = await apiService.getShifts(dept);
       setShifts((data || []).filter((s: Shift) => s.is_active));
     } catch (error: any) {
       // Only show toast for non-network errors
@@ -156,7 +167,8 @@ export default function ShiftScheduleManagement() {
   const loadSchedule = async () => {
     try {
       setIsLoading(true);
-      const data = await apiService.getDepartmentSchedule(selectedDate);
+      const dept = selectedDepartmentFilter === 'all' ? undefined : selectedDepartmentFilter;
+      const data = await apiService.getDepartmentSchedule(selectedDate, dept);
       setSchedule(data);
     } catch (error: any) {
       // Only show toast for non-network errors
@@ -234,7 +246,8 @@ export default function ShiftScheduleManagement() {
 
     try {
       setIsWeeklyLoading(true);
-      const data = await apiService.getDepartmentScheduleWeek(weekStartDate, weekEndDate);
+      const dept = selectedDepartmentFilter === 'all' ? undefined : selectedDepartmentFilter;
+      const data = await apiService.getDepartmentScheduleWeek(weekStartDate, weekEndDate, dept);
       setWeeklySchedule(data);
     } catch (error: any) {
       if (error.message && !error.message.includes('Cannot connect to backend')) {
@@ -301,6 +314,7 @@ export default function ShiftScheduleManagement() {
       end_time: '18:00',
       description: '',
       is_active: true,
+      department: selectedDepartmentFilter !== 'all' ? selectedDepartmentFilter : '',
     });
     setSelectedShift(null);
   };
@@ -313,6 +327,7 @@ export default function ShiftScheduleManagement() {
       end_time: shift.end_time,
       description: shift.description || '',
       is_active: shift.is_active,
+      department: shift.department || '',
     });
     setIsEditShiftDialogOpen(true);
   };
@@ -522,7 +537,8 @@ export default function ShiftScheduleManagement() {
       setIsLoadingAssignSchedule(true);
       // Clear the previous schedule so we don't use stale data for the wrong date
       setAssignSchedule(null);
-      const data = await apiService.getDepartmentSchedule(date);
+      const dept = selectedDepartmentFilter === 'all' ? undefined : selectedDepartmentFilter;
+      const data = await apiService.getDepartmentSchedule(date, dept);
       setAssignSchedule(data);
     } catch (error: any) {
       // Silently fail – user list may be empty but dialog still usable
@@ -620,6 +636,24 @@ export default function ShiftScheduleManagement() {
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="department">Department *</Label>
+                  <Select
+                    value={shiftFormData.department}
+                    onValueChange={(value) => setShiftFormData({ ...shiftFormData, department: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departmentsList.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="name">Shift Name *</Label>
                   <Input
                     id="name"
@@ -685,6 +719,24 @@ export default function ShiftScheduleManagement() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_department">Department *</Label>
+                  <Select
+                    value={shiftFormData.department}
+                    onValueChange={(value) => setShiftFormData({ ...shiftFormData, department: value })}
+                  >
+                    <SelectTrigger id="edit_department">
+                      <SelectValue placeholder="Select Department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departmentsList.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit_name">Shift Name *</Label>
                   <Input
@@ -813,7 +865,7 @@ export default function ShiftScheduleManagement() {
                     style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-[200px] h-11"
                   />
                 </div>
-                {(user?.role === 'admin' || user?.role === 'hr') && (
+                {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager' || user?.role === 'team_lead' || user?.role === 'teamlead') && (
                   <div className="flex flex-col gap-2">
                     <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Department</Label>
                     <Select value={selectedDepartmentFilter} onValueChange={setSelectedDepartmentFilter}>
@@ -876,7 +928,7 @@ export default function ShiftScheduleManagement() {
               </div>
 
               <TabsContent value="schedule" className="space-y-4">
-                {filteredDailySchedule.shifts.map((shiftData) => (
+                {filteredDailySchedule.shifts.slice((shiftsPage - 1) * ITEMS_PER_PAGE, shiftsPage * ITEMS_PER_PAGE).map((shiftData) => (
                   <Card key={shiftData.shift.shift_id}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -981,6 +1033,30 @@ export default function ShiftScheduleManagement() {
                     </CardContent>
                   </Card>
                 ))}
+
+                {filteredDailySchedule.shifts.length > ITEMS_PER_PAGE && (
+                  <div className="flex items-center justify-center gap-2 mt-4 py-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShiftsPage(p => Math.max(1, p - 1))}
+                      disabled={shiftsPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">
+                      Page {shiftsPage} of {Math.ceil(filteredDailySchedule.shifts.length / ITEMS_PER_PAGE)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShiftsPage(p => Math.min(Math.ceil(filteredDailySchedule.shifts.length / ITEMS_PER_PAGE), p + 1))}
+                      disabled={shiftsPage === Math.ceil(filteredDailySchedule.shifts.length / ITEMS_PER_PAGE)}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="leaves">
@@ -1006,7 +1082,7 @@ export default function ShiftScheduleManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredDailySchedule.users_on_leave.map((user) => (
+                          {filteredDailySchedule.users_on_leave.slice((leavesPage - 1) * ITEMS_PER_PAGE, leavesPage * ITEMS_PER_PAGE).map((user) => (
                             <TableRow key={user.user_id}>
                               <TableCell className="font-medium">{user.name}</TableCell>
                               <TableCell>{user.employee_id || 'N/A'}</TableCell>
@@ -1023,6 +1099,29 @@ export default function ShiftScheduleManagement() {
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         No users on leave for this date
+                      </div>
+                    )}
+                    {filteredDailySchedule.users_on_leave.length > ITEMS_PER_PAGE && (
+                      <div className="flex items-center justify-center gap-2 mt-4 py-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setLeavesPage(p => Math.max(1, p - 1))}
+                          disabled={leavesPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium">
+                          Page {leavesPage} of {Math.ceil(filteredDailySchedule.users_on_leave.length / ITEMS_PER_PAGE)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setLeavesPage(p => Math.min(Math.ceil(filteredDailySchedule.users_on_leave.length / ITEMS_PER_PAGE), p + 1))}
+                          disabled={leavesPage === Math.ceil(filteredDailySchedule.users_on_leave.length / ITEMS_PER_PAGE)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -1052,7 +1151,7 @@ export default function ShiftScheduleManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredDailySchedule.unassigned_users.map((user) => (
+                          {filteredDailySchedule.unassigned_users.slice((unassignedPage - 1) * ITEMS_PER_PAGE, unassignedPage * ITEMS_PER_PAGE).map((user) => (
                             <TableRow key={user.user_id}>
                               <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{user.name}</TableCell>
                               <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{user.employee_id || 'N/A'}</TableCell>
@@ -1078,6 +1177,29 @@ export default function ShiftScheduleManagement() {
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         All users are assigned to shifts
+                      </div>
+                    )}
+                    {filteredDailySchedule.unassigned_users.length > ITEMS_PER_PAGE && (
+                      <div className="flex items-center justify-center gap-2 mt-4 py-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUnassignedPage(p => Math.max(1, p - 1))}
+                          disabled={unassignedPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm font-medium">
+                          Page {unassignedPage} of {Math.ceil(filteredDailySchedule.unassigned_users.length / ITEMS_PER_PAGE)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUnassignedPage(p => Math.min(Math.ceil(filteredDailySchedule.unassigned_users.length / ITEMS_PER_PAGE), p + 1))}
+                          disabled={unassignedPage === Math.ceil(filteredDailySchedule.unassigned_users.length / ITEMS_PER_PAGE)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
                     )}
                   </CardContent>
@@ -1126,6 +1248,22 @@ export default function ShiftScheduleManagement() {
                     className="w-[200px] h-11"
                   />
                 </div>
+                {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager' || user?.role === 'team_lead' || user?.role === 'teamlead') && (
+                  <div className="flex flex-col gap-2">
+                    <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Department</Label>
+                    <Select value={selectedDepartmentFilter} onValueChange={setSelectedDepartmentFilter}>
+                      <SelectTrigger className="w-[180px] h-11">
+                        <SelectValue placeholder="All Departments" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Departments</SelectItem>
+                        {departmentsList.map(dept => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button onClick={loadWeeklySchedule} disabled={isWeeklyLoading} className="h-11 shadow-md bg-blue-600 hover:bg-blue-700 text-white border-transparent" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px" }}>
                   {isWeeklyLoading ? 'Loading...' : 'Load Weekly Schedule'}
                 </Button>

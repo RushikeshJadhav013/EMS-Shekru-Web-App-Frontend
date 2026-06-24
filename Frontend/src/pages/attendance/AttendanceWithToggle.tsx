@@ -82,7 +82,6 @@ import {
   FileSpreadsheet,
   Timer,
   ArrowRight,
-  RefreshCw,
 } from "lucide-react";
 import { AttendanceRecord, UserRole } from "@/types";
 import { format, subMonths, isAfter, subDays } from "date-fns";
@@ -410,9 +409,6 @@ const AttendanceWithToggle: React.FC = () => {
   const [wfhRequestFilter, setWfhRequestFilter] = useState<
     "all" | "pending" | "approved" | "rejected"
   >("all");
-  const [wfhRoleFilter, setWfhRoleFilter] = useState<
-    "all" | "hr" | "manager" | "team_lead" | "employee"
-  >("all");
   const [pendingWfhCurrentPage, setPendingWfhCurrentPage] = useState(1);
   const [pendingWfhItemsPerPage, setPendingWfhItemsPerPage] = useState(10);
   const [selectedWfhRequest, setSelectedWfhRequest] = useState<any>(null);
@@ -452,7 +448,6 @@ const AttendanceWithToggle: React.FC = () => {
     }
   }, [
     wfhRequestFilter,
-    wfhRoleFilter,
     wfhRequestTimeFilter,
     wfhRequestStartDate,
     wfhRequestEndDate,
@@ -466,18 +461,7 @@ const AttendanceWithToggle: React.FC = () => {
       filtered = filtered.filter((req) => req.status === wfhRequestFilter);
     }
 
-    // Apply Role Filter
-    if (wfhRoleFilter !== "all") {
-      filtered = filtered.filter((req) => {
-        const reqRoleStr = (req.role || "employee")
-          .toLowerCase()
-          .replace(/[\s_\-]+/g, "");
-        const filterRoleStr = wfhRoleFilter
-          .toLowerCase()
-          .replace(/[\s_\-]+/g, "");
-        return reqRoleStr === filterRoleStr;
-      });
-    }
+
 
     // Apply Duration Filter
     if (wfhRequestTimeFilter !== "all") {
@@ -563,7 +547,6 @@ const AttendanceWithToggle: React.FC = () => {
   }, [
     allWfhRequests,
     wfhRequestFilter,
-    wfhRoleFilter,
     wfhRequestTimeFilter,
     wfhRequestStartDate,
     wfhRequestEndDate,
@@ -1004,9 +987,18 @@ const AttendanceWithToggle: React.FC = () => {
     setExportType("csv"); // Default to CSV
     setReportLayout("basic");
     setExportModalOpen(true);
-    setQuickFilter("custom");
-    setExportStartDate(undefined);
-    setExportEndDate(new Date());
+    setQuickFilter("current_month");
+
+    // Set default dates to current month
+    const today = new Date();
+    const beginningOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    beginningOfMonth.setHours(0, 0, 0, 0);
+    setExportStartDate(beginningOfMonth);
+
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    setExportEndDate(endOfToday);
+
     setEmployeeExportFilter("all");
     setSelectedExportEmployee(null);
     setEmployeeExportSearch("");
@@ -1091,11 +1083,13 @@ const AttendanceWithToggle: React.FC = () => {
               month: gridExportMonth,
               year: gridExportYear,
               department: params.department,
+              employee_id: params.employee_id,
             })
             : await apiService.exportMonthlyGridPDF({
               month: gridExportMonth,
               year: gridExportYear,
               department: params.department,
+              employee_id: params.employee_id,
             });
       } else if (reportLayout === "detailed_grid") {
         // Detailed Grid export uses directly selected month and year
@@ -1105,11 +1099,13 @@ const AttendanceWithToggle: React.FC = () => {
               month: gridExportMonth,
               year: gridExportYear,
               department: params.department,
+              employee_id: params.employee_id,
             })
             : await apiService.downloadMonthlyDetailedAttendanceGridPDF({
               month: gridExportMonth,
               year: gridExportYear,
               department: params.department,
+              employee_id: params.employee_id,
             });
       } else {
         blob =
@@ -1252,7 +1248,7 @@ const AttendanceWithToggle: React.FC = () => {
               checkInSelfie: rec.checkInSelfie || "",
               checkOutSelfie: rec.checkOutSelfie || "",
               status: status,
-              workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : ((rec.total_hours || 0) - (rec.total_offline_hours || 0)),
+              workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : (rec.total_hours || 0),
               workSummary: rec.workSummary || rec.work_summary || null,
               taskDeadlineReason:
                 rec.overdue_reason ||
@@ -1363,7 +1359,7 @@ const AttendanceWithToggle: React.FC = () => {
           checkInSelfie: todayRecord.checkInSelfie || todayRecord.selfie || "",
           checkOutSelfie: todayRecord.checkOutSelfie || "",
           status: todayRecord.status || todayRecord.checkInStatus || "present",
-          workHours: todayRecord.total_online_hours !== undefined ? todayRecord.total_online_hours : ((todayRecord.total_hours || 0) - (todayRecord.total_offline_hours || 0)),
+          workHours: todayRecord.total_online_hours !== undefined ? todayRecord.total_online_hours : (todayRecord.total_hours || 0),
           workSummary:
             todayRecord.workSummary || todayRecord.work_summary || null,
           taskDeadlineReason:
@@ -1468,7 +1464,7 @@ const AttendanceWithToggle: React.FC = () => {
 
               if (workHoursResponse.ok) {
                 const workHoursData = await workHoursResponse.json();
-                const backendOnlineSeconds = workHoursData.total_online_seconds !== undefined ? workHoursData.total_online_seconds : ((workHoursData.total_seconds || 0) - (workHoursData.total_offline_seconds || 0));
+                const backendOnlineSeconds = workHoursData.total_online_seconds !== undefined ? workHoursData.total_online_seconds : (workHoursData.total_seconds || 0);
                 const backendOfflineSeconds =
                   workHoursData.total_offline_seconds || 0;
                 const isCurrentlyOnline =
@@ -1788,7 +1784,7 @@ const AttendanceWithToggle: React.FC = () => {
               rec.checkInSelfie || rec.selfie || rec.selfie_url || "",
             checkOutSelfie: rec.checkOutSelfie || rec.check_out_selfie || "",
             status: statusResult,
-            workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : ((rec.total_hours || 0) - (rec.total_offline_hours || 0)),
+            workHours: rec.total_online_hours !== undefined ? rec.total_online_hours : (rec.total_hours || 0),
             name: rec.name || rec.userName || undefined,
             email: rec.email || rec.userEmail || undefined,
             department: rec.department || rec.department_name || undefined,
@@ -2626,7 +2622,7 @@ const AttendanceWithToggle: React.FC = () => {
         // - total_offline_seconds: Total accumulated offline time (paused when online)
         // - is_currently_online: Current online status
         const backendOnlineSeconds =
-          data.total_online_seconds !== undefined ? data.total_online_seconds : ((data.total_seconds || 0) - (data.total_offline_seconds || 0));
+          data.total_online_seconds !== undefined ? data.total_online_seconds : (data.total_seconds || 0);
         const backendOfflineSeconds = data.total_offline_seconds || 0;
         const backendIsOnline =
           data.is_currently_online !== undefined
@@ -2673,30 +2669,42 @@ const AttendanceWithToggle: React.FC = () => {
         const now = new Date();
 
         if (isOnline && onlineStartTime) {
-          // Currently online - synchronize accumulated to backend total and reset timer to NOW
-          // This "Sync-to-Now" approach prevents doubling by starting the local timer from 0 at the moment of sync
-          setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
-          setOnlineStartTime(now);
+          // Currently online - update accumulated time from backend only if not yet set
+          // or if backend total is significantly different from our local running total
+          const currentLocalTotal = accumulatedOnlineSeconds + Math.floor((now.getTime() - onlineStartTime.getTime()) / 1000);
+          const diff = Math.abs(currentLocalTotal - effectiveOnlineSeconds);
+
+          if (accumulatedOnlineSeconds === 0 || diff > 30) {
+            setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
+            setOnlineStartTime(now);
+            console.log(`Online sync (Sync-to-Now): Total=${effectiveOnlineSeconds}s (Diff=${diff}s)`);
+          } else {
+            console.log(`Skipping online sync - local timer is accurate (Diff=${diff}s)`);
+          }
+
           setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
           setOfflineStartTime(null);
-
-          console.log(
-            `Online sync (Sync-to-Now): Total=${effectiveOnlineSeconds}s, Offline=${effectiveOfflineSeconds}s`,
-          );
         } else if (!isOnline && offlineStartTime) {
-          // Currently offline - synchronize accumulated to backend total and reset timer to NOW
-          setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
-          setOnlineStartTime(null);
-          setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
-          setOfflineStartTime(now);
-          // Only update lastStatusChangeTime if it's null (e.g. on first load)
+          // Currently offline - update accumulated time from backend only if not yet set
+          // or if backend total is significantly different from our local running total
+          const currentLocalTotal = accumulatedOfflineSeconds + Math.floor((now.getTime() - offlineStartTime.getTime()) / 1000);
+          const diff = Math.abs(currentLocalTotal - effectiveOfflineSeconds);
+
+          if (accumulatedOfflineSeconds === 0 || diff > 30) {
+            setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
+            setOnlineStartTime(null);
+            setAccumulatedOfflineSeconds(effectiveOfflineSeconds);
+            setOfflineStartTime(now);
+            console.log(`Offline sync (Sync-to-Now): Total=${effectiveOnlineSeconds}s, Offline=${effectiveOfflineSeconds}s (Diff=${diff}s)`);
+          } else {
+            console.log(`Skipping offline sync - local timer is accurate (Diff=${diff}s)`);
+            setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
+            setOnlineStartTime(null);
+          }
+
           if (!lastStatusChangeTime) {
             setLastStatusChangeTime(now);
           }
-
-          console.log(
-            `Offline sync (Sync-to-Now): Total=${effectiveOnlineSeconds}s, Offline=${effectiveOfflineSeconds}s`,
-          );
         } else {
           // No active session timers - just update accumulated
           setAccumulatedOnlineSeconds(effectiveOnlineSeconds);
@@ -2805,13 +2813,13 @@ const AttendanceWithToggle: React.FC = () => {
         const currentOnlineSeconds = Math.floor(
           (now.getTime() - onlineStartTime.getTime()) / 1000,
         );
-        // Offline time deducts from online time
+        // Online time reflects the sum of all active online sessions
         const totalOnlineSeconds = Math.max(0,
-          accumulatedOnlineSeconds + currentOnlineSeconds - accumulatedOfflineSeconds
+          accumulatedOnlineSeconds + currentOnlineSeconds
         );
         const onlineDisplay = formatTimeDisplay(totalOnlineSeconds);
         setOnlineWorkingHours(onlineDisplay);
-        setWorkingHours(onlineDisplay); // Main working hours shows net online time
+        setWorkingHours(onlineDisplay); // Main working hours shows accumulated online duration
 
         // When online, show only accumulated offline time (current session is 0)
         const offlineDisplay = formatTimeDisplay(accumulatedOfflineSeconds);
@@ -2839,10 +2847,10 @@ const AttendanceWithToggle: React.FC = () => {
           `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
         );
 
-        // When offline, online time remains at accumulated value minus total offline time
-        const onlineDisplay = formatTimeDisplay(Math.max(0, accumulatedOnlineSeconds - totalOfflineSeconds));
+        // When offline, online time remains at the last accumulated value
+        const onlineDisplay = formatTimeDisplay(accumulatedOnlineSeconds);
         setOnlineWorkingHours(onlineDisplay);
-        setWorkingHours(onlineDisplay); // Main working hours shows accumulated net online time
+        setWorkingHours(onlineDisplay); // Main working hours shows accumulated online time
 
         console.log(
           `Timer Update (Offline): Online=${onlineDisplay}, Offline=${offlineDisplay}, Current Session=${currentOfflineSeconds}s`,
@@ -2940,58 +2948,109 @@ const AttendanceWithToggle: React.FC = () => {
     checkInTime?: string,
     checkOutTime?: string,
     scheduledStart?: string,
+    checkInStatus?: string,
+    checkOutStatus?: string,
+    recordDate?: string
   ) => {
-    // Show "Late" or "On Time" clearly
+    const badges: React.ReactNode[] = [];
     const normalizedStatus = (status || "").toLowerCase();
+    const today = todayIST();
 
-    // Client-side grace period optimization (10 minutes)
-    // If backend says late but they are within 10 mins of scheduled start, show as On Time
-    if (normalizedStatus === "late" && checkInTime && scheduledStart) {
-      try {
-        const checkIn = new Date(checkInTime);
-        const [schedHours, schedMins] = scheduledStart.split(":").map(Number);
-        const scheduledDate = new Date(checkIn);
-        scheduledDate.setHours(schedHours, schedMins || 0, 0, 0);
+    // Absent status - only show if there's no check-in at all
+    if (normalizedStatus === "absent" && !checkInTime) {
+      return (
+        <Badge
+          key="absent"
+          variant="destructive"
+          className="bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold uppercase flex items-center gap-0.5 px-2 py-0.5 shadow-sm"
+        >
+          <X className="h-2.5 w-2.5" />
+          {t.attendance.absent}
+        </Badge>
+      );
+    }
 
-        // If they checked in within 10 minutes of scheduled start, consider it On Time
-        const diffInMinutes = (checkIn.getTime() - scheduledDate.getTime()) / (1000 * 60);
-        if (diffInMinutes <= 10) {
-          return (
-            <Badge variant="default" className="bg-green-600 text-[10px] font-bold uppercase py-0.5 px-2">
-              On Time
-            </Badge>
-          );
-        }
-      } catch (e) {
-        console.error("Grace period calculation failed:", e);
+    // Check-In Status
+    if (checkInTime) {
+      let isLate = normalizedStatus === "late" || normalizedStatus === "late arrival" || normalizedStatus === "late_arrival" || (checkInStatus || "").toLowerCase() === "late";
+
+      // Grace period check
+      if (isLate && scheduledStart) {
+        try {
+          const checkIn = new Date(checkInTime);
+          const [schedHours, schedMins] = scheduledStart.split(":").map(Number);
+          const scheduledDate = new Date(checkIn);
+          scheduledDate.setHours(schedHours, schedMins || 0, 0, 0);
+          const diffInMinutes = (checkIn.getTime() - scheduledDate.getTime()) / (1000 * 60);
+          if (diffInMinutes <= 10) isLate = false;
+        } catch (e) { }
+      }
+
+      badges.push(
+        <Badge
+          key="checkin"
+          variant={isLate ? "destructive" : "default"}
+          className={`${isLate ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"} text-white text-[10px] font-bold uppercase flex items-center gap-0.5 px-2 py-0.5 shadow-sm`}
+        >
+          {isLate ? <AlertCircle className="h-2.5 w-2.5" /> : <CheckCircle className="h-2.5 w-2.5" />}
+          {isLate ? `In: ${t.attendance.late}` : `In: ${t.attendance.onTime}`}
+        </Badge>
+      );
+    } else if (recordDate && recordDate < today) {
+      // Past date with no check-in
+      badges.push(
+        <Badge
+          key="checkin-absent"
+          variant="destructive"
+          className="bg-red-500 text-white text-[10px] font-bold uppercase flex items-center gap-0.5 px-2 py-0.5 shadow-sm"
+        >
+          <X className="h-2.5 w-2.5" />
+          {`In: ${t.attendance.absent}`}
+        </Badge>
+      );
+    }
+
+    // Check-Out Status
+    if (checkOutTime) {
+      const isEarly = (checkOutStatus || "").toLowerCase() === "early";
+      badges.push(
+        <Badge
+          key="checkout"
+          variant={isEarly ? "outline" : "default"}
+          className={`${isEarly ? "border-orange-500 text-orange-600 bg-orange-50 hover:bg-orange-100" : "bg-green-600 hover:bg-green-700 text-white"} text-[10px] font-bold uppercase flex items-center gap-0.5 px-2 py-0.5 shadow-sm`}
+        >
+          {isEarly ? <LogOut className="h-2.5 w-2.5" /> : <CheckCircle className="h-2.5 w-2.5" />}
+          {isEarly ? `Out: ${t.attendance.early}` : `Out: ${t.attendance.onTime}`}
+        </Badge>
+      );
+    } else {
+      // No check-out time
+      if (recordDate === today || (recordDate && recordDate > today)) {
+        badges.push(
+          <Badge
+            key="checkout-awaiting"
+            className="bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold uppercase flex items-center gap-0.5 px-2 py-0.5 shadow-sm"
+          >
+            <Timer className="h-2.5 w-2.5" />
+            {`Out: ${t.attendance.awaiting}`}
+          </Badge>
+        );
+      } else if (recordDate && recordDate < today && (checkInTime || normalizedStatus !== "absent")) {
+        // Past date, checked in but no checkout
+        badges.push(
+          <Badge
+            key="checkout-absent"
+            variant="destructive"
+            className="bg-red-500 text-white text-[10px] font-bold uppercase flex items-center gap-0.5 px-2 py-0.5 shadow-sm"
+          >
+            <X className="h-2.5 w-2.5" />
+            {`Out: ${t.attendance.absent}`}
+          </Badge>
+        );
       }
     }
 
-    if (normalizedStatus === "late" || normalizedStatus === "late arrival" || normalizedStatus === "late_arrival") {
-      return (
-        <Badge variant="destructive" className="text-[10px] font-bold uppercase py-0.5 px-2">
-          Late
-        </Badge>
-      );
-    }
-
-    if (normalizedStatus === "present" || normalizedStatus === "on time" || normalizedStatus === "on_time" || (checkInTime && !normalizedStatus)) {
-      return (
-        <Badge variant="default" className="bg-green-600 text-[10px] font-bold uppercase py-0.5 px-2">
-          On Time
-        </Badge>
-      );
-    }
-
-    if (normalizedStatus === "absent") {
-      return (
-        <Badge variant="destructive" className="bg-red-500 text-[10px] font-bold uppercase py-0.5 px-2">
-          Absent
-        </Badge>
-      );
-    }
-
-    return null;
+    return <div className="flex flex-wrap gap-1 justify-center">{badges}</div>;
   };
 
   // Midnight refresh logic - ensures the page resets for a new day if left open
@@ -3226,6 +3285,10 @@ const AttendanceWithToggle: React.FC = () => {
                             currentAttendance.status,
                             currentAttendance.checkInTime,
                             currentAttendance.checkOutTime,
+                            currentAttendance.scheduledStart,
+                            currentAttendance.checkInStatus,
+                            currentAttendance.checkOutStatus,
+                            currentAttendance.date
                           )}
                           {currentAttendance.workLocation ===
                             "work_from_home" ? (
@@ -3757,6 +3820,9 @@ const AttendanceWithToggle: React.FC = () => {
                                           record.checkInTime,
                                           record.checkOutTime,
                                           record.scheduledStart,
+                                          record.checkInStatus,
+                                          record.checkOutStatus,
+                                          record.date
                                         )}
                                       </div>
                                       <div className="flex flex-col items-center gap-1 border-t border-slate-100 dark:border-slate-800 pt-1 mt-0.5 w-full">
@@ -4024,7 +4090,7 @@ const AttendanceWithToggle: React.FC = () => {
 
               {/* Simple Table List View */}
               <div className="rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden w-full">
-                <div className="w-full overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)]">
+                <div className="w-full overflow-x-auto">
                   <table
                     className="w-full table-auto min-w-[1800px]"
                     style={{ tableLayout: "auto" }}
@@ -4263,6 +4329,9 @@ const AttendanceWithToggle: React.FC = () => {
                                       record.checkInTime,
                                       record.checkOutTime,
                                       record.scheduledStart,
+                                      record.checkInStatus,
+                                      record.checkOutStatus,
+                                      record.date
                                     )}
                                   </div>
                                 </div>
@@ -4368,16 +4437,7 @@ const AttendanceWithToggle: React.FC = () => {
                     Review and approve/reject pending work from home requests
                   </CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loadAllWfhRequests()}
-                  disabled={isLoadingWfhRequests}
-                  className="bg-white dark:bg-slate-900 border-2"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingWfhRequests ? "animate-spin" : ""}`} />
-                  Refresh
-                </Button>
+
               </div>
             </CardHeader>
             <CardContent className="pt-6">
@@ -4538,23 +4598,14 @@ const AttendanceWithToggle: React.FC = () => {
                     </CardDescription>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => loadAllWfhRequests()}
-                  disabled={isLoadingWfhRequests}
-                  className="bg-white dark:bg-slate-900 border-2"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingWfhRequests ? "animate-spin" : ""}`} />
-                  Refresh
-                </Button>
+
               </div>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-4">
                 {/* Filter Controls for Recent Decisions */}
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
                     <div className="flex flex-col gap-2">
                       <Label
                         htmlFor="decision-status-filter"
@@ -4581,36 +4632,7 @@ const AttendanceWithToggle: React.FC = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Label
-                        htmlFor="role-filter"
-                        className="text-sm font-medium ml-1"
-                      >
-                        Role Filter
-                      </Label>
-                      <Select
-                        value={wfhRoleFilter}
-                        onValueChange={(value: any) => setWfhRoleFilter(value)}
-                      >
-                        <SelectTrigger
-                          id="role-filter"
-                          className="w-full h-11 bg-white dark:bg-gray-950 border-2"
-                        >
-                          <SelectValue placeholder="Select Role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Roles</SelectItem>
-                          {user?.role === "admin" && (
-                            <SelectItem value="hr">HR</SelectItem>
-                          )}
-                          {(user?.role === "admin" || user?.role === "hr") && (
-                            <SelectItem value="manager">Manager</SelectItem>
-                          )}
-                          <SelectItem value="team_lead">Team Lead</SelectItem>
-                          <SelectItem value="employee">Employee</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
                     <div className="flex flex-col gap-2">
                       <Label
                         htmlFor="decision-time-filter"
@@ -5484,7 +5506,7 @@ const AttendanceWithToggle: React.FC = () => {
                       <SelectValue placeholder="Select Year" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
+                      {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - i).map((yr) => (
                         <SelectItem key={yr} value={String(yr)}>{yr}</SelectItem>
                       ))}
                     </SelectContent>

@@ -511,6 +511,11 @@ export default function EmployeeManagement() {
   const isManager = (formData.role as any) === 'manager';
   const isHROrManager = isHR || isManager;
 
+  const visibleDepartments = useMemo(() => {
+    if (isHR) return departments;
+    return departments.filter(d => d.toLowerCase() !== 'hr');
+  }, [departments, isHR]);
+
   const countryCodes = [
     { code: '+91', flag: '🇮🇳', name: 'India' },
     { code: '+1', flag: '🇺🇸', name: 'United States' },
@@ -1508,10 +1513,18 @@ export default function EmployeeManagement() {
       const branchId = localStorage.getItem('branchId');
       const companyId = localStorage.getItem('companyId');
 
+      // Normalize status to is_active string for reliable URL query param
+      let isActiveFilter: string | undefined = undefined;
+      if (exportFilters.status === 'active') {
+        isActiveFilter = 'true';
+      } else if (exportFilters.status === 'inactive') {
+        isActiveFilter = 'false';
+      }
+
       const filtersWithScope = {
-        ...exportFilters,
-        // Explicitly map status to is_active if status is set
-        is_active: exportFilters.status === 'active' ? true : (exportFilters.status === 'inactive' ? false : undefined),
+        department: exportFilters.department !== 'all' ? exportFilters.department : undefined,
+        role: exportFilters.role !== 'all' ? exportFilters.role : undefined,
+        is_active: isActiveFilter,
         branch_id: branchId || undefined,
         company_id: companyId || undefined
       };
@@ -1777,8 +1790,11 @@ export default function EmployeeManagement() {
         phone = rawPhone;
       }
 
+      const isTargetActuallyHR = role.toLowerCase() === 'hr';
       const isHROrManager = role.toLowerCase() === 'hr' || role.toLowerCase() === 'manager';
-      const departmentList = isHROrManager && department ? department.split(',').map(d => d.trim()) : [];
+      const departmentList = isHROrManager && department
+        ? department.split(',').map(d => d.trim()).filter(d => isTargetActuallyHR || d.toLowerCase() !== 'hr')
+        : [];
       const addressParts = address.split(',').map(part => part.trim());
       const parsedAddress = {
         houseNo: addressParts[0] || '',
@@ -1794,7 +1810,7 @@ export default function EmployeeManagement() {
         employeeId,
         name,
         email,
-        department: isHROrManager ? '' : department,
+        department: isHROrManager ? '' : (department.toLowerCase() === 'hr' ? '' : department),
         role,
         designation,
         address,
@@ -1875,10 +1891,12 @@ export default function EmployeeManagement() {
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => {
+                // Normalize selectedRole to lowercase to match export dialog Select values
+                const normalizedRole = selectedRole === 'all' ? 'all' : selectedRole.toLowerCase().replace('teamlead', 'team_lead');
                 setExportFilters(prev => ({
                   ...prev,
                   department: selectedDepartment,
-                  role: selectedRole,
+                  role: normalizedRole,
                   status: selectedStatus
                 }));
                 setIsExportDialogOpen(true);
@@ -2319,17 +2337,35 @@ export default function EmployeeManagement() {
                             }
                           }
 
+                          // Clear HR department if role is not HR
+                          let currentDept = formData.department || '';
+                          if (roleValue !== 'hr' && currentDept.toLowerCase() === 'hr') {
+                            currentDept = '';
+                          }
+
+                          let currentSelectedDepts = [...selectedDepartments];
+                          if (roleValue !== 'hr') {
+                            currentSelectedDepts = currentSelectedDepts.filter(d => d.toLowerCase() !== 'hr');
+                          }
+
                           // If switching TO manager, migrate single department TO multi-select list
-                          if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
-                            setSelectedDepartments([formData.department]);
+                          if (roleValue === 'manager' && currentDept && currentSelectedDepts.length === 0) {
+                            currentSelectedDepts = [currentDept];
                           }
 
                           // If switching FROM hr/manager, migrate first selected department TO single select
-                          if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
-                            setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
-                          } else {
-                            setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
+                          if (roleValue !== 'hr' && roleValue !== 'manager' && currentSelectedDepts.length > 0) {
+                            currentDept = currentSelectedDepts[0];
                           }
+
+                          // Update states
+                          setSelectedDepartments(currentSelectedDepts);
+                          setFormData(prev => ({
+                            ...prev,
+                            role: roleValue,
+                            designation: newDesignation,
+                            department: currentDept
+                          }));
                         }}
                       >
                         <SelectTrigger className="mt-1">
@@ -2391,23 +2427,25 @@ export default function EmployeeManagement() {
                               onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                             />
                             <CommandList className="max-h-[300px]">
-                              {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                                <CommandGroup heading="New Department">
-                                  <CommandItem
-                                    value={deptSearchValue}
-                                    onSelect={() => handleCreateDepartment(deptSearchValue)}
-                                    className="cursor-pointer text-blue-600 font-medium"
-                                  >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create "{deptSearchValue}"
-                                  </CommandItem>
-                                </CommandGroup>
-                              )}
+                              {deptSearchValue.trim().length > 0 &&
+                                !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) &&
+                                (deptSearchValue.toLowerCase() !== 'hr' || isHR) && (
+                                  <CommandGroup heading="New Department">
+                                    <CommandItem
+                                      value={deptSearchValue}
+                                      onSelect={() => handleCreateDepartment(deptSearchValue)}
+                                      className="cursor-pointer text-blue-600 font-medium"
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" />
+                                      Create "{deptSearchValue}"
+                                    </CommandItem>
+                                  </CommandGroup>
+                                )}
                               <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
                                 {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
                               </CommandEmpty>
                               <CommandGroup heading="Existing Departments">
-                                {departments.map((dept) => (
+                                {visibleDepartments.map((dept) => (
                                   <CommandItem
                                     key={dept}
                                     value={dept}
@@ -2466,10 +2504,10 @@ export default function EmployeeManagement() {
                           )}
                         </div>
                         <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                          {departments.length === 0 ? (
+                          {visibleDepartments.length === 0 ? (
                             <p className="text-sm text-muted-foreground">No departments available</p>
                           ) : (
-                            departments.map((dept) => (
+                            visibleDepartments.map((dept) => (
                               <div key={dept} className="flex items-center space-x-2">
                                 <input
                                   type="checkbox"
@@ -3045,19 +3083,6 @@ export default function EmployeeManagement() {
                       alt="Preview"
                       className="w-full h-full object-cover rounded-full border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow"
                     />
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg hover:shadow-xl"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImageFile(null);
-                        setImagePreview('');
-                        setFormData(prev => ({ ...prev, profilePhoto: '' }));
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </>
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full border-4 border-dashed border-blue-300 hover:border-blue-500 hover:bg-blue-100 transition-all shadow-md group-hover:shadow-lg">
@@ -3158,20 +3183,38 @@ export default function EmployeeManagement() {
                     }
                   }
 
-                  // If role is HR, automatically select ALL departments
+                  // Clear HR department if role is not HR
+                  let currentDept = formData.department || '';
+                  if (roleValue !== 'hr' && currentDept.toLowerCase() === 'hr') {
+                    currentDept = '';
+                  }
+
+                  let currentSelectedDepts = [...selectedDepartments];
                   if (roleValue === 'hr') {
-                    setSelectedDepartments([...departments]);
-                  } else if (roleValue === 'manager' && formData.department && selectedDepartments.length === 0) {
-                    // If switching TO manager, migrate single department TO multi-select list
-                    setSelectedDepartments([formData.department]);
+                    // If role is HR, automatically select ALL departments
+                    currentSelectedDepts = [...departments];
+                  } else {
+                    currentSelectedDepts = currentSelectedDepts.filter(d => d.toLowerCase() !== 'hr');
+                  }
+
+                  // If switching TO manager, migrate single department TO multi-select list
+                  if (roleValue === 'manager' && currentDept && currentSelectedDepts.length === 0) {
+                    currentSelectedDepts = [currentDept];
                   }
 
                   // If switching FROM hr/manager, migrate first selected department TO single select
-                  if (roleValue !== 'hr' && roleValue !== 'manager' && selectedDepartments.length > 0) {
-                    setFormData(prev => ({ ...prev, role: roleValue, designation: newDesignation, department: selectedDepartments[0] }));
-                  } else {
-                    setFormData((prev) => ({ ...prev, role: roleValue, designation: newDesignation }));
+                  if (roleValue !== 'hr' && roleValue !== 'manager' && currentSelectedDepts.length > 0) {
+                    currentDept = currentSelectedDepts[0];
                   }
+
+                  // Update states
+                  setSelectedDepartments(currentSelectedDepts);
+                  setFormData(prev => ({
+                    ...prev,
+                    role: roleValue,
+                    designation: newDesignation,
+                    department: currentDept
+                  }));
                 }}
               >
                 <SelectTrigger className="mt-1">
@@ -3233,23 +3276,25 @@ export default function EmployeeManagement() {
                       onValueChange={(val) => setDeptSearchValue(val.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, ''))}
                     />
                     <CommandList className="max-h-[300px]">
-                      {deptSearchValue.trim().length > 0 && !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) && (
-                        <CommandGroup heading="New Department">
-                          <CommandItem
-                            value={deptSearchValue}
-                            onSelect={() => handleCreateDepartment(deptSearchValue)}
-                            className="cursor-pointer text-blue-600 font-medium"
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create "{deptSearchValue}"
-                          </CommandItem>
-                        </CommandGroup>
-                      )}
+                      {deptSearchValue.trim().length > 0 &&
+                        !departments.some(d => d.toLowerCase() === deptSearchValue.toLowerCase()) &&
+                        (deptSearchValue.toLowerCase() !== 'hr' || isHR) && (
+                          <CommandGroup heading="New Department">
+                            <CommandItem
+                              value={deptSearchValue}
+                              onSelect={() => handleCreateDepartment(deptSearchValue)}
+                              className="cursor-pointer text-blue-600 font-medium"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Create "{deptSearchValue}"
+                            </CommandItem>
+                          </CommandGroup>
+                        )}
                       <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
                         {deptSearchValue.trim().length === 0 ? "No departments available." : "No matching departments found."}
                       </CommandEmpty>
                       <CommandGroup heading="Existing Departments">
-                        {departments.map((dept) => (
+                        {visibleDepartments.map((dept) => (
                           <CommandItem
                             key={dept}
                             value={dept}
@@ -3303,10 +3348,10 @@ export default function EmployeeManagement() {
                   )}
                 </div>
                 <div className="mt-2 space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                  {departments.length === 0 ? (
+                  {visibleDepartments.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No departments available</p>
                   ) : (
-                    departments.map((dept) => (
+                    visibleDepartments.map((dept) => (
                       <div key={dept} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
@@ -3673,7 +3718,7 @@ export default function EmployeeManagement() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Resignation Date</span>
-                    <span className="font-medium">{viewEmployee.resignationDate || '-'}</span>
+                    <span className="font-medium">{viewEmployee.resignationDate ? format(new Date(viewEmployee.resignationDate), 'dd MMM yyyy') : '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">PAN Card</span>
