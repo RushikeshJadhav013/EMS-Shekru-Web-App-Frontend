@@ -1,0 +1,16 @@
+﻿3839: <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 rounded-lg shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
+3865: <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 rounded-lg shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
+4565: <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Total Tasks</CardTitle>
+4570: <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.total}</div></CardContent>
+4574: <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>To Do</CardTitle>
+4579: <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.todo}</div></CardContent>
+4583: <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>In Progress</CardTitle>
+4588: <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.inProgress}</div></CardContent>
+4592: <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Completed</CardTitle>
+4597: <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.completed}</div></CardContent>
+4601: <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
+4606: <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.overdue}</div></CardContent>
+4610: <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Cancelled</CardTitle>
+4615: <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.cancelled}</div></CardContent>
+4637: style={{ color: '#000000', fontSize: '14px' }}
+4705: <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 px-3 py-1 rounded-full border-2 border-black/5" style={{ color: '#000000', fontSize: '12px' }}>

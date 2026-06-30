@@ -2096,58 +2096,76 @@ class ApiService {
         // Ensure all required fields are properly mapped from snake_case to camelCase
         const annualCtc =
           response.ctc_annual || response.package_ctc_annual || 0;
-        const monthlyGross = response.total_earnings_annual
-          ? response.total_earnings_annual / 12
-          : response.monthly_gross || 0;
-        const monthlyDeductions = response.total_deductions_annual
-          ? response.total_deductions_annual / 12
-          : response.monthly_deductions || 0;
 
-        // Use actual monthly_in_hand from backend if provided (crucial for month-specific queries like Feb)
-        const calculatedInHand = monthlyGross - monthlyDeductions;
+        // Map individual earning components (monthly)
+        const mappedMonthlyBasic = response.basic_annual
+          ? response.basic_annual / 12
+          : response.monthly_basic || 0;
+        const mappedHra = response.hra_annual
+          ? response.hra_annual / 12
+          : response.hra || 0;
+        const mappedSpecial = response.special_allowance_annual
+          ? response.special_allowance_annual / 12
+          : response.special_allowance || 0;
+        const mappedMedical = response.medical_allowance_annual
+          ? response.medical_allowance_annual / 12
+          : response.medical_allowance || 0;
+        const mappedConveyance = response.conveyance_annual
+          ? response.conveyance_annual / 12
+          : response.conveyance_allowance || 0;
+        const mappedOtherAllowance = response.other_allowance_annual
+          ? response.other_allowance_annual / 12
+          : response.other_allowance || 0;
+
+        // Monthly Gross = sum of all earnings (Basic + HRA + Special + Medical + Conveyance + Other)
+        // This correctly excludes employer PF (which is a CTC component, not a gross earning)
+        const monthlyGross = mappedMonthlyBasic + mappedHra + mappedSpecial +
+          mappedMedical + mappedConveyance + mappedOtherAllowance;
+
+        // Map PF components.
+        // IMPORTANT: pf_annual stores EMPLOYEE PF only (e.g. 36000/yr = 3000/month).
+        // Employer PF is equal to employee PF (same 12% of basic).
+        const mappedPfEmployee = response.pf_annual
+          ? response.pf_annual / 12
+          : response.pf_employee || 0;
+        const mappedPfEmployer = response.pf_annual
+          ? response.pf_annual / 12
+          : response.pf_employer || mappedPfEmployee;
+
+        // Map Professional Tax: prefer backend's pre-computed monthly value
+        const mappedPt = response.monthly_professional_tax !== undefined
+          ? response.monthly_professional_tax
+          : (response.professional_tax_annual >= 2400
+            ? 200  // default non-Feb; backend will return 300 for Feb when queried with month=2
+            : (response.professional_tax_annual ? response.professional_tax_annual / 12 : 0));
+
+        const mappedOtherDeduction = response.other_deduction_annual
+          ? response.other_deduction_annual / 12
+          : response.other_deduction || 0;
+
+        // Monthly Deductions = PT + Employee PF + Other Deductions
+        const monthlyDeductions = mappedPt + mappedPfEmployee + mappedOtherDeduction;
+
+        // Monthly In-Hand: trust backend directly (it handles Feb/other month differences)
         const finalMonthlyInHand =
-          response.monthly_in_hand !== undefined
+          response.monthly_in_hand !== undefined && response.monthly_in_hand !== null
             ? response.monthly_in_hand
-            : calculatedInHand > 0
-              ? calculatedInHand
-              : 0;
+            : Math.max(0, monthlyGross - monthlyDeductions);
 
         return {
           ...response,
           userId: String(response.user_id || userId),
           annualCtc: annualCtc,
-          monthlyBasic: response.basic_annual
-            ? response.basic_annual / 12
-            : response.monthly_basic || 0,
-          hra: response.hra_annual
-            ? response.hra_annual / 12
-            : response.hra || 0,
-          specialAllowance: response.special_allowance_annual
-            ? response.special_allowance_annual / 12
-            : response.special_allowance || 0,
-          medicalAllowance: response.medical_allowance_annual
-            ? response.medical_allowance_annual / 12
-            : response.medical_allowance || 0,
-          conveyanceAllowance: response.conveyance_annual
-            ? response.conveyance_annual / 12
-            : response.conveyance_allowance || 0,
-          otherAllowance: response.other_allowance_annual
-            ? response.other_allowance_annual / 12
-            : response.other_allowance || 0,
-          professionalTax: response.monthly_professional_tax !== undefined
-            ? response.monthly_professional_tax
-            : (month === 2)
-              ? (response.professional_tax_annual >= 2400 ? 300 : response.professional_tax || 0)
-              : (response.professional_tax_annual >= 2400 ? 200 : (response.professional_tax_annual ? response.professional_tax_annual / 12 : response.professional_tax || 0)),
-          pfEmployer: response.pf_annual
-            ? response.pf_annual / 24
-            : response.pf_employer || 0,
-          pfEmployee: response.pf_annual
-            ? response.pf_annual / 24
-            : response.pf_employee || 0,
-          otherDeduction: response.other_deduction_annual
-            ? response.other_deduction_annual / 12
-            : response.other_deduction || 0,
+          monthlyBasic: mappedMonthlyBasic,
+          hra: mappedHra,
+          specialAllowance: mappedSpecial,
+          medicalAllowance: mappedMedical,
+          conveyanceAllowance: mappedConveyance,
+          otherAllowance: mappedOtherAllowance,
+          professionalTax: mappedPt,
+          pfEmployer: mappedPfEmployer,
+          pfEmployee: mappedPfEmployee,
+          otherDeduction: mappedOtherDeduction,
           variablePay: response.variable_pay || 0,
           monthlyGross: monthlyGross,
           monthlyDeductions: monthlyDeductions,

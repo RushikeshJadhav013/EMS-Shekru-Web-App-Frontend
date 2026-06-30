@@ -329,7 +329,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 return;
             }
 
-            const data = await apiService.getSalaryDetails(targetUserId);
+            let data;
+            if (selectedMonth && selectedMonth !== 'all') {
+                data = await apiService.getSalaryDetails(targetUserId, parseInt(selectedMonth), selectedYear);
+            } else {
+                data = await apiService.getSalaryDetails(targetUserId);
+            }
 
             if (!data) {
                 setSalaryData(null);
@@ -384,28 +389,45 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             const currentAnnualCtc = data.ctc_annual || data.annualCtc || 0;
 
             if (currentAnnualCtc > 0) {
-                // Recalculate monthly components proportionally if they seem outdated
+                // Recalculate monthly components from annual values (prefer annual fields)
                 const expectedMonthlyBasic = (data.basic_annual || 0) / 12 || data.monthlyBasic || 0;
                 const expectedMonthlyHra = (data.hra_annual || 0) / 12 || data.hra || 0;
                 const expectedMonthlyMedical = (data.medical_allowance_annual || 0) / 12 || data.medicalAllowance || 0;
                 const expectedMonthlyConveyance = (data.conveyance_annual || 0) / 12 || data.conveyanceAllowance || 0;
                 const expectedMonthlyOtherAllowance = (data.other_allowance_annual || 0) / 12 || data.otherAllowance || 0;
 
-                // PF Calculation Fallback: use pf_annual if available, otherwise calculate 12% of basic
-                const annualPfTotal = data.pf_annual || (expectedMonthlyBasic * 0.12 * 12 * 2); // Assuming 12% is one side, so * 2 for both
-                const expectedMonthlyPfEmployer = annualPfTotal / 24;
-                const expectedMonthlyPfEmployee = annualPfTotal / 24;
+                // PF Calculation: prefer pf_annual (stored as combined both sides).
+                // If pf_annual is 0, check employer_pf_percentage to compute it properly.
+                let expectedMonthlyPfEmployer = 0;
+                let expectedMonthlyPfEmployee = 0;
+                if (data.pf_annual && data.pf_annual > 0) {
+                    expectedMonthlyPfEmployer = data.pf_annual / 12;
+                    expectedMonthlyPfEmployee = data.pf_annual / 12;
+                } else if (data.employer_pf_percentage && data.employer_pf_percentage > 0) {
+                    // Percentage-based PF: calculate from monthly basic
+                    expectedMonthlyPfEmployer = Math.round(expectedMonthlyBasic * (data.employer_pf_percentage / 100));
+                    expectedMonthlyPfEmployee = Math.round(expectedMonthlyBasic * (data.employer_pf_percentage / 100));
+                } else if (data.pfEmployer && data.pfEmployer > 0) {
+                    // Use already mapped pfEmployer from the API layer
+                    expectedMonthlyPfEmployer = data.pfEmployer;
+                    expectedMonthlyPfEmployee = data.pfEmployee || data.pfEmployer;
+                }
+                // If still 0, PF is not applicable for this employee
 
                 // Professional Tax: Handle 200/300 split
-                const currentMonth = new Date().getMonth() + 1; // 1-indexed for display logic
+                const viewMonth = selectedMonth !== "all" ? parseInt(selectedMonth) : (new Date().getMonth() + 1);
                 let expectedMonthlyPt = 200;
-                if (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) {
-                    expectedMonthlyPt = (currentMonth === 2) ? 300 : 200;
+                if (data.professionalTax !== undefined) {
+                    expectedMonthlyPt = data.professionalTax;
+                } else if (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) {
+                    expectedMonthlyPt = (viewMonth === 2) ? 300 : 200;
+                } else if (data.professionalTax) {
+                    expectedMonthlyPt = data.professionalTax;
                 }
 
                 const expectedMonthlyOtherDed = (data.other_deduction_annual || 0) / 12 || data.otherDeduction || 0;
 
-                // Update monthly values if they don't match expected calculations
+                // Update monthly values
                 data.monthlyBasic = expectedMonthlyBasic;
                 data.hra = expectedMonthlyHra;
                 data.medicalAllowance = expectedMonthlyMedical;
@@ -416,18 +438,19 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 data.professionalTax = expectedMonthlyPt;
                 data.otherDeduction = expectedMonthlyOtherDed;
 
-                // Recalculate special allowance as the balancing component
-                const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay || 0) / 12;
-                // Balancing: CTC_fixed = Basic + HRA + Medical + Conveyance + Other + PF_Employer + Special
-                const knownComponents = data.monthlyBasic + data.hra + (data.medicalAllowance || 0) +
-                    (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
+                // Special Allowance: prefer stored value; only balance against CTC if missing
+                const storedMonthlySpecial = (data.special_allowance_annual || 0) / 12 || data.specialAllowance || 0;
+                if (storedMonthlySpecial > 0) {
+                    data.specialAllowance = storedMonthlySpecial;
+                } else {
+                    // Balancing: CTC_fixed = Basic + HRA + Medical + Conveyance + Other + PF_Employer + Special
+                    const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay || 0) / 12;
+                    const knownComponents = data.monthlyBasic + data.hra + (data.medicalAllowance || 0) +
+                        (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
+                    data.specialAllowance = Math.max(0, monthlyFixedCtc - knownComponents);
+                }
 
-                // Use the stored special allowance if available, otherwise balance it
-                const storedMonthlySpecial = (data.special_allowance_annual || 0) / 12 || data.specialAllowance;
-                data.specialAllowance = storedMonthlySpecial > 0 ? storedMonthlySpecial : Math.max(0, monthlyFixedCtc - knownComponents);
-
-                // Recalculate totals
-                // Monthly Gross is sum of earnings (excluding employer PF)
+                // Monthly Gross = sum of all earnings (excluding employer PF)
                 data.monthlyGross = data.monthlyBasic + data.hra + data.specialAllowance +
                     (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0);
 
@@ -445,6 +468,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 mappedSalary.monthlyBasic = data.monthlyBasic;
                 mappedSalary.hra = data.hra;
                 mappedSalary.specialAllowance = data.specialAllowance;
+                mappedSalary.medicalAllowance = data.medicalAllowance;
+                mappedSalary.conveyanceAllowance = data.conveyanceAllowance;
+                mappedSalary.otherAllowance = data.otherAllowance;
                 mappedSalary.pfEmployer = data.pfEmployer;
                 mappedSalary.pfEmployee = data.pfEmployee;
                 mappedSalary.professionalTax = data.professionalTax;
@@ -453,10 +479,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 mappedSalary.monthlyDeductions = data.monthlyDeductions;
                 mappedSalary.monthlyInHand = data.monthlyInHand;
             } else {
-                // Fallback to original calculation logic if no CTC
-                if (data.monthlyGross === 0) {
-                    data.monthlyGross = data.monthlyBasic + data.hra + data.specialAllowance +
-                        data.medicalAllowance + data.conveyanceAllowance + data.otherAllowance;
+                // Fallback: recalculate from available monthly fields if no CTC
+                if (!data.monthlyGross || data.monthlyGross === 0) {
+                    data.monthlyGross = (data.monthlyBasic || 0) + (data.hra || 0) + (data.specialAllowance || 0) +
+                        (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0);
+                    mappedSalary.monthlyGross = data.monthlyGross;
                 }
             }
 
@@ -483,7 +510,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         } finally {
             setLoading(false);
         }
-    }, [targetUserId, selectedMonth]);
+    }, [targetUserId, selectedMonth, selectedYear]);
 
     const loadUserDetails = useCallback(async () => {
         try {
@@ -600,12 +627,12 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             const payload = {
                 user_id: parseInt(targetUserId!),
-                bank_name: bankForm.bank_name || null,
-                bank_account: bankForm.bank_account || null,
-                ifsc_code: bankForm.ifsc_code || null,
+                bank_name: bankForm.bank_name?.trim() || null,
+                bank_account: bankForm.bank_account?.trim() || null,
+                ifsc_code: bankForm.ifsc_code?.trim() || null,
                 working_days_per_month: bankForm.working_days_per_month === '' ? null : Number(bankForm.working_days_per_month),
-                ...(bankForm.uan_number ? { uan_number: bankForm.uan_number } : {}),
-                ...(bankForm.pf_no ? { pf_no: bankForm.pf_no } : {})
+                uan_number: bankForm.uan_number?.trim() || null,
+                pf_no: bankForm.pf_no?.trim() || null,
             };
 
             const response = await apiService.updateBankDetails(targetUserId!, payload);
@@ -623,8 +650,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                     pfNumber: response.pf_no || bankForm.pf_no,
                     // Recalculate monthly values from updated annual/config values
                     otherDeduction: (response.other_deduction_annual !== undefined ? response.other_deduction_annual : bankForm.other_deduction_annual) / 12,
-                    pfEmployee: (response.pf_annual !== undefined ? response.pf_annual : bankForm.pf_annual) / 24,
-                    pfEmployer: (response.pf_annual !== undefined ? response.pf_annual : bankForm.pf_annual) / 24
+                    pfEmployee: (response.pf_annual !== undefined ? response.pf_annual : bankForm.pf_annual) / 12,
+                    pfEmployer: (response.pf_annual !== undefined ? response.pf_annual : bankForm.pf_annual) / 12
                 } : null);
 
                 toast({

@@ -1,0 +1,16 @@
+﻿456: const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
+1681: if (isOverdueFilterActive) {
+1704: }, [scopedTasks, filterStatus, isOverdueFilterActive]);
+1770: if (isOverdueFilterActive && task.status !== "overdue") return false;
+1787: }, [projects, tasks, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId]);
+3785: if (stat.statusKey === "overdue") setIsOverdueFilterActive(true);
+3786: else setIsOverdueFilterActive(false);
+3837: setIsOverdueFilterActive(val === "overdue");
+3862: setIsOverdueFilterActive(false);
+4563: <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "all" && !isOverdueFilterActive ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-2 border-[#000000] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+4572: <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "todo" ? "bg-slate-100 dark:bg-slate-800" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+4581: <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "in-progress" ? "bg-blue-50 dark:bg-blue-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+4590: <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "completed" ? "bg-green-50 dark:bg-green-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+4599: <Card onClick={() => { setFilterStatus("overdue"); setIsOverdueFilterActive(true); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "bg-rose-50 dark:bg-rose-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+4608: <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "cancelled" ? "bg-slate-100 dark:bg-slate-800" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+4646: <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>

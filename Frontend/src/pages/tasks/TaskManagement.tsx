@@ -502,9 +502,13 @@ const TaskManagement: React.FC = () => {
   const [departments, setDepartments] = useState<string[]>([]);
   const [showAllDepartments, setShowAllDepartments] = useState(true);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
+  // Ref to read latest employees inside callbacks without causing re-creation
+  const employeesRef = React.useRef<EmployeeSummary[]>([]);
   const [userCache, setUserCache] = useState<Map<string, EmployeeSummary>>(
     new Map(),
   );
+  // Ref to always hold the latest userCache without causing useCallback dependency issues
+  const userCacheRef = React.useRef<Map<string, EmployeeSummary>>(new Map());
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [isProjectsLoading, setIsProjectsLoading] = useState(false);
 
@@ -673,6 +677,16 @@ const TaskManagement: React.FC = () => {
     return headers;
   }, [authToken]);
 
+  // Keep userCacheRef in sync with userCache state
+  useEffect(() => {
+    userCacheRef.current = userCache;
+  }, [userCache]);
+
+  // Keep employeesRef in sync with employees state
+  useEffect(() => {
+    employeesRef.current = employees;
+  }, [employees]);
+
   const fetchAndStoreHistory = useCallback(
     async (taskId: string) => {
       try {
@@ -718,7 +732,7 @@ const TaskManagement: React.FC = () => {
         const unresolvedIds = new Set<string>();
         data.forEach((entry: any) => {
           [entry.user_id, entry.details?.from, entry.details?.to].forEach(id => {
-            if (id && !employeesById.has(String(id)) && !userCache.has(String(id))) {
+            if (id && !userCacheRef.current.has(String(id))) {
               unresolvedIds.add(String(id));
             }
           });
@@ -750,7 +764,8 @@ const TaskManagement: React.FC = () => {
         console.error("Failed to fetch task history", error);
       }
     },
-    [employeesById, userCache, setTaskHistory, setUserCache],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   useEffect(() => {
@@ -853,7 +868,7 @@ const TaskManagement: React.FC = () => {
           if (t.assigned_to && t.assigned_to_name) {
             const tid = String(t.assigned_to);
             // Find employee in list for role lookup
-            const employeeFromList = employees.find(
+            const employeeFromList = employeesRef.current.find(
               (emp) => emp.userId === tid,
             );
 
@@ -893,7 +908,7 @@ const TaskManagement: React.FC = () => {
           if (t.assigned_by && t.assigned_by_name) {
             const bid = String(t.assigned_by);
             // Find employee in list for role lookup
-            const employeeFromList = employees.find(
+            const employeeFromList = employeesRef.current.find(
               (emp) => emp.userId === bid,
             );
 
@@ -1028,7 +1043,6 @@ const TaskManagement: React.FC = () => {
   }, [
     authToken,
     authorizedHeaders,
-    employees,
     fetchAndStoreHistory,
     toast,
     userId,
@@ -4115,6 +4129,7 @@ const TaskManagement: React.FC = () => {
                                       <SelectContent className="border-2 shadow-xl">
                                         <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                         <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                        <SelectItem value="overdue" disabled>Overdue</SelectItem>
                                         <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                         <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                       </SelectContent>
@@ -4341,6 +4356,7 @@ const TaskManagement: React.FC = () => {
                                   <SelectContent className="border-2 shadow-xl">
                                     <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                     <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                    <SelectItem value="overdue" disabled>Overdue</SelectItem>
                                     <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                     <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                   </SelectContent>
@@ -4796,6 +4812,7 @@ const TaskManagement: React.FC = () => {
                                                 <SelectContent className="border-2 shadow-xl">
                                                   <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
                                                   <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+                                                  <SelectItem value="overdue" disabled>Overdue</SelectItem>
                                                   <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
                                                   <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
                                                 </SelectContent>

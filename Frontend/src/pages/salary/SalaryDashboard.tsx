@@ -72,16 +72,25 @@ const SalaryDashboard = () => {
                     // Core fields for analytics
                     const annualCtc = salary.annualCtc || salary.package_ctc_annual || salary.ctc_annual || 0;
 
-                    // PF Split (Annual Total / 24 for each side)
-                    const annualPfTotal = salary.pf_annual || 0;
-                    const monthlyPfEmployer = annualPfTotal / 24;
-                    const monthlyPfEmployee = annualPfTotal / 24;
-
                     // Monthly Fixed CTC (Excluding variable pay)
                     const annualVariable = salary.variable_pay_annual || 0;
                     const monthlyFixedCtc = (annualCtc - annualVariable) / 12;
 
-                    // Monthly Gross = Monthly Fixed CTC - Employer PF
+                    // PF Split: prefer pf_annual (combined both sides), else compute from percentage
+                    const annualPfTotal = salary.pf_annual || 0;
+                    let monthlyPfEmployer = 0;
+                    let monthlyPfEmployee = 0;
+                    if (annualPfTotal > 0) {
+                        monthlyPfEmployer = annualPfTotal / 24;
+                        monthlyPfEmployee = annualPfTotal / 24;
+                    } else if (salary.employer_pf_percentage && salary.employer_pf_percentage > 0) {
+                        // Percentage-based: approximate monthly basic to compute PF
+                        const approxMonthlyBasic = (salary.basic_annual || 0) / 12 || (monthlyFixedCtc * 0.5);
+                        monthlyPfEmployer = Math.round(approxMonthlyBasic * (salary.employer_pf_percentage / 100));
+                        monthlyPfEmployee = monthlyPfEmployer;
+                    }
+
+                    // Monthly Gross = Monthly Fixed CTC - Employer PF (since CTC = Gross + Employer PF)
                     const monthlyGross = monthlyFixedCtc - monthlyPfEmployer;
 
                     // Professional Tax (PT)

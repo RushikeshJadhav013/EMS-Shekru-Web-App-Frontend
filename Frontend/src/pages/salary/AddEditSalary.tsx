@@ -240,27 +240,30 @@ const AddEditSalary = () => {
 
     const manualCtcDifference = parseNumber(watchCtc) - totalCalculatedManualCTC;
 
+    // Guided mode auto-calculation
     useEffect(() => {
+        if (activeTab !== "auto") return;
         const timer = setTimeout(() => {
-            if (activeTab === "manual") {
-                // In manual mode, only trigger if relevant manual fields change
-                handleCalculatePreview();
-            } else if (parseNumber(watchCtc) > 0) {
-                // In guided mode, only trigger if relevant guided fields change
+            if (parseNumber(watchCtc) > 0) {
                 handleCalculatePreview();
             }
         }, 400);
         return () => clearTimeout(timer);
+    }, [watchCtc, watchVarType, watchVarValue, watchWorkingDays, watchPfType, watchPfValue, watchPfNo, activeTab]);
+
+    // Manual mode auto-calculation — completely separate from guided mode
+    useEffect(() => {
+        if (activeTab !== "manual") return;
+        const timer = setTimeout(() => {
+            handleCalculatePreview();
+        }, 400);
+        return () => clearTimeout(timer);
     }, [
-        // Optimized dependency list to prevent cross-mode calculation triggers
-        activeTab === "manual" ? watchManualWorkingDays : watchWorkingDays,
-        activeTab === "manual" ? watchManualPfType : watchPfType,
-        activeTab === "manual" ? watchManualPfValue : watchPfValue,
-        activeTab === "manual" ? watchManualVarType : watchVarType,
-        activeTab === "manual" ? watchManualVarValue : watchVarValue,
         watchBasicAnn, watchHraAnn, watchSpecialAnn, watchPFAnn,
         watchVarPayAnn, watchConveyanceAnn, watchMedicalAnn, watchOtherAnn,
-        watchPTAnn, watchDeductionAnn, activeTab, watchPfNo, watchCtc
+        watchPTAnn, watchDeductionAnn,
+        watchManualWorkingDays, watchManualPfType, watchManualPfValue,
+        watchManualVarType, watchManualVarValue, watchPfNo, activeTab
     ]);
 
     // Note: Automatic syncing between Guided and Manual modes has been removed to keep modes separate.
@@ -358,52 +361,62 @@ const AddEditSalary = () => {
                 const conveyance = Math.round(parseNumber(values.conveyanceAnnual || 0) / 12);
                 const other = Math.round(parseNumber(values.otherAllowanceAnnual || 0) / 12);
 
-                // Professional Tax (PT): Handle 200/300 split
+                // Professional Tax (PT): Use standard 200/month, 300 in Feb
                 const ptAnnual = parseNumber(values.professionalTaxAnnual || 0);
-                const currentMonth = new Date().getMonth(); // 0-indexed, Jan=0, Feb=1
-                let pt = Math.round(ptAnnual / 12);
+                const currentMonth = new Date().getMonth(); // 0-indexed
+                let pt: number;
                 if (ptAnnual >= 2400 && ptAnnual <= 2500) {
+                    // Standard PT: 200/month except February = 300
                     pt = (currentMonth === 1) ? 300 : 200;
+                } else {
+                    pt = Math.round(ptAnnual / 12);
                 }
                 const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
 
                 // PF Calculation for Manual Mode
+                // IMPORTANT: pfEmp = employee contribution; pfEmpr = employer contribution
+                // These are SEPARATE — do NOT double-count pfAnnual as both sides.
                 const manualPfType = values.manualPfType;
                 const manualPfValue = parseNumber(values.manualPfValue);
-                let pfEmp = 0;
-                let pfEmpr = 0;
+                let pfEmp = 0;   // employee's share (deducted from gross)
+                let pfEmpr = 0;  // employer's share (added to CTC cost)
 
                 if (manualPfType === 'fixed') {
+                    // manualPfValue = per-side monthly amount (e.g. 1800)
                     pfEmp = manualPfValue;
                     pfEmpr = manualPfValue;
                 } else if (manualPfType === 'percentage') {
+                    // percentage of monthly basic
                     pfEmp = Math.round(basic * (manualPfValue / 100));
                     pfEmpr = Math.round(basic * (manualPfValue / 100));
                 } else {
-                    // Fallback to pfAnnual if pfType is none but pfAnnual exists (from backend)
-                    const pfAnnTotal = parseNumber(values.pfAnnual || 0);
-                    pfEmp = Math.round(pfAnnTotal / 24);
-                    pfEmpr = Math.round(pfAnnTotal / 24);
+                    // pfType === 'none': use pfAnnual field which stores EMPLOYEE-ONLY annual PF
+                    // pfAnnual / 12 = employee monthly PF; employer PF is 0 (not tracked separately)
+                    const pfAnnEmployee = parseNumber(values.pfAnnual || 0);
+                    pfEmp = Math.round(pfAnnEmployee / 12);
+                    pfEmpr = 0; // No separate employer contribution when type is 'none'
                 }
 
                 // Variable Pay for Manual Mode
                 const mVarType = values.manualVariablePayType;
                 const mVarValue = parseNumber(values.manualVariablePayValue);
-                let vPay = 0;
+                const annualGrossForVar = (basic + hra + special + medical + conveyance + other) * 12;
+                let annualVarPay = 0;
                 if (mVarType === 'percentage') {
-                    vPay = Math.round(((basic * 12) + (hra * 12) + (special * 12) + (medical * 12) + (conveyance * 12) + (other * 12)) * (mVarValue / 100) / 12);
+                    annualVarPay = Math.round(annualGrossForVar * (mVarValue / 100));
                 } else if (mVarType === 'fixed') {
-                    vPay = Math.round(mVarValue / 12);
+                    annualVarPay = Math.round(mVarValue);
                 } else {
-                    vPay = Math.round(parseNumber(values.variablePayAnnual || 0) / 12);
+                    annualVarPay = Math.round(parseNumber(values.variablePayAnnual || 0));
                 }
+                const monthlyVarPay = Math.round(annualVarPay / 12);
 
                 const monthlyGross = basic + hra + special + medical + conveyance + other;
                 const monthlyDeductions = pt + otherDed + pfEmp;
                 const monthlyInHand = monthlyGross - monthlyDeductions;
 
                 // CTC = (Monthly Gross + Employer PF) * 12 + Annual Variable Pay
-                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + (vPay * 12);
+                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + annualVarPay;
 
                 setPreviewData({
                     annualCtc: calculatedAnnualCtc,
@@ -417,7 +430,7 @@ const AddEditSalary = () => {
                     pfEmployer: pfEmpr,
                     pfEmployee: pfEmp,
                     professionalTax: pt,
-                    variablePay: vPay * 12,
+                    variablePay: annualVarPay,
                     monthlyGross,
                     monthlyDeductions,
                     otherDeduction: otherDed,
@@ -561,44 +574,56 @@ const AddEditSalary = () => {
                 setExistingSalary(data);
 
                 // Map backend response to form values
+                // IMPORTANT: Guided mode fields and Manual mode fields are FULLY SEPARATE.
+                // Guided mode uses: annualCtc, variablePayType, variablePayValue, workingDays, pfType, pfValue
+                // Manual mode uses: basicAnnual, hraAnnual, ... (component fields), manualPfType, manualPfValue, manualWorkingDays, manualVariablePayType, manualVariablePayValue
+                // They are populated independently and NEVER synchronized.
                 form.reset({
                     userId: uid,
+
+                    // ── GUIDED MODE FIELDS ───────────────────────────────────────
                     annualCtc: data.annualCtc || 0,
-                    // Restore Bank & Statutory Details
+                    // PF for guided mode (employer-side)
+                    pfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
+                    pfValue: data.employer_pf_percentage || data.pfEmployer || 0,
+                    // Variable pay for guided mode
+                    variablePayType: data.variablePayType || 'none',
+                    variablePayValue: data.variablePayValue || 0,
+                    // Working days for guided mode
+                    workingDays: data.workingDays || 22,
+
+                    // ── MANUAL MODE FIELDS (independent defaults) ────────────────
+                    // These are zeroed by default — manual mode is a BLANK SLATE
+                    // unless the salary was originally created via manual mode.
+                    manualPfType: 'none',
+                    manualPfValue: 0,
+                    manualVariablePayType: 'none',
+                    manualVariablePayValue: 0,
+                    manualWorkingDays: 22,
+
+                    // Manual component fields: restore from backend annual values
+                    basicAnnual: (data.monthlyBasic || 0) * 12,
+                    hraAnnual: (data.hra || 0) * 12,
+                    // pfAnnual stores EMPLOYEE-ONLY annual PF (e.g. 36000)
+                    pfAnnual: (data.pfEmployee || 0) * 12,
+                    // PT: restore as annual; standard 2500/yr stored as 2500
+                    professionalTaxAnnual: (data.professionalTax || 0) >= 200 && (data.professionalTax || 0) <= 300
+                        ? 2500
+                        : (data.professionalTax || 0) * 12,
+                    specialAllowanceAnnual: (data.specialAllowance || 0) * 12,
+                    conveyanceAnnual: (data.conveyanceAllowance || 0) * 12,
+                    medicalAllowanceAnnual: (data.medicalAllowance || 0) * 12,
+                    otherAllowanceAnnual: (data.otherAllowance || 0) * 12,
+                    otherDeductionAnnual: (data.otherDeduction || 0) * 12,
+                    variablePayAnnual: data.variablePay || 0,
+
+                    // ── SHARED FIELDS ────────────────────────────────────────────
                     uanNumber: data.uanNumber || '',
                     pfNo: data.pfNumber || '',
                     bankName: data.bankName || '',
                     bankAccount: data.accountNumber || '',
                     ifscCode: data.ifscCode || '',
                     paymentMode: data.paymentMode || 'Bank Transfer',
-
-                    // Restore PF Settings
-                    pfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
-                    pfValue: data.employer_pf_percentage || data.pfEmployer || 0,
-                    manualPfType: data.employer_pf_percentage ? 'percentage' : (data.pfEmployer > 0 ? 'fixed' : 'none'),
-                    manualPfValue: data.employer_pf_percentage || data.pfEmployer || 0,
-
-                    // Restore Variable Pay Settings
-                    variablePayType: data.variablePayType || 'none',
-                    variablePayValue: data.variablePayValue || 0,
-                    manualVariablePayType: data.variablePayType || 'none',
-                    manualVariablePayValue: data.variablePayValue || 0,
-
-                    // Restore Working Days
-                    workingDays: data.workingDays || 22,
-                    manualWorkingDays: data.workingDays || 22,
-
-                    // Manual entry fields (annual values) - from Salary API
-                    basicAnnual: (data.monthlyBasic || 0) * 12,
-                    hraAnnual: (data.hra || 0) * 12,
-                    pfAnnual: (data.pfEmployer || 0) * 12 + (data.pfEmployee || 0) * 12,
-                    professionalTaxAnnual: (data.professionalTax || 0) * 12,
-                    specialAllowanceAnnual: (data.specialAllowance || 0) * 12,
-                    conveyanceAnnual: (data.conveyanceAllowance || 0) * 12,
-                    medicalAllowanceAnnual: (data.medicalAllowance || 0) * 12,
-                    otherAllowanceAnnual: (data.otherAllowance || 0) * 12,
-                    otherDeductionAnnual: (data.otherDeduction || 0) * 12,
-                    variablePayAnnual: data.variablePay || 0
                 });
 
                 // Set selected employee if employees are loaded
@@ -643,17 +668,19 @@ const AddEditSalary = () => {
             if (data.pfType === 'percentage') {
                 pfPayload.employer_pf_percentage = parseNumber(data.pfValue);
             } else if (data.pfType === 'fixed') {
-                pfPayload.pf_annual = parseNumber(data.pfValue) * 12 * 2;
+                // pf_annual = employee PF annual only; pfValue is the monthly per-side amount
+                pfPayload.pf_annual = parseNumber(data.pfValue) * 12;
             }
             // If pfType is 'none', pfPayload remains empty {} so neither field is sent.
 
             if (activeTab === "manual") {
-                // Shared PF Payload Logic for Manual Mode
+                // PF Payload for Manual Mode
                 const mPfPayload: Record<string, any> = {};
                 if (data.manualPfType === 'percentage') {
                     mPfPayload.employer_pf_percentage = parseNumber(data.manualPfValue);
                 } else if (data.manualPfType === 'fixed') {
-                    mPfPayload.pf_annual = parseNumber(data.manualPfValue) * 12 * 2; // Multiply by 2 for both shares
+                    // pf_annual = employee PF annual only; manualPfValue is monthly per-side
+                    mPfPayload.pf_annual = parseNumber(data.manualPfValue) * 12;
                 }
 
                 // Calculate variable pay for manual mode
@@ -675,14 +702,17 @@ const AddEditSalary = () => {
                     other_allowance_annual: data.otherAllowanceAnnual || 0,
                     professional_tax_annual: data.professionalTaxAnnual || 0,
                     other_deduction_annual: data.otherDeductionAnnual || 0,
-                    pf_annual: mPfPayload.pf_annual || data.pfAnnual || 0,
+                    // pf_annual in payload = employee PF annual only
+                    // If mPfPayload.pf_annual set (fixed type), use it directly.
+                    // If 'none' type, fall back to pfAnnual form field (employee-only annual).
+                    pf_annual: mPfPayload.pf_annual !== undefined ? mPfPayload.pf_annual : (data.pfAnnual || 0),
                     variable_pay: calculatedVariablePay,
                     working_days_per_month: data.manualWorkingDays || 22,
                     uan_number: data.uanNumber?.trim() || null,
                     pf_no: data.pfNo?.trim() || null,
-                    bank_name: data.bankName || "",
-                    bank_account: data.bankAccount || "",
-                    ifsc_code: data.ifscCode || "",
+                    bank_name: data.bankName?.trim() || null,
+                    bank_account: data.bankAccount?.trim() || null,
+                    ifsc_code: data.ifscCode?.trim() || null,
                     payment_mode: data.paymentMode || 'Bank Transfer',
                     ...mPfPayload
                 };
@@ -717,7 +747,8 @@ const AddEditSalary = () => {
                 if (data.pfType === 'percentage') {
                     guidedPfPayload.employer_pf_percentage = parseNumber(data.pfValue);
                 } else if (data.pfType === 'fixed') {
-                    guidedPfPayload.pf_annual = parseNumber(data.pfValue) * 12 * 2; // Prevent halving
+                    // pf_annual = employee PF annual only
+                    guidedPfPayload.pf_annual = parseNumber(data.pfValue) * 12;
                 }
 
                 const payload = {
@@ -728,9 +759,9 @@ const AddEditSalary = () => {
                     working_days_per_month: data.workingDays,
                     uan_number: data.uanNumber?.trim() || null,
                     pf_no: data.pfNo?.trim() || null,
-                    bank_name: data.bankName || "",
-                    bank_account: data.bankAccount || "",
-                    ifsc_code: data.ifscCode || "",
+                    bank_name: data.bankName?.trim() || null,
+                    bank_account: data.bankAccount?.trim() || null,
+                    ifsc_code: data.ifscCode?.trim() || null,
                     payment_mode: data.paymentMode || 'Bank Transfer',
                     ...guidedPfPayload,
                 };
@@ -756,9 +787,9 @@ const AddEditSalary = () => {
                     response = await apiService.updateSalaryDetails(data.userId, {
                         uan_number: data.uanNumber?.trim() || null,
                         pf_no: data.pfNo?.trim() || null,
-                        bank_name: data.bankName || "",
-                        bank_account: data.bankAccount || "",
-                        ifsc_code: data.ifscCode || "",
+                        bank_name: data.bankName?.trim() || null,
+                        bank_account: data.bankAccount?.trim() || null,
+                        ifsc_code: data.ifscCode?.trim() || null,
                         working_days_per_month: data.workingDays,
                         payment_mode: data.paymentMode,
                         variable_pay_type: data.variablePayType,

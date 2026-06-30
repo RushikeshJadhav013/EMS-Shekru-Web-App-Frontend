@@ -1,0 +1,165 @@
+﻿304: const parsed = parseToIST(date);
+306: return formatDateIST(parsed, "MMM dd, yyyy");
+356: const month = `${parsed.getMonth() + 1}`.padStart(2, "0");
+357: const day = `${parsed.getDate()}`.padStart(2, "0");
+382: const commentDate = parseToIST(createdAt);
+397: return formatDateTimeIST(commentDate, "hh:mm a");
+410: return formatDateTimeIST(commentDate, "EEEE");
+414: return formatDateTimeIST(commentDate, "MMM dd, yyyy");
+421: const commentDate = parseToIST(createdAt);
+445: return formatDateTimeIST(commentDate, "MMM dd, yyyy");
+451: const { toast } = useToast();
+485: useEffect(() => {
+638: useEffect(() => {
+653: useEffect(() => {
+679: map.set(emp.userId, emp);
+684: map.set(userId, user);
+688: map.set(userId, {
+724: const existing = next.get(sid);
+726: next.set(sid, {
+758: next.set(String(id), {
+780: useEffect(() => {
+793: toast({
+820: emp.department.split(",").forEach((d) => {
+827: user.department.split(",").forEach((d) => {
+842: toast({
+861: toast({
+893: } else if (prev.get(tid)?.role) {
+895: assignedToRole = prev.get(tid)!.role;
+900: const existing = next.get(tid);
+906: next.set(tid, {
+933: } else if (prev.get(bid)?.role) {
+935: assignedByRole = prev.get(bid)!.role;
+940: const existing = next.get(bid);
+946: next.set(bid, {
+1017: const sortedTasks = updatedConverted.sort((a, b) => {
+1044: toast({
+1061: useEffect(() => {
+1115: useEffect(() => {
+1173: .split(",")
+1177: .split(",")
+1210: .split(",")
+1214: .split(",")
+1236: grouped.set(dept, []);
+1238: grouped.get(dept)!.push(emp);
+1251: employees.sort((a, b) => {
+1268: [...grouped.entries()].sort((a, b) => a[0].localeCompare(b[0])),
+1278: const userDepts = user.department.split(",").map((d) => d.trim());
+1291: const assignee = employeesById.get(assigneeId);
+1310: const assigner = employeesById.get(assignedById);
+1311: const cachedUser = userCache.get(assignedById);
+1321: const assigner = employeesById.get(assignedById);
+1322: const cachedUser = userCache.get(assignedById);
+1339: const assigner = employeesById.get(assignedById);
+1356: const cachedUser = userCache.get(assignedById);
+1383: const assignee = employeesById.get(assignedToId);
+1384: const cachedUser = userCache.get(assignedToId);
+1394: const assignee = employeesById.get(assignedToId);
+1395: const cachedUser = userCache.get(assignedToId);
+1412: const assignee = employeesById.get(assignedToId);
+1429: const cachedUser = userCache.get(assignedToId);
+1448: useEffect(() => {
+1451: new Map(prev).set(userId, {
+1464: useEffect(() => {
+1477: next.set(cachedUserId, {
+1493: next.set(emp.userId, {
+1510: useEffect(() => {
+1521: useEffect(() => {
+1525: ? employeesById.get(currentAssigneeId)
+1570: const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
+1575: const creatorInDept = creator?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()));
+1577: assignee?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()))
+1585: const userDepts = user.department.split(",").map(d => d.trim().toLowerCase());
+1589: const creatorInDept = creator?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()));
+1591: assignee?.department?.split(",").some(d => userDepts.includes(d.trim().toLowerCase()))
+1642: creator?.department?.split(",").map((d) => d.trim().toLowerCase()) || [];
+1645: ?.split(",")
+1686: return base.sort((a, b) => {
+1716: useEffect(() => {
+1799: useEffect(() => {
+1895: toast({
+1911: toast({
+1994: toast({
+2018: toast({
+2030: setPassTaskTarget(task);
+2050: setPassTaskTarget(null);
+2058: toast({
+2067: toast({
+2122: toast({
+2134: toast({
+2180: const existingIds = new Set(prevComments.map((c) => c.id));
+2201: setIsPostingComment(true);
+2208: await apiService.addTaskComment(
+2216: await apiService.addTaskComment(
+2222: setNewComment("");
+2228: toast({
+2233: setTimeout(() => {
+2238: toast({
+2244: setIsPostingComment(false);
+2268: await apiService.deleteTaskComment(Number(selectedTask.id), commentId);
+2270: toast({
+2276: toast({
+2287: useEffect(() => {
+2300: setNewComment("");
+2305: useEffect(() => {
+2307: setTimeout(() => {
+2334: startDate: formatDateForInput(task.startDate),
+2335: deadline: formatDateForInput(task.deadline),
+2346: const todayString = today.toISOString().split("T")[0];
+2347: const existingDeadline = formatDateForInput(task.deadline);
+2348: const existingStartDate = formatDateForInput(task.startDate);
+2374: startDate: new Date().toISOString().split("T")[0],
+2375: deadline: new Date().toISOString().split("T")[0], // Reset to today's date
+2385: toast({
+2400: toast({
+2413: toast({
+2421: toast({
+2430: toast({
+2440: toast({
+2512: toast({
+2524: toast({
+2549: toast({
+2559: toast({
+2573: toast({
+2585: toast({
+2593: toast({
+2604: toast({
+2614: toast({
+2681: toast({
+2693: toast({
+2717: toast({
+2760: toast({
+2770: toast({
+2886: toast({
+2953: toast({
+2963: toast({
+3009: return priority.charAt(0).toUpperCase() + priority.slice(1);
+3041: const blob = await apiService.getTaskManagementReport(params);
+3043: const a = document.createElement("a");
+3045: a.download = `task_management_report_${formatDateIST(new Date(), "yyyy-MM-dd")}.pdf`;
+3051: toast({
+3062: toast({
+3421: .split(",")
+3455: .split(",")
+3488: .split(",")
+3510: new Set([
+3605: .split(",")
+4023: ? formatDateTimeIST(
+4696: <div className={`p-5 cursor-pointer rounded-2xl transition-all border-2 border-[#000000] ${project.isExpanded ? "bg-violet-50/50" : "bg-white hover:bg-slate-50"}`} onClick={() => toggleProject(project.project_id)}>
+4779: <span className="text-[14px] font-bold">{task.deadline ? formatDateIST(task.deadline, "MMM dd, yyyy") : "No deadline"}</span>
+5203: min={new Date().toISOString().split("T")[0]}
+5463: min={reassignForm.startDate || new Date().toISOString().split("T")[0]}
+5634: ? formatDateIST(
+5635: parseToIST(selectedTask.startDate) || new Date(),
+5659: ? formatDateIST(
+5660: parseToIST(selectedTask.createdAt) || new Date(),
+5743: const actor = employeesById.get(String(entry.user_id));
+5752: const entryTime = formatDateTimeIST(
+6015: const commentUser = employeesById.get(
+6021: ?.split(" ")
+6220: handleDeleteComment(comment.id)
+6291: setNewComment(
+6300: e.preventDefault();
+6301: handlePostComment();
+6670: const actor = employeesById.get(String(entry.user_id));
+6679: const timestamp = formatDateTimeIST(

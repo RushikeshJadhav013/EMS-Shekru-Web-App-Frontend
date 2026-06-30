@@ -1,0 +1,60 @@
+﻿158: <Select
+162: <SelectTrigger className="h-12 text-sm shadow-inner">
+163: <SelectValue placeholder="Priority" />
+165: <SelectContent>
+167: <SelectItem key={opt} value={opt}>
+578: <Select
+583: <SelectTrigger className="h-7 w-32 text-xs border-slate-200 dark:border-slate-700">
+584: <SelectValue />
+586: <SelectContent side="bottom" className="shadow-md">
+587: <SelectItem value="Pending">
+593: <SelectItem value="In Progress">
+600: <SelectItem value="Completed">
+606: <SelectItem value="Cancelled">
+798: <Select
+802: <SelectTrigger className="h-7 border-none bg-slate-50 dark:bg-slate-900/40 rounded-full px-1.5 text-[9px] font-bold uppercase tracking-tighter w-fit min-w-[75px] focus:ring-0 shadow-sm border-slate-100 dark:border-slate-800">
+803: <SelectValue />
+805: <SelectContent className="rounded-xl shadow-xl border-slate-100 dark:border-slate-800">
+806: <SelectItem value="Pending">
+811: <SelectItem value="In Progress">
+816: <SelectItem value="Completed">
+821: <SelectItem value="Archived">
+826: <SelectItem value="Cancelled">
+2136: <Select value={statusFilter} onValueChange={setStatusFilter}>
+2137: <SelectTrigger className="w-[160px] rounded-xl h-10" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+2138: <SelectValue placeholder="Filter by status" />
+2140: <SelectContent>
+2141: <SelectItem value="all">All Projects</SelectItem>
+2142: <SelectItem value="Pending">Pending</SelectItem>
+2143: <SelectItem value="In Progress">In Progress</SelectItem>
+2144: <SelectItem value="Completed">Completed</SelectItem>
+2145: <SelectItem value="Cancelled">Cancelled</SelectItem>
+2146: <SelectItem value="Archived">Archived</SelectItem>
+3022: <Select
+3028: <SelectTrigger className="h-10 rounded-xl">
+3029: <SelectValue placeholder="Update Status" />
+3031: <SelectContent>
+3032: <SelectItem value="Pending">
+3037: <SelectItem value="In Progress">
+3042: <SelectItem value="Completed">
+3047: <SelectItem value="Archived">
+3052: <SelectItem value="Cancelled">
+3365: <Select
+3371: <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-white dark:bg-slate-900">
+3372: <SelectValue placeholder="Select member" />
+3374: <SelectContent className="max-h-[250px] rounded-xl shadow-xl">
+3376: <SelectItem key={m.user_id} value={String(m.user_id)}>
+3400: <Select
+3406: <SelectTrigger className="rounded-xl border-slate-200 h-11 bg-white dark:bg-slate-900">
+3407: <SelectValue />
+3409: <SelectContent className="rounded-xl shadow-xl">
+3410: <SelectItem value="Pending">
+3415: <SelectItem value="In Progress">
+3420: <SelectItem value="Completed">
+3425: <SelectItem value="Archived">
+3430: <SelectItem value="Cancelled">
+3582: <Select
+3586: <SelectTrigger className="rounded-xl">
+3587: <SelectValue placeholder="Choose a member" />
+3589: <SelectContent className="rounded-xl">
+3606: <SelectItem key={m.user_id} value={String(m.user_id)}>

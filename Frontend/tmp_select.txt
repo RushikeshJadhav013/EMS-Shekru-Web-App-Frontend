@@ -1,0 +1,171 @@
+﻿3187: <Select
+3193: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+3194: <SelectValue />
+3196: <SelectContent
+3200: <SelectItem value="low" className="cursor-pointer">
+3206: <SelectItem value="medium" className="cursor-pointer">
+3212: <SelectItem value="high" className="cursor-pointer">
+3218: <SelectItem value="urgent" className="cursor-pointer">
+3277: <Select
+3286: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+3287: <SelectValue placeholder="Select Project" />
+3289: <SelectContent className="border-2 shadow-xl" side="bottom">
+3290: <SelectItem value="none">None</SelectItem>
+3292: <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+3313: <Select
+3319: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+3320: <SelectValue placeholder="All Roles" />
+3322: <SelectContent
+3326: <SelectItem value="all">All Roles</SelectItem>
+3328: <SelectItem value="hr">HR</SelectItem>
+3332: <SelectItem value="manager">Manager</SelectItem>
+3334: <SelectItem value="team_lead">Team Lead</SelectItem>
+3335: <SelectItem value="employee">Employee</SelectItem>
+3348: <Select
+3357: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+3358: <SelectValue placeholder="All Departments" />
+3360: <SelectContent
+3364: <SelectItem value="all">
+3368: <SelectItem key={dept} value={dept}>
+3835: <Select value={filterStatus} onValueChange={(val) => {
+3839: <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 rounded-lg shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
+3840: <SelectValue />
+3842: <SelectContent>
+3843: <SelectItem value="all">All Status</SelectItem>
+3844: <SelectItem value="todo">To Do</SelectItem>
+3845: <SelectItem value="in-progress">In Progress</SelectItem>
+3846: <SelectItem value="overdue">Overdue</SelectItem>
+3847: <SelectItem value="completed">Completed</SelectItem>
+3848: <SelectItem value="cancelled">Cancelled</SelectItem>
+3857: <Select
+3865: <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 rounded-lg shadow-sm" style={{ color: '#000000', fontSize: '14px' }}>
+3866: <SelectValue />
+3868: <SelectContent>
+3873: <SelectItem value="all">All Tasks</SelectItem>
+3880: <SelectItem value="created">Created Tasks</SelectItem>
+3886: <SelectItem value="received">Received Tasks</SelectItem>
+4101: <Select
+4108: <SelectTrigger
+4114: <SelectValue />
+4117: <SelectContent className="border-2 shadow-xl">
+4118: <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+4119: <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+4120: <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+4121: <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
+4328: <Select
+4335: <SelectTrigger
+4340: <SelectValue />
+4343: <SelectContent className="border-2 shadow-xl">
+4344: <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+4345: <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+4346: <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+4347: <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
+4646: <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
+4647: <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}><SelectValue /></SelectTrigger>
+4648: <SelectContent>
+4649: <SelectItem value="all">All Status</SelectItem>
+4650: <SelectItem value="todo">To Do</SelectItem>
+4651: <SelectItem value="in-progress">In Progress</SelectItem>
+4652: <SelectItem value="overdue">Overdue</SelectItem>
+4653: <SelectItem value="completed">Completed</SelectItem>
+4654: <SelectItem value="cancelled">Cancelled</SelectItem>
+4661: <Select
+4667: <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}>
+4668: <SelectValue />
+4670: <SelectContent>
+4671: <SelectItem value="received">Assigned to Me</SelectItem>
+4672: <SelectItem value="created">Created by Me</SelectItem>
+4673: <SelectItem value="all">Entire View</SelectItem>
+4783: <Select
+4790: <SelectTrigger
+4795: <SelectValue />
+4798: <SelectContent className="border-2 shadow-xl">
+4799: <SelectItem value="todo" disabled={!isStatusTransitionAllowed(task.status, "todo")}>To Do</SelectItem>
+4800: <SelectItem value="in-progress" disabled={!isStatusTransitionAllowed(task.status, "in-progress")}>In Progress</SelectItem>
+4801: <SelectItem value="completed" disabled={!isStatusTransitionAllowed(task.status, "completed")}>Completed</SelectItem>
+4802: <SelectItem value="cancelled" disabled={!isStatusTransitionAllowed(task.status, "cancelled")}>Cancel Task</SelectItem>
+4958: <Select value={passAssignee} onValueChange={setPassAssignee}>
+4959: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+4960: <SelectValue placeholder="Choose team member" />
+4962: <SelectContent className="border-2 shadow-xl max-h-96 overflow-auto">
+4975: <SelectItem
+5138: <Select
+5144: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+5145: <SelectValue placeholder="Select assignee" />
+5147: <SelectContent className="border-2 shadow-xl">
+5149: <SelectItem value={userId} className="cursor-pointer">
+5156: <SelectItem
+5223: <Select
+5229: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950 uppercase font-bold text-xs tracking-widest">
+5230: <SelectValue placeholder="Select Priority" />
+5232: <SelectContent className="border-2 shadow-xl">
+5233: <SelectItem value="low" className="text-blue-600 font-bold uppercase tracking-widest text-[10px]">Low</SelectItem>
+5234: <SelectItem value="medium" className="text-yellow-600 font-bold uppercase tracking-widest text-[10px]">Medium</SelectItem>
+5235: <SelectItem value="high" className="text-orange-600 font-bold uppercase tracking-widest text-[10px]">High</SelectItem>
+5236: <SelectItem value="urgent" className="text-red-600 font-bold uppercase tracking-widest text-[10px]">Urgent</SelectItem>
+5250: <Select
+5259: <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+5260: <SelectValue placeholder="Select Project" />
+5262: <SelectContent className="border-2 shadow-xl" side="bottom">
+5263: <SelectItem value="none">None</SelectItem>
+5265: <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+5378: <Select
+5387: <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
+5388: <SelectValue placeholder="Select assignee" />
+5390: <SelectContent>
+5392: <SelectItem
+5411: <Select
+5417: <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
+5418: <SelectValue />
+5420: <SelectContent>
+5421: <SelectItem value="low">Low</SelectItem>
+5422: <SelectItem value="medium">Medium</SelectItem>
+5423: <SelectItem value="high">High</SelectItem>
+5424: <SelectItem value="urgent">Urgent</SelectItem>
+5484: <Select
+5493: <SelectTrigger className="mt-1.5 h-11 bg-white dark:bg-gray-950 border-2 focus:border-green-500 dark:focus:border-green-400">
+5494: <SelectValue placeholder="Select Project" />
+5496: <SelectContent className="border-2 shadow-xl" side="bottom">
+5497: <SelectItem value="none">None</SelectItem>
+5499: <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+6359: <Select
+6363: <SelectTrigger className="h-8 border-2 bg-white dark:bg-gray-950 text-[11px]">
+6364: <SelectValue />
+6366: <SelectContent className="border-2 shadow-xl">
+6367: <SelectItem value="all">All Time</SelectItem>
+6368: <SelectItem value="monthly">Monthly</SelectItem>
+6369: <SelectItem value="quarterly">Quarterly</SelectItem>
+6370: <SelectItem value="custom">Custom Range</SelectItem>
+6379: <Select value={exportMonth} onValueChange={setExportMonth}>
+6380: <SelectTrigger className="h-8 border-2 mt-1 text-[11px]">
+6381: <SelectValue />
+6383: <SelectContent>
+6398: <SelectItem key={i + 1} value={String(i + 1)}>
+6407: <Select value={exportYear} onValueChange={setExportYear}>
+6408: <SelectTrigger className="h-8 border-2 mt-1 text-[11px]">
+6409: <SelectValue />
+6411: <SelectContent>
+6413: <SelectItem key={y} value={String(y)}>
+6428: <Select
+6432: <SelectTrigger className="h-9 border-2 mt-1 text-xs">
+6433: <SelectValue />
+6435: <SelectContent>
+6436: <SelectItem value="1">Q1 (Jan–Mar)</SelectItem>
+6437: <SelectItem value="2">Q2 (Apr–Jun)</SelectItem>
+6438: <SelectItem value="3">Q3 (Jul–Sep)</SelectItem>
+6439: <SelectItem value="4">Q4 (Oct–Dec)</SelectItem>
+6445: <Select value={exportYear} onValueChange={setExportYear}>
+6446: <SelectTrigger className="h-9 border-2 mt-1 text-xs">
+6447: <SelectValue />
+6449: <SelectContent>
+6451: <SelectItem key={y} value={String(y)}>
+6504: <Select
+6508: <SelectTrigger className="h-9 border-2 bg-white dark:bg-gray-950 text-xs">
+6509: <SelectValue />
+6511: <SelectContent className="border-2 shadow-xl">
+6512: <SelectItem value="all">All Statuses</SelectItem>
+6513: <SelectItem value="Pending">Pending</SelectItem>
+6514: <SelectItem value="In Progress">In Progress</SelectItem>
+6515: <SelectItem value="Overdue">Overdue</SelectItem>
+6516: <SelectItem value="Completed">Completed</SelectItem>
+6517: <SelectItem value="Cancelled">Cancelled</SelectItem>

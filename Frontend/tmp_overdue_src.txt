@@ -1,0 +1,139 @@
+﻿src/pages/attendance/AttendanceManager.tsx:1296:                rec.overdue_reason ||
+src/pages/attendance/AttendanceManager.tsx:1297:                rec.task_overdue_reason ||
+src/pages/attendance/AttendanceManager.tsx:1303:                rec.overdueReason ||
+src/pages/attendance/AttendanceManager.tsx:2328:                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Overdue</th>
+src/pages/attendance/AttendanceWithToggle.tsx:200:  const [selectedOverdueReason, setSelectedOverdueReason] =
+src/pages/attendance/AttendanceWithToggle.tsx:1254:                rec.overdue_reason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1255:                rec.task_overdue_reason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1263:                rec.overdueReason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1366:            todayRecord.overdue_reason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1367:            todayRecord.task_overdue_reason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1375:            todayRecord.overdueReason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1795:              rec.overdue_reason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1796:              rec.task_overdue_reason ||
+src/pages/attendance/AttendanceWithToggle.tsx:1804:              rec.overdueReason ||
+src/pages/attendance/AttendanceWithToggle.tsx:3635:                                Overdue
+src/pages/attendance/AttendanceWithToggle.tsx:3848:                                          setSelectedOverdueReason("");
+src/pages/attendance/AttendanceWithToggle.tsx:4136:                          Overdue
+src/pages/attendance/AttendanceWithToggle.tsx:4348:                                      setSelectedOverdueReason("");
+src/pages/attendance/AttendanceWithToggle.tsx:5868:                <p className="font-medium">Overdue Reason</p>
+src/pages/attendance/AttendanceWithToggle.tsx:6012:              Detailed work summary and overdue reasons for the selected record
+src/pages/attendance/AttendanceWithToggle.tsx:6026:            {selectedOverdueReason && (
+src/pages/attendance/AttendanceWithToggle.tsx:6029:                  Overdue Reason
+src/pages/attendance/AttendanceWithToggle.tsx:6032:                  {selectedOverdueReason}
+src/pages/employee/EmployeeDashboard.tsx:444:                  const isOverdue = dueDate && dueDate < today && !isCompleted && !isCancelled;
+src/pages/employee/EmployeeDashboard.tsx:465:                    if (isOverdue) return (
+src/pages/employee/EmployeeDashboard.tsx:468:                        Overdue
+src/pages/employee/EmployeeDashboard.tsx:497:                              isOverdue ? "bg-red-500 shadow-sm shadow-red-200 animate-pulse" :
+src/pages/employee/EmployeeDashboard.tsx:542:                              isOverdue ? "text-red-600 dark:text-red-500" : "text-emerald-600 dark:text-emerald-500"
+src/pages/employee/EmployeeDashboard.tsx:544:                              {isDueToday || isOverdue ? (
+src/pages/employee/EmployeeDashboard.tsx:551:                                  isOverdue && dueDate ? `Deadline: ${formatIST(dueDate, 'MMM dd, yyyy')}` :
+src/pages/manager/ManagerDashboard.tsx:52:    overdueItems: 0,
+src/pages/manager/ManagerDashboard.tsx:77:        overdueItems: data.overdueItems || 0,
+src/pages/manager/ManagerDashboard.tsx:446:                              : (getCorrectAttendanceStatus(activity) === 'late' || getCorrectAttendanceStatus(activity) === 'overdue')
+src/pages/projects/ProjectManagement.tsx:71:  "Overdue",
+src/pages/projects/ProjectManagement.tsx:309:  | "Overdue"
+src/pages/projects/ProjectManagement.tsx:363:  if (low === "overdue") return "Overdue";
+src/pages/projects/ProjectManagement.tsx:390:  if (norm === "Overdue")
+src/pages/projects/ProjectManagement.tsx:394:        Overdue
+src/pages/projects/ProjectManagement.tsx:436:  if (status === "Overdue")
+src/pages/projects/ProjectManagement.tsx:495:  // Detect overdue automatically
+src/pages/projects/ProjectManagement.tsx:496:  const isOverdue = useMemo(() => {
+src/pages/projects/ProjectManagement.tsx:507:  const effectiveStatus = isOverdue
+src/pages/projects/ProjectManagement.tsx:508:    ? "Overdue"
+src/pages/projects/ProjectManagement.tsx:573:      <TableCell className={`text-xs font-bold tabular-nums ${isOverdue ? 'text-red-600' : 'text-slate-600 dark:text-slate-400'}`}>
+src/pages/projects/ProjectManagement.tsx:581:            disabled={effectiveStatus === "Overdue"}
+src/pages/projects/ProjectManagement.tsx:737:    return s === "Pending" || s === "todo" || s === "Overdue";
+src/pages/projects/ProjectManagement.tsx:739:  const overdueCount = tasks.filter((t) => normalizeStatus(t.status) === "Overdue").length;
+src/pages/projects/ProjectManagement.tsx:1117:            // Detect overdue automatically
+src/pages/projects/ProjectManagement.tsx:1127:                effectiveStatus = "Overdue";
+src/pages/projects/ProjectManagement.tsx:1523:        // Detect overdue automatically
+src/pages/projects/ProjectManagement.tsx:1532:            effectiveStatus = "Overdue";
+src/pages/projects/ProjectManagement.tsx:1789:      // ΓöÇΓöÇ LOCK OVERDUE STATUS ΓöÇΓöÇ
+src/pages/projects/ProjectManagement.tsx:1790:      // If task is currently overdue (by date or status), don't allow ANY change
+src/pages/projects/ProjectManagement.tsx:1791:      const isCurrentlyOverdue = (() => {
+src/pages/projects/ProjectManagement.tsx:1794:        if (s === "overdue") return true;
+src/pages/projects/ProjectManagement.tsx:1803:      if (isCurrentlyOverdue) {
+src/pages/projects/ProjectManagement.tsx:1806:          description: "Overdue tasks cannot be changed to any other status.",
+src/pages/projects/ProjectManagement.tsx:1824:      } else if (lowStatus === "overdue") {
+src/pages/projects/ProjectManagement.tsx:1825:        backendStatus = "Overdue";
+src/pages/tasks/TaskManagement.tsx:213:  overdue: "overdue",
+src/pages/tasks/TaskManagement.tsx:214:  Overdue: "overdue",
+src/pages/tasks/TaskManagement.tsx:224:  overdue: "Overdue",
+src/pages/tasks/TaskManagement.tsx:240:  // Automatically determine if task is overdue based on deadline
+src/pages/tasks/TaskManagement.tsx:247:      status = "overdue";
+src/pages/tasks/TaskManagement.tsx:324:      case "overdue":
+src/pages/tasks/TaskManagement.tsx:325:        return { label: "Overdue", color: "bg-rose-500", text: "text-black dark:text-white" };
+src/pages/tasks/TaskManagement.tsx:456:  const [isOverdueFilterActive, setIsOverdueFilterActive] = useState(false);
+src/pages/tasks/TaskManagement.tsx:963:      // Check and update overdue tasks
+src/pages/tasks/TaskManagement.tsx:964:      // Check and update overdue tasks
+src/pages/tasks/TaskManagement.tsx:967:        // If task is not completed/cancelled and deadline has passed, mark as overdue
+src/pages/tasks/TaskManagement.tsx:968:        // Fix: Compare dates only, allowing the entire deadline day to pass before marking as overdue
+src/pages/tasks/TaskManagement.tsx:973:          task.status !== "overdue"
+src/pages/tasks/TaskManagement.tsx:990:          // Only overdue if today's date is strictly AFTER the deadline date
+src/pages/tasks/TaskManagement.tsx:993:            return { ...task, status: "overdue" as BaseTask["status"] };
+src/pages/tasks/TaskManagement.tsx:999:      // Update overdue tasks on the backend using the proper endpoints
+src/pages/tasks/TaskManagement.tsx:1003:          const backendStatus = frontendToBackendStatus["overdue"];
+src/pages/tasks/TaskManagement.tsx:1010:            `Failed to update task ${task.id} to overdue status`,
+src/pages/tasks/TaskManagement.tsx:1018:        // Define status priority order: todo -> in-progress -> overdue -> completed -> cancelled
+src/pages/tasks/TaskManagement.tsx:1022:          overdue: 2,
+src/pages/tasks/TaskManagement.tsx:1666:      overdue: scopedTasks.filter((t: any) => t.status === "overdue").length,
+src/pages/tasks/TaskManagement.tsx:1680:    // Explicit Overdue filter
+src/pages/tasks/TaskManagement.tsx:1681:    if (isOverdueFilterActive) {
+src/pages/tasks/TaskManagement.tsx:1682:      base = base.filter((t) => t.status === "overdue");
+src/pages/tasks/TaskManagement.tsx:1690:        overdue: 2,
+src/pages/tasks/TaskManagement.tsx:1704:  }, [scopedTasks, filterStatus, isOverdueFilterActive]);
+src/pages/tasks/TaskManagement.tsx:1769:          // 4. Overdue filter
+src/pages/tasks/TaskManagement.tsx:1770:          if (isOverdueFilterActive && task.status !== "overdue") return false;
+src/pages/tasks/TaskManagement.tsx:1787:  }, [projects, tasks, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId]);
+src/pages/tasks/TaskManagement.tsx:1811:      overdue: allProjectTasks.filter((t: any) => t.status === "overdue").length,
+src/pages/tasks/TaskManagement.tsx:2466:      // This is necessary because the general update endpoint might not process status changes for overdue tasks
+src/pages/tasks/TaskManagement.tsx:2782:  // Helper function to check if task is overdue
+src/pages/tasks/TaskManagement.tsx:2783:  const isTaskOverdue = useCallback((task: TaskWithPassMeta): boolean => {
+src/pages/tasks/TaskManagement.tsx:2784:    return task.status === "overdue";
+src/pages/tasks/TaskManagement.tsx:2793:      // 1. If task is overdue, it cannot be changed anymore
+src/pages/tasks/TaskManagement.tsx:2794:      if (currentStatus === "overdue") {
+src/pages/tasks/TaskManagement.tsx:2805:        "overdue",
+src/pages/tasks/TaskManagement.tsx:2823:      // 4. Allow moving from 'overdue' to 'in-progress' or 'completed'
+src/pages/tasks/TaskManagement.tsx:2824:      if (currentStatus === "overdue") {
+src/pages/tasks/TaskManagement.tsx:2884:      // Guard: If task is overdue, block ANY change
+src/pages/tasks/TaskManagement.tsx:2885:      if (foundTask && (foundTask.status as string) === "overdue") {
+src/pages/tasks/TaskManagement.tsx:2888:          description: "Overdue tasks cannot be changed to any other status.",
+src/pages/tasks/TaskManagement.tsx:2980:      case "overdue":
+src/pages/tasks/TaskManagement.tsx:3760:                title: "Overdue",
+src/pages/tasks/TaskManagement.tsx:3761:                value: taskCountsByStatus.overdue,
+src/pages/tasks/TaskManagement.tsx:3765:                statusKey: "overdue",
+src/pages/tasks/TaskManagement.tsx:3785:                  if (stat.statusKey === "overdue") setIsOverdueFilterActive(true);
+src/pages/tasks/TaskManagement.tsx:3786:                  else setIsOverdueFilterActive(false);
+src/pages/tasks/TaskManagement.tsx:3837:                        setIsOverdueFilterActive(val === "overdue");
+src/pages/tasks/TaskManagement.tsx:3846:                          <SelectItem value="overdue">Overdue</SelectItem>
+src/pages/tasks/TaskManagement.tsx:3862:                          setIsOverdueFilterActive(false);
+src/pages/tasks/TaskManagement.tsx:4015:                                task.status !== "overdue";
+src/pages/tasks/TaskManagement.tsx:4106:                                      disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
+src/pages/tasks/TaskManagement.tsx:4177:                                        canManageTask && (task.status as string) !== "overdue" && (
+src/pages/tasks/TaskManagement.tsx:4271:                        task.status !== "overdue";
+src/pages/tasks/TaskManagement.tsx:4281:                          className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer transform hover:scale-[1.01] shadow-sm hover:shadow-xl group relative overflow-hidden ${isTaskOverdue(task)
+src/pages/tasks/TaskManagement.tsx:4293:                                : task.status === "overdue"
+src/pages/tasks/TaskManagement.tsx:4311:                                  {isTaskOverdue(task) && (
+src/pages/tasks/TaskManagement.tsx:4313:                                      Overdue
+src/pages/tasks/TaskManagement.tsx:4333:                                  disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
+src/pages/tasks/TaskManagement.tsx:4414:                                  className={`text-[14px] font-black ${isTaskOverdue(task) ? "text-rose-600" : "text-black dark:text-white"}`}
+src/pages/tasks/TaskManagement.tsx:4481:                                    ((task.status as string) !== "overdue" || isCreator) && (
+src/pages/tasks/TaskManagement.tsx:4563:              <Card onClick={() => { setFilterStatus("all"); setIsOverdueFilterActive(false); }} className={`border-2 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "all" && !isOverdueFilterActive ? "border-slate-950 dark:border-slate-50 bg-slate-50 dark:bg-slate-800" : "border-2 border-[#000000] bg-white dark:bg-gray-950 hover:border-slate-400"}`}>
+src/pages/tasks/TaskManagement.tsx:4572:              <Card onClick={() => { setFilterStatus("todo"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "todo" ? "bg-slate-100 dark:bg-slate-800" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+src/pages/tasks/TaskManagement.tsx:4581:              <Card onClick={() => { setFilterStatus("in-progress"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "in-progress" ? "bg-blue-50 dark:bg-blue-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+src/pages/tasks/TaskManagement.tsx:4590:              <Card onClick={() => { setFilterStatus("completed"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "completed" ? "bg-green-50 dark:bg-green-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+src/pages/tasks/TaskManagement.tsx:4599:              <Card onClick={() => { setFilterStatus("overdue"); setIsOverdueFilterActive(true); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${isOverdueFilterActive ? "bg-rose-50 dark:bg-rose-900/40" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+src/pages/tasks/TaskManagement.tsx:4601:                  <CardTitle className="uppercase tracking-wider font-bold" style={{ color: '#000000', fontSize: '12px' }}>Overdue</CardTitle>
+src/pages/tasks/TaskManagement.tsx:4606:                <CardContent><div className="font-bold" style={{ color: '#000000', fontSize: '24px', fontWeight: 'bold' }}>{projectCounts.overdue}</div></CardContent>
+src/pages/tasks/TaskManagement.tsx:4608:              <Card onClick={() => { setFilterStatus("cancelled"); setIsOverdueFilterActive(false); }} className={`border-2 border-[#000000] transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md ${filterStatus === "cancelled" ? "bg-slate-100 dark:bg-slate-800" : "bg-white dark:bg-gray-950 hover:bg-slate-50"}`}>
+src/pages/tasks/TaskManagement.tsx:4646:                      <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
+src/pages/tasks/TaskManagement.tsx:4652:                          <SelectItem value="overdue">Overdue</SelectItem>
+src/pages/tasks/TaskManagement.tsx:4743:                                          task.status !== "completed" && task.status !== "cancelled" && task.status !== "overdue";
+src/pages/tasks/TaskManagement.tsx:4788:                                                disabled={updatingTaskId === task.id || (task.status as string) === "overdue"}
+src/pages/tasks/TaskManagement.tsx:6515:                  <SelectItem value="Overdue">Overdue</SelectItem>
+src/pages/team_lead/TeamLeadDashboard.tsx:549:          return ['pending', 'in progress', 'overdue', 'todo', 'started'].includes(s);
+src/pages/teams/TeamManagement.tsx:41:  status: 'todo' | 'in-progress' | 'overdue' | 'completed';
+src/pages/teams/TeamManagement.tsx:136:    status: 'todo' as 'todo' | 'in-progress' | 'overdue' | 'completed'
+src/pages/teams/TeamManagement.tsx:363:                          <SelectItem value="overdue">Overdue</SelectItem>
+src/pages/teams/TeamManagement.tsx:402:                          team.status === 'overdue' ? 'bg-red-100 text-red-700' :
