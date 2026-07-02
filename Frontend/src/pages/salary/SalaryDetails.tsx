@@ -314,6 +314,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         working_days_per_month: '',
         payment_mode: 'Bank Transfer',
         pf_no: '',
+        variable_pay_type: 'none',
+        variable_pay_value: 0,
     });
 
 
@@ -396,21 +398,34 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 const expectedMonthlyConveyance = (data.conveyance_annual || 0) / 12 || data.conveyanceAllowance || 0;
                 const expectedMonthlyOtherAllowance = (data.other_allowance_annual || 0) / 12 || data.otherAllowance || 0;
 
-                // PF Calculation: prefer pf_annual (stored as combined both sides).
-                // If pf_annual is 0, check employer_pf_percentage to compute it properly.
+                // PF Calculation:
+                // pf_annual  = EMPLOYEE-ONLY annual PF contribution stored by the backend.
+                // pf_employer_annual = EMPLOYER-ONLY annual PF contribution (separate field).
+                // Never assign the same pf_annual to both sides — that causes double deduction.
                 let expectedMonthlyPfEmployer = 0;
                 let expectedMonthlyPfEmployee = 0;
-                if (data.pf_annual && data.pf_annual > 0) {
-                    expectedMonthlyPfEmployer = data.pf_annual / 12;
-                    expectedMonthlyPfEmployee = data.pf_annual / 12;
-                } else if (data.employer_pf_percentage && data.employer_pf_percentage > 0) {
-                    // Percentage-based PF: calculate from monthly basic
-                    expectedMonthlyPfEmployer = Math.round(expectedMonthlyBasic * (data.employer_pf_percentage / 100));
+                if (data.employer_pf_percentage && data.employer_pf_percentage > 0) {
+                    // Percentage-based PF: both sides computed from monthly basic
                     expectedMonthlyPfEmployee = Math.round(expectedMonthlyBasic * (data.employer_pf_percentage / 100));
+                    expectedMonthlyPfEmployer = expectedMonthlyPfEmployee;
+                } else if (data.pf_annual && data.pf_annual > 0) {
+                    // pf_annual = employee-only annual PF → convert to monthly employee deduction
+                    expectedMonthlyPfEmployee = data.pf_annual / 12;
+                    // Employer PF: use dedicated employer field; fall back to employee amount
+                    expectedMonthlyPfEmployer =
+                        data.pf_employer_annual != null && data.pf_employer_annual > 0
+                            ? data.pf_employer_annual / 12
+                            : data.pfEmployer != null && data.pfEmployer > 0
+                                ? data.pfEmployer
+                                : expectedMonthlyPfEmployee;
                 } else if (data.pfEmployer && data.pfEmployer > 0) {
-                    // Use already mapped pfEmployer from the API layer
+                    // Use already mapped pfEmployer / pfEmployee from the API layer
                     expectedMonthlyPfEmployer = data.pfEmployer;
                     expectedMonthlyPfEmployee = data.pfEmployee || data.pfEmployer;
+                } else if (data.pfEmployee && data.pfEmployee > 0) {
+                    // Only employee PF available — employer mirrors it
+                    expectedMonthlyPfEmployee = data.pfEmployee;
+                    expectedMonthlyPfEmployer = data.pfEmployee;
                 }
                 // If still 0, PF is not applicable for this employee
 
@@ -438,25 +453,25 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 data.professionalTax = expectedMonthlyPt;
                 data.otherDeduction = expectedMonthlyOtherDed;
 
-                // Special Allowance: prefer stored value; only balance against CTC if missing
+                // Special Allowance: prefer stored annual value; only balance against CTC if missing
                 const storedMonthlySpecial = (data.special_allowance_annual || 0) / 12 || data.specialAllowance || 0;
-                if (storedMonthlySpecial > 0) {
-                    data.specialAllowance = storedMonthlySpecial;
-                } else {
-                    // Balancing: CTC_fixed = Basic + HRA + Medical + Conveyance + Other + PF_Employer + Special
-                    const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay || 0) / 12;
-                    const knownComponents = data.monthlyBasic + data.hra + (data.medicalAllowance || 0) +
-                        (data.conveyanceAllowance || 0) + (data.otherAllowance || 0) + data.pfEmployer;
-                    data.specialAllowance = Math.max(0, monthlyFixedCtc - knownComponents);
-                }
+                data.specialAllowance = storedMonthlySpecial;
 
-                // Monthly Gross = sum of all earnings (excluding employer PF)
-                data.monthlyGross = data.monthlyBasic + data.hra + data.specialAllowance +
+                // Monthly Gross: prefer backend's pre-computed total_earnings_annual
+                // (sum of all earnings components — does NOT include employer PF)
+                data.monthlyGross = data.total_earnings_annual
+                    ? data.total_earnings_annual / 12
+                    : data.monthlyBasic + data.hra + data.specialAllowance +
                     (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0);
 
                 // Monthly Deductions include PT, Employee PF, and other deductions
                 data.monthlyDeductions = data.professionalTax + data.otherDeduction + data.pfEmployee;
-                data.monthlyInHand = data.monthlyGross - data.monthlyDeductions;
+
+                // Monthly In-Hand: trust backend directly (it handles Feb/other month PT differences)
+                // Backend computes: monthly_in_hand = monthly_gross - (pf_emp + pt + other_ded)
+                data.monthlyInHand = (data.monthly_in_hand !== undefined && data.monthly_in_hand !== null)
+                    ? data.monthly_in_hand
+                    : Math.max(0, data.monthlyGross - data.monthlyDeductions);
 
                 // Update CTC values
                 data.annualCtc = currentAnnualCtc;
@@ -616,6 +631,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 working_days_per_month: salaryData.workingDays || '',
                 payment_mode: mode,
                 pf_no: salaryData.pfNumber || '',
+                variable_pay_type: salaryData.variablePayType || 'none',
+                variable_pay_value: salaryData.variablePayValue || salaryData.variablePay || 0,
             });
         }
         setIsBankEditDialogOpen(true);
@@ -625,7 +642,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         try {
             setIsUpdatingBank(true);
 
-            const payload = {
+            const payload: any = {
                 user_id: parseInt(targetUserId!),
                 bank_name: bankForm.bank_name?.trim() || null,
                 bank_account: bankForm.bank_account?.trim() || null,
@@ -633,30 +650,36 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 working_days_per_month: bankForm.working_days_per_month === '' ? null : Number(bankForm.working_days_per_month),
                 uan_number: bankForm.uan_number?.trim() || null,
                 pf_no: bankForm.pf_no?.trim() || null,
+                payment_mode: bankForm.payment_mode || null,
+                variable_pay_type: bankForm.variable_pay_type || 'none',
+                variable_pay_value: bankForm.variable_pay_type !== 'none' ? Number(bankForm.variable_pay_value) : 0,
             };
 
             const response = await apiService.updateBankDetails(targetUserId!, payload);
 
             if (response) {
-                // Update local state with response
+                // Update local state with response data
                 setSalaryData(prev => prev ? {
                     ...prev,
-                    uanNumber: response.uan_number || bankForm.uan_number,
-                    bankName: response.bank_name || bankForm.bank_name,
-                    accountNumber: response.bank_account || bankForm.bank_account,
-                    ifscCode: response.ifsc_code || bankForm.ifsc_code,
-                    workingDays: response.working_days_per_month || bankForm.working_days_per_month,
-                    paymentMode: response.payment_mode?.toLowerCase().replace(' ', '_') || bankForm.payment_mode.toLowerCase().replace(' ', '_'),
-                    pfNumber: response.pf_no || bankForm.pf_no,
+                    uanNumber: response.uan_number ?? bankForm.uan_number,
+                    bankName: response.bank_name ?? bankForm.bank_name,
+                    accountNumber: response.bank_account ?? bankForm.bank_account,
+                    ifscCode: response.ifsc_code ?? bankForm.ifsc_code,
+                    workingDays: response.working_days_per_month ?? bankForm.working_days_per_month,
+                    paymentMode: response.payment_mode?.toLowerCase().replace(' ', '_') ?? bankForm.payment_mode.toLowerCase().replace(' ', '_'),
+                    pfNumber: response.pf_no ?? bankForm.pf_no,
+                    variablePayType: bankForm.variable_pay_type,
+                    variablePayValue: bankForm.variable_pay_type !== 'none' ? Number(bankForm.variable_pay_value) : 0,
+                    variablePay: response.variable_pay ?? (bankForm.variable_pay_type !== 'none' ? Number(bankForm.variable_pay_value) : 0),
                     // Recalculate monthly values from updated annual/config values
-                    otherDeduction: (response.other_deduction_annual !== undefined ? response.other_deduction_annual : bankForm.other_deduction_annual) / 12,
-                    pfEmployee: (response.pf_annual !== undefined ? response.pf_annual : bankForm.pf_annual) / 12,
-                    pfEmployer: (response.pf_annual !== undefined ? response.pf_annual : bankForm.pf_annual) / 12
+                    otherDeduction: (response.other_deduction_annual !== undefined ? response.other_deduction_annual : (prev.otherDeduction * 12)) / 12,
+                    pfEmployee: (response.pf_annual !== undefined ? response.pf_annual : (prev.pfEmployee * 12)) / 12,
+                    pfEmployer: (response.pf_annual !== undefined ? response.pf_annual : (prev.pfEmployer * 12)) / 12,
                 } : null);
 
                 toast({
                     title: "Success",
-                    description: "Bank details updated successfully.",
+                    description: "Bank & statutory details updated successfully.",
                     variant: "success"
                 });
 
@@ -2160,6 +2183,46 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     onChange={(e) => setBankForm(prev => ({ ...prev, pf_no: e.target.value.replace(/[^\p{L}\p{N}\p{P}\p{Z}\p{M}]/gu, '') }))}
                                     placeholder="Enter PF number"
                                     className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Variable Pay Section */}
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-4">Variable Pay</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="variable_pay_type">Variable Pay Type</Label>
+                                <Select
+                                    value={bankForm.variable_pay_type}
+                                    onValueChange={(value) => setBankForm((prev: any) => ({ ...prev, variable_pay_type: value, variable_pay_value: value === 'none' ? 0 : prev.variable_pay_value }))}
+                                >
+                                    <SelectTrigger className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800">
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None</SelectItem>
+                                        <SelectItem value="fixed">Fixed Amount (₹)</SelectItem>
+                                        <SelectItem value="percentage">Percentage (%)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="variable_pay_value">
+                                    {bankForm.variable_pay_type === 'percentage' ? 'Variable Pay (%)' : 'Variable Pay (₹)'}
+                                </Label>
+                                <Input
+                                    id="variable_pay_value"
+                                    type="number"
+                                    min="0"
+                                    step={bankForm.variable_pay_type === 'percentage' ? '0.01' : '1'}
+                                    value={bankForm.variable_pay_value}
+                                    onChange={(e) => setBankForm((prev: any) => ({ ...prev, variable_pay_value: e.target.value }))}
+                                    placeholder={bankForm.variable_pay_type === 'percentage' ? 'e.g. 10' : 'e.g. 60000'}
+                                    disabled={bankForm.variable_pay_type === 'none'}
+                                    className="border-2 border-[#000000] h-10 bg-white dark:bg-slate-800 disabled:opacity-50"
                                 />
                             </div>
                         </div>

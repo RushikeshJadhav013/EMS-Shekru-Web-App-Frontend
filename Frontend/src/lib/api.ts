@@ -2124,8 +2124,11 @@ class ApiService {
           : response.other_allowance || 0;
 
         // Monthly Gross = sum of all earnings (Basic + HRA + Special + Medical + Conveyance + Other)
+        // Prefer backend's pre-computed total_earnings_annual (most accurate source)
         // This correctly excludes employer PF (which is a CTC component, not a gross earning)
-        const monthlyGross = mappedMonthlyBasic + mappedHra + mappedSpecial +
+        const monthlyGross = response.total_earnings_annual
+          ? response.total_earnings_annual / 12
+          : mappedMonthlyBasic + mappedHra + mappedSpecial +
           mappedMedical + mappedConveyance + mappedOtherAllowance;
 
         // Map PF components.

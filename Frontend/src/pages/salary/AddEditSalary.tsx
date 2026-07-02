@@ -234,9 +234,12 @@ const AddEditSalary = () => {
     const watchPTAnn = form.watch('professionalTaxAnnual');
     const watchDeductionAnn = form.watch('otherDeductionAnnual');
 
+    // CTC = earnings side only (Basic + HRA + Special + Conveyance + Medical + Other + Variable).
+    // PF, PT, and other deductions are NOT part of CTC earnings — they are subtracted from gross pay.
     const totalCalculatedManualCTC = (parseNumber(watchBasicAnn) || 0) + (parseNumber(watchHraAnn) || 0) + (parseNumber(watchSpecialAnn) || 0) +
         (parseNumber(watchConveyanceAnn) || 0) + (parseNumber(watchMedicalAnn) || 0) + (parseNumber(watchOtherAnn) || 0) +
-        (parseNumber(watchPFAnn) || 0) + (parseNumber(watchVarPayAnn) || 0) + (parseNumber(watchPTAnn) || 0) + (parseNumber(watchDeductionAnn) || 0);
+        (parseNumber(watchVarPayAnn) || 0);
+
 
     const manualCtcDifference = parseNumber(watchCtc) - totalCalculatedManualCTC;
 
@@ -472,19 +475,25 @@ const AddEditSalary = () => {
                     const otherDeduction = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
 
                     const currentAnnualCtc = data.package_ctc_annual || data.annualCtc || (data.ctc_annual || ctcVal);
-                    // monthlyFixedCtc = fixed part of monthly CTC (excl. variable pay)
-                    // CTC = Basic + HRA + Special + Medical + Conveyance + Other + PF_Employer + Variable
-                    const monthlyFixedCtc = currentAnnualCtc / 12 - (data.variable_pay_annual || 0) / 12;
 
-                    // Recalculate special allowance to balance CTC:
-                    // monthlyFixedCtc = Basic + HRA + Medical + Conveyance + Other + PF_Employer + Special
-                    const knownComponents = monthlyBasic + hra + (medicalAllowance || 0) + (conveyanceAllowance || 0) + (otherAllowance || 0) + (pfEmployer || 0);
-                    const calculatedSpecial = Math.max(0, monthlyFixedCtc - knownComponents);
+                    // Special Allowance: use API value directly, or balance as last resort
+                    const calculatedSpecial = specialAllowance ||
+                        Math.max(0, (currentAnnualCtc / 12 - (data.variable_pay_annual || 0) / 12) -
+                            (monthlyBasic + hra + (medicalAllowance || 0) + (conveyanceAllowance || 0) + (otherAllowance || 0) + (pfEmployer || 0)));
 
-                    const monthlyGross = monthlyBasic + hra + (calculatedSpecial || specialAllowance) + medicalAllowance + conveyanceAllowance + otherAllowance;
-                    // Deductions = PT + Employee PF + Other (NOT employer PF — that’s a CTC item, not deducted from pay)
+                    // Monthly Gross: prefer backend's total_earnings_annual / 12 (authoritative)
+                    // Falls back to summing all earning components
+                    const monthlyGross = data.total_earnings_annual
+                        ? data.total_earnings_annual / 12
+                        : monthlyBasic + hra + (calculatedSpecial || specialAllowance) + medicalAllowance + conveyanceAllowance + otherAllowance;
+
+                    // Deductions = PT + Employee PF + Other (NOT employer PF — that's a CTC item, not deducted from pay)
                     const totalMonthlyDeductions = professionalTax + otherDeduction + pfEmployee;
-                    const monthlyInHand = monthlyGross - totalMonthlyDeductions;
+
+                    // Trust backend monthly_in_hand directly (handles Feb PT = 300 vs other months = 200)
+                    const monthlyInHand = (data.monthly_in_hand !== undefined && data.monthly_in_hand !== null)
+                        ? data.monthly_in_hand
+                        : Math.max(0, monthlyGross - totalMonthlyDeductions);
                     const annualCtc = currentAnnualCtc;
 
                     setPreviewData({
@@ -1581,10 +1590,10 @@ const AddEditSalary = () => {
                                             <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border-2 border-[#000000]">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                                    <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Monthly Gross</p>
+                                                    <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Est. In-Hand</p>
                                                 </div>
                                                 <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
-                                                    {previewData ? formatCurrency(previewData.monthlyGross) : '₹0'}
+                                                    {previewData ? formatCurrency(previewData.monthlyInHand) : '₹0'}
                                                 </p>
                                             </div>
                                         </div>
