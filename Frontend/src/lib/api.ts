@@ -2073,11 +2073,17 @@ class ApiService {
     annualCtc: number,
     variablePayType: string,
     variablePayValue: number,
+    pfType?: string,
+    pfValue?: number,
   ): Promise<any> {
     const params = new URLSearchParams();
     params.append("package_ctc_annual", annualCtc.toString());
     params.append("variable_pay_type", variablePayType);
     params.append("variable_pay_value", variablePayValue.toString());
+    if (pfType && pfType !== 'none') {
+      params.append("pf_type", pfType);
+      params.append("pf_value", (pfValue ?? 0).toString());
+    }
 
     return this.request(`/salary/calculate-preview?${params.toString()}`);
   }
@@ -2123,14 +2129,20 @@ class ApiService {
           mappedMedical + mappedConveyance + mappedOtherAllowance;
 
         // Map PF components.
-        // IMPORTANT: pf_annual stores EMPLOYEE PF only (e.g. 36000/yr = 3000/month).
-        // Employer PF is equal to employee PF (same 12% of basic).
+        // pf_annual = EMPLOYEE-SIDE PF only (e.g. 36000/yr = 3000/month).
+        // Employer PF must be read from a SEPARATE employer field.
+        // Do NOT derive both sides from pf_annual — that causes double-counting.
         const mappedPfEmployee = response.pf_annual
           ? response.pf_annual / 12
           : response.pf_employee || 0;
-        const mappedPfEmployer = response.pf_annual
-          ? response.pf_annual / 12
-          : response.pf_employer || mappedPfEmployee;
+        // Employer PF: prefer explicit employer field; NEVER fall back to pf_annual again
+        // (pf_annual is already used for employee side above).
+        const mappedPfEmployer =
+          response.pf_employer_annual != null
+            ? response.pf_employer_annual / 12
+            : response.pf_employer != null
+              ? response.pf_employer
+              : mappedPfEmployee; // employer = employee when both are same rate (12%)
 
         // Map Professional Tax: prefer backend's pre-computed monthly value
         const mappedPt = response.monthly_professional_tax !== undefined
