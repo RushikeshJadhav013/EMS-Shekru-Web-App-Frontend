@@ -97,6 +97,15 @@ const Login: React.FC = () => {
     }
   }, [otpSent]);
 
+  // Auto-focus PIN input when PIN form is shown
+  useEffect(() => {
+    if (loginMode === 'pin' && pinInputRef.current) {
+      setTimeout(() => {
+        pinInputRef.current?.focus();
+      }, 100);
+    }
+  }, [loginMode]);
+
   // Check for session message from navigation state
   useEffect(() => {
     if (location.state?.message) {

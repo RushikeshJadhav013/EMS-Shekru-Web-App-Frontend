@@ -2097,108 +2097,59 @@ class ApiService {
       }
       const response = await this.request(endpoint);
 
-      // Validate and normalize the response data
+      // Pure pass-through — NO frontend calculations.
+      // All values come directly from the backend as-is.
       if (response && typeof response === "object") {
-        // Ensure all required fields are properly mapped from snake_case to camelCase
-        const annualCtc =
-          response.ctc_annual || response.package_ctc_annual || 0;
-
-        // Map individual earning components (monthly)
-        const mappedMonthlyBasic = response.basic_annual
-          ? response.basic_annual / 12
-          : response.monthly_basic || 0;
-        const mappedHra = response.hra_annual
-          ? response.hra_annual / 12
-          : response.hra || 0;
-        const mappedSpecial = response.special_allowance_annual
-          ? response.special_allowance_annual / 12
-          : response.special_allowance || 0;
-        const mappedMedical = response.medical_allowance_annual
-          ? response.medical_allowance_annual / 12
-          : response.medical_allowance || 0;
-        const mappedConveyance = response.conveyance_annual
-          ? response.conveyance_annual / 12
-          : response.conveyance_allowance || 0;
-        const mappedOtherAllowance = response.other_allowance_annual
-          ? response.other_allowance_annual / 12
-          : response.other_allowance || 0;
-
-        // Monthly Gross = sum of all earnings (Basic + HRA + Special + Medical + Conveyance + Other)
-        // Prefer backend's pre-computed total_earnings_annual (most accurate source)
-        // This correctly excludes employer PF (which is a CTC component, not a gross earning)
-        const monthlyGross = response.total_earnings_annual
-          ? response.total_earnings_annual / 12
-          : mappedMonthlyBasic + mappedHra + mappedSpecial +
-          mappedMedical + mappedConveyance + mappedOtherAllowance;
-
-        // Map PF components.
-        // pf_annual = EMPLOYEE-SIDE PF only (e.g. 36000/yr = 3000/month).
-        // Employer PF must be read from a SEPARATE employer field.
-        // Do NOT derive both sides from pf_annual — that causes double-counting.
-        const mappedPfEmployee = response.pf_annual
-          ? response.pf_annual / 12
-          : response.pf_employee || 0;
-        // Employer PF: prefer explicit employer field; NEVER fall back to pf_annual again
-        // (pf_annual is already used for employee side above).
-        const mappedPfEmployer =
-          response.pf_employer_annual != null
-            ? response.pf_employer_annual / 12
-            : response.pf_employer != null
-              ? response.pf_employer
-              : mappedPfEmployee; // employer = employee when both are same rate (12%)
-
-        // Map Professional Tax: prefer backend's pre-computed monthly value
-        const mappedPt = response.monthly_professional_tax !== undefined
-          ? response.monthly_professional_tax
-          : (response.professional_tax_annual >= 2400
-            ? 200  // default non-Feb; backend will return 300 for Feb when queried with month=2
-            : (response.professional_tax_annual ? response.professional_tax_annual / 12 : 0));
-
-        const mappedOtherDeduction = response.other_deduction_annual
-          ? response.other_deduction_annual / 12
-          : response.other_deduction || 0;
-
-        // Monthly Deductions = PT + Employee PF + Other Deductions
-        const monthlyDeductions = mappedPt + mappedPfEmployee + mappedOtherDeduction;
-
-        // Monthly In-Hand: trust backend directly (it handles Feb/other month differences)
-        const finalMonthlyInHand =
-          response.monthly_in_hand !== undefined && response.monthly_in_hand !== null
-            ? response.monthly_in_hand
-            : Math.max(0, monthlyGross - monthlyDeductions);
-
         return {
+          // Spread every raw API field so callers have full access
           ...response,
+
+          // Rename snake_case → camelCase for TypeScript consumers
           userId: String(response.user_id || userId),
-          annualCtc: annualCtc,
-          monthlyBasic: mappedMonthlyBasic,
-          hra: mappedHra,
-          specialAllowance: mappedSpecial,
-          medicalAllowance: mappedMedical,
-          conveyanceAllowance: mappedConveyance,
-          otherAllowance: mappedOtherAllowance,
-          professionalTax: mappedPt,
-          pfEmployer: mappedPfEmployer,
-          pfEmployee: mappedPfEmployee,
-          otherDeduction: mappedOtherDeduction,
-          variablePay: response.variable_pay || 0,
-          monthlyGross: monthlyGross,
-          monthlyDeductions: monthlyDeductions,
-          monthlyInHand: finalMonthlyInHand,
-          monthly_ctc: response.monthly_ctc || annualCtc / 12,
-          workingDays: response.working_days_per_month || 26,
-          paymentMode: response.payment_mode || "Bank Transfer",
-          bankName: response.bank_name || "",
-          accountNumber: response.bank_account || "",
-          ifscCode: response.ifsc_code || "",
-          panNumber: response.pan_number || "",
-          uanNumber: response.uan_number || "",
-          pfNumber: response.pf_no || "",
-          is_active:
-            response.is_active !== undefined ? response.is_active : true,
-          effectiveDate: response.created_at || "",
-          createdAt: response.created_at || "",
-          updatedAt: response.updated_at || "",
+
+          // ── Annual CTC ── display_ctc_annual is authoritative
+          annualCtc: response.display_ctc_annual ?? response.package_ctc_annual ?? response.ctc_annual ?? 0,
+
+          // ── Monthly Gross ── display_monthly_ctc is authoritative
+          monthlyGross: response.display_monthly_ctc ?? response.monthly_ctc ?? 0,
+
+          // ── Monthly In-Hand ── three backend variants, all passed through
+          monthlyInHand: response.monthly_in_hand ?? 0,
+          febMonthlyInHand: response.feb_monthly_in_hand ?? null,
+          otherMonthlyInHand: response.other_monthly_in_hand ?? null,
+
+          // ── Earnings (divide annual by 12 only for breakdown display) ──
+          monthlyBasic: (response.basic_annual ?? 0) / 12,
+          hra: (response.hra_annual ?? 0) / 12,
+          specialAllowance: (response.special_allowance_annual ?? 0) / 12,
+          medicalAllowance: (response.medical_allowance_annual ?? 0) / 12,
+          conveyanceAllowance: (response.conveyance_annual ?? 0) / 12,
+          otherAllowance: (response.other_allowance_annual ?? 0) / 12,
+
+          // ── Deductions ── use backend's monthly_professional_tax directly
+          professionalTax: response.monthly_professional_tax ?? 0,
+          pfEmployee: (response.pf_annual ?? 0) / 12,
+          pfEmployer: (response.pf_annual ?? 0) / 12,
+          otherDeduction: (response.other_deduction_annual ?? 0) / 12,
+          monthlyDeductions: response.total_deductions_annual != null
+            ? response.total_deductions_annual / 12
+            : 0,
+
+          // ── Other fields ──
+          variablePay: response.variable_pay ?? 0,
+          monthly_ctc: response.display_monthly_ctc ?? response.monthly_ctc ?? 0,
+          workingDays: response.working_days_per_month ?? 26,
+          paymentMode: response.payment_mode ?? "Bank Transfer",
+          bankName: response.bank_name ?? "",
+          accountNumber: response.bank_account ?? "",
+          ifscCode: response.ifsc_code ?? "",
+          panNumber: response.pan_number ?? "",
+          uanNumber: response.uan_number ?? "",
+          pfNumber: response.pf_no ?? "",
+          is_active: response.is_active ?? true,
+          effectiveDate: response.created_at ?? "",
+          createdAt: response.created_at ?? "",
+          updatedAt: response.updated_at ?? "",
         };
       }
 
@@ -2351,9 +2302,24 @@ class ApiService {
     const params = new URLSearchParams();
     if (year) params.append("year", year.toString());
     const query = params.toString();
-    return this.request(
-      `/salary/slip/history/${userId}${query ? `?${query}` : ""}`,
-    );
+    try {
+      return await this.request(
+        `/salary/slip/history/${userId}${query ? `?${query}` : ""}`,
+      );
+    } catch (error: any) {
+      // Gracefully return empty history for 404 (no salary record / employee not found)
+      // These are expected when a user has no salary structure yet.
+      const msg = error?.message || "";
+      if (
+        msg.includes("404") ||
+        msg.includes("not found") ||
+        msg.includes("Not Found") ||
+        msg.includes("Employee not found")
+      ) {
+        return { history: [] };
+      }
+      throw error;
+    }
   }
 
   // 7. Annexure & Offer Letter
@@ -2410,7 +2376,22 @@ class ApiService {
   }
 
   async getIncrements(userId: string): Promise<any[]> {
-    return this.request(`/salary/increments/${userId}`);
+    try {
+      return await this.request(`/salary/increments/${userId}`);
+    } catch (error: any) {
+      // Gracefully return empty list for 404/500 (no salary record / no increments yet)
+      const msg = error?.message || "";
+      if (
+        msg.includes("404") ||
+        msg.includes("not found") ||
+        msg.includes("Not Found") ||
+        msg.includes("500") ||
+        msg.includes("Internal Server Error")
+      ) {
+        return [];
+      }
+      throw error;
+    }
   }
 
   async getIncrementById(incrementId: string): Promise<any> {

@@ -345,162 +345,53 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 return;
             }
 
-            // The API now returns properly mapped data, so we can use it directly
-            // Just ensure we have all required fields with fallbacks
+            // NO frontend calculations — map raw API fields 1:1.
+            // All salary values are authoritative from the backend.
             const mappedSalary: SalaryStructure = {
                 id: data.id || `sal_${targetUserId}`,
-                userId: String(data.userId || targetUserId),
-                annualCtc: data.annualCtc || 0,
-                variablePayType: data.variablePayType || 'none',
-                variablePayValue: data.variablePayValue || 0,
-                paymentMode: data.paymentMode || 'bank_transfer',
-                bankName: data.bankName || '',
-                accountNumber: data.accountNumber || '',
-                ifscCode: data.ifscCode || '',
-                panNumber: data.panNumber || '',
-                uanNumber: data.uanNumber || '',
-                pfNumber: data.pfNumber || data.pf_no || '',
-                workingDays: data.workingDays || 26,
+                userId: String(data.user_id || data.userId || targetUserId),
 
-                // Monthly components (already calculated by API)
-                monthlyBasic: data.monthlyBasic || 0,
-                hra: data.hra || 0,
-                specialAllowance: data.specialAllowance || 0,
-                medicalAllowance: data.medicalAllowance || 0,
-                conveyanceAllowance: data.conveyanceAllowance || 0,
-                otherAllowance: data.otherAllowance || 0,
-                pfEmployee: data.pfEmployee || 0,
-                pfEmployer: data.pfEmployer || 0,
-                professionalTax: data.professionalTax || 0,
-                otherDeduction: data.otherDeduction || 0,
-                variablePay: data.variablePay || data.variable_pay || 0,
+                // Annual CTC  → display_ctc_annual
+                annualCtc: data.display_ctc_annual ?? data.package_ctc_annual ?? data.annualCtc ?? 0,
 
-                // Totals
-                monthlyGross: data.monthlyGross || 0,
-                monthlyDeductions: data.monthlyDeductions || 0,
-                monthlyInHand: data.monthlyInHand || 0,
+                variablePayType: data.variable_pay_type || data.variablePayType || 'none',
+                variablePayValue: data.variable_pay_value ?? data.variablePayValue ?? 0,
 
-                effectiveDate: data.effectiveDate || data.createdAt || '',
-                createdAt: data.createdAt || '',
-                updatedAt: data.updatedAt || '',
+                // Bank / payment info
+                paymentMode: data.payment_mode || data.paymentMode || 'bank_transfer',
+                bankName: data.bank_name || data.bankName || '',
+                accountNumber: data.bank_account || data.accountNumber || '',
+                ifscCode: data.ifsc_code || data.ifscCode || '',
+                panNumber: data.pan_number || data.panNumber || '',
+                uanNumber: data.uan_number || data.uanNumber || '',
+                pfNumber: data.pf_no || data.pfNumber || '',
+                workingDays: data.working_days_per_month ?? data.workingDays ?? 26,
 
-                is_active: data.is_active !== undefined ? data.is_active : true
+                // Monthly earnings — annual / 12 (breakdown display only)
+                monthlyBasic: (data.basic_annual ?? 0) / 12,
+                hra: (data.hra_annual ?? 0) / 12,
+                specialAllowance: (data.special_allowance_annual ?? 0) / 12,
+                medicalAllowance: (data.medical_allowance_annual ?? 0) / 12,
+                conveyanceAllowance: (data.conveyance_annual ?? 0) / 12,
+                otherAllowance: (data.other_allowance_annual ?? 0) / 12,
+
+                // Monthly deductions — straight from backend
+                pfEmployee: (data.pf_annual ?? 0) / 12,
+                pfEmployer: (data.pf_annual ?? 0) / 12,
+                professionalTax: data.monthly_professional_tax ?? 0,
+                otherDeduction: (data.other_deduction_annual ?? 0) / 12,
+                variablePay: data.variable_pay ?? 0,
+
+                // Totals — all from backend, no recalculation
+                monthlyGross: data.display_monthly_ctc ?? data.monthly_ctc ?? 0,
+                monthlyDeductions: data.total_deductions_annual != null ? data.total_deductions_annual / 12 : 0,
+                monthlyInHand: data.monthly_in_hand ?? 0,
+
+                effectiveDate: data.created_at || '',
+                createdAt: data.created_at || '',
+                updatedAt: data.updated_at || '',
+                is_active: data.is_active ?? true,
             };
-
-            // Always recalculate totals to ensure they match current CTC
-            const currentAnnualCtc = data.ctc_annual || data.annualCtc || 0;
-
-            if (currentAnnualCtc > 0) {
-                // Recalculate monthly components from annual values (prefer annual fields)
-                const expectedMonthlyBasic = (data.basic_annual || 0) / 12 || data.monthlyBasic || 0;
-                const expectedMonthlyHra = (data.hra_annual || 0) / 12 || data.hra || 0;
-                const expectedMonthlyMedical = (data.medical_allowance_annual || 0) / 12 || data.medicalAllowance || 0;
-                const expectedMonthlyConveyance = (data.conveyance_annual || 0) / 12 || data.conveyanceAllowance || 0;
-                const expectedMonthlyOtherAllowance = (data.other_allowance_annual || 0) / 12 || data.otherAllowance || 0;
-
-                // PF Calculation:
-                // pf_annual  = EMPLOYEE-ONLY annual PF contribution stored by the backend.
-                // pf_employer_annual = EMPLOYER-ONLY annual PF contribution (separate field).
-                // Never assign the same pf_annual to both sides — that causes double deduction.
-                let expectedMonthlyPfEmployer = 0;
-                let expectedMonthlyPfEmployee = 0;
-                if (data.employer_pf_percentage && data.employer_pf_percentage > 0) {
-                    // Percentage-based PF: both sides computed from monthly basic
-                    expectedMonthlyPfEmployee = Math.round(expectedMonthlyBasic * (data.employer_pf_percentage / 100));
-                    expectedMonthlyPfEmployer = expectedMonthlyPfEmployee;
-                } else if (data.pf_annual && data.pf_annual > 0) {
-                    // pf_annual = employee-only annual PF → convert to monthly employee deduction
-                    expectedMonthlyPfEmployee = data.pf_annual / 12;
-                    // Employer PF: use dedicated employer field; fall back to employee amount
-                    expectedMonthlyPfEmployer =
-                        data.pf_employer_annual != null && data.pf_employer_annual > 0
-                            ? data.pf_employer_annual / 12
-                            : data.pfEmployer != null && data.pfEmployer > 0
-                                ? data.pfEmployer
-                                : expectedMonthlyPfEmployee;
-                } else if (data.pfEmployer && data.pfEmployer > 0) {
-                    // Use already mapped pfEmployer / pfEmployee from the API layer
-                    expectedMonthlyPfEmployer = data.pfEmployer;
-                    expectedMonthlyPfEmployee = data.pfEmployee || data.pfEmployer;
-                } else if (data.pfEmployee && data.pfEmployee > 0) {
-                    // Only employee PF available — employer mirrors it
-                    expectedMonthlyPfEmployee = data.pfEmployee;
-                    expectedMonthlyPfEmployer = data.pfEmployee;
-                }
-                // If still 0, PF is not applicable for this employee
-
-                // Professional Tax: Handle 200/300 split
-                const viewMonth = selectedMonth !== "all" ? parseInt(selectedMonth) : (new Date().getMonth() + 1);
-                let expectedMonthlyPt = 200;
-                if (data.professionalTax !== undefined) {
-                    expectedMonthlyPt = data.professionalTax;
-                } else if (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) {
-                    expectedMonthlyPt = (viewMonth === 2) ? 300 : 200;
-                } else if (data.professionalTax) {
-                    expectedMonthlyPt = data.professionalTax;
-                }
-
-                const expectedMonthlyOtherDed = (data.other_deduction_annual || 0) / 12 || data.otherDeduction || 0;
-
-                // Update monthly values
-                data.monthlyBasic = expectedMonthlyBasic;
-                data.hra = expectedMonthlyHra;
-                data.medicalAllowance = expectedMonthlyMedical;
-                data.conveyanceAllowance = expectedMonthlyConveyance;
-                data.otherAllowance = expectedMonthlyOtherAllowance;
-                data.pfEmployer = expectedMonthlyPfEmployer;
-                data.pfEmployee = expectedMonthlyPfEmployee;
-                data.professionalTax = expectedMonthlyPt;
-                data.otherDeduction = expectedMonthlyOtherDed;
-
-                // Special Allowance: prefer stored annual value; only balance against CTC if missing
-                const storedMonthlySpecial = (data.special_allowance_annual || 0) / 12 || data.specialAllowance || 0;
-                data.specialAllowance = storedMonthlySpecial;
-
-                // Monthly Gross: prefer backend's pre-computed total_earnings_annual
-                // (sum of all earnings components — does NOT include employer PF)
-                data.monthlyGross = data.total_earnings_annual
-                    ? data.total_earnings_annual / 12
-                    : data.monthlyBasic + data.hra + data.specialAllowance +
-                    (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0);
-
-                // Monthly Deductions include PT, Employee PF, and other deductions
-                data.monthlyDeductions = data.professionalTax + data.otherDeduction + data.pfEmployee;
-
-                // Monthly In-Hand: trust backend directly (it handles Feb/other month PT differences)
-                // Backend computes: monthly_in_hand = monthly_gross - (pf_emp + pt + other_ded)
-                data.monthlyInHand = (data.monthly_in_hand !== undefined && data.monthly_in_hand !== null)
-                    ? data.monthly_in_hand
-                    : Math.max(0, data.monthlyGross - data.monthlyDeductions);
-
-                // Update CTC values
-                data.annualCtc = currentAnnualCtc;
-                data.ctc_annual = currentAnnualCtc;
-                data.monthly_ctc = currentAnnualCtc / 12;
-
-                // Sync mappedSalary with recalculated values
-                mappedSalary.annualCtc = data.annualCtc;
-                mappedSalary.monthlyBasic = data.monthlyBasic;
-                mappedSalary.hra = data.hra;
-                mappedSalary.specialAllowance = data.specialAllowance;
-                mappedSalary.medicalAllowance = data.medicalAllowance;
-                mappedSalary.conveyanceAllowance = data.conveyanceAllowance;
-                mappedSalary.otherAllowance = data.otherAllowance;
-                mappedSalary.pfEmployer = data.pfEmployer;
-                mappedSalary.pfEmployee = data.pfEmployee;
-                mappedSalary.professionalTax = data.professionalTax;
-                mappedSalary.otherDeduction = data.otherDeduction;
-                mappedSalary.monthlyGross = data.monthlyGross;
-                mappedSalary.monthlyDeductions = data.monthlyDeductions;
-                mappedSalary.monthlyInHand = data.monthlyInHand;
-            } else {
-                // Fallback: recalculate from available monthly fields if no CTC
-                if (!data.monthlyGross || data.monthlyGross === 0) {
-                    data.monthlyGross = (data.monthlyBasic || 0) + (data.hra || 0) + (data.specialAllowance || 0) +
-                        (data.medicalAllowance || 0) + (data.conveyanceAllowance || 0) + (data.otherAllowance || 0);
-                    mappedSalary.monthlyGross = data.monthlyGross;
-                }
-            }
 
             const userData = await apiService.getEmployeeWithPAN(targetUserId);
             if (userData && userData.name) {
@@ -549,13 +440,21 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         try {
             const data = await apiService.getIncrements(targetUserId!);
             setIncrements(data || []);
-        } catch (error) {
-            console.error("Failed to load increments", error);
-            toast({
-                title: "Error",
-                description: "Failed to load increment history.",
-                variant: "destructive"
-            });
+        } catch (error: any) {
+            // Silently ignore 404 (no salary / employee not found) and 500 errors —
+            // these are expected when the admin/user has no salary record yet.
+            const msg = error?.message || '';
+            const isExpected = msg.includes('404') || msg.includes('not found') ||
+                msg.includes('Not Found') || msg.includes('500') ||
+                msg.includes('Internal Server Error');
+            if (!isExpected) {
+                console.error("Failed to load increments", error);
+                toast({
+                    title: "Error",
+                    description: "Failed to load increment history.",
+                    variant: "destructive"
+                });
+            }
             setIncrements([]);
         }
     }, [targetUserId, toast]);
@@ -565,13 +464,20 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             setIsLoadingHistory(true);
             const data = await apiService.getSalarySlipHistory(targetUserId!, selectedYear);
             setSalarySlipHistory(data?.history || []);
-        } catch (error) {
-            console.error('Failed to load salary slip history:', error);
-            toast({
-                title: 'Error',
-                description: 'Failed to load salary slip history.',
-                variant: 'destructive'
-            });
+        } catch (error: any) {
+            // Silently ignore 404 (no employee / no salary record) — expected for users
+            // without a salary record. Only surface unexpected errors to the user.
+            const msg = error?.message || '';
+            const isExpected = msg.includes('404') || msg.includes('not found') ||
+                msg.includes('Not Found') || msg.includes('Employee not found');
+            if (!isExpected) {
+                console.error('Failed to load salary slip history:', error);
+                toast({
+                    title: 'Error',
+                    description: 'Failed to load salary slip history.',
+                    variant: 'destructive'
+                });
+            }
             setSalarySlipHistory([]);
         } finally {
             setIsLoadingHistory(false);
@@ -1011,7 +917,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         }
     };
 
-    // Create memoized salary structure for consistent display across summary and breakdown
+    // displaySalaryData — pure pass-through, NO recalculations
     const displaySalaryData: SalaryStructure = React.useMemo(() => {
         const base = salaryData || {
             id: '',
@@ -1047,50 +953,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             is_active: true
         };
 
-        // Recalculate base structural totals
-        const structGross = (base.monthlyBasic || 0) + (base.hra || 0) + (base.specialAllowance || 0) +
-            (base.medicalAllowance || 0) + (base.conveyanceAllowance || 0) + (base.otherAllowance || 0);
-        const structDeductions = (base.professionalTax || 0) + (base.pfEmployee || 0) + (base.otherDeduction || 0);
-
-        let finalInHand = structGross - structDeductions;
-        let finalGross = structGross;
-        let finalDeductions = structDeductions;
-        let finalSpecialAllowance = base.specialAllowance || 0;
-        let finalOtherDeduction = base.otherDeduction || 0;
-
-        // If a specific month is selected and we have a slip in history for it, use those values
-        if (selectedMonth !== "all" && salarySlipHistory.length > 0) {
-            const slip = salarySlipHistory.find(s => s.month.toString() === selectedMonth && s.year === selectedYear);
-            if (slip) {
-                if (slip.net_salary !== undefined && slip.net_salary !== null) {
-                    finalInHand = slip.net_salary;
-                }
-                if (slip.gross_salary !== undefined && slip.gross_salary !== null) {
-                    finalGross = slip.gross_salary;
-                }
-                finalDeductions = finalGross - finalInHand;
-
-                // Adjust balancing components to maintain consistency in the breakdown table
-                // For Gross: Special Allowance = finalGross - (Basic + HRA + Medical + Conveyance + OtherAllowance)
-                const fixedEarnings = (base.monthlyBasic || 0) + (base.hra || 0) + (base.medicalAllowance || 0) +
-                    (base.conveyanceAllowance || 0) + (base.otherAllowance || 0);
-                finalSpecialAllowance = Math.max(0, finalGross - fixedEarnings);
-
-                // For Deductions: Other Deductions = finalDeductions - (PT + PF_Employee)
-                const fixedDeductions = (base.professionalTax || 0) + (base.pfEmployee || 0);
-                finalOtherDeduction = Math.max(0, finalDeductions - fixedDeductions);
-            }
-        }
-
-        return {
-            ...base,
-            monthlyGross: finalGross,
-            monthlyDeductions: finalDeductions,
-            monthlyInHand: finalInHand,
-            specialAllowance: finalSpecialAllowance,
-            otherDeduction: finalOtherDeduction
-        };
-    }, [salaryData, targetUserId, selectedMonth, selectedYear, salarySlipHistory]);
+        // Return salaryData exactly as-is — backend is the only source of truth
+        return base;
+    }, [salaryData, targetUserId]);
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-IN', {
@@ -1142,14 +1007,23 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             </div>
 
             {/* Salary Summary Cards - Admin/HR or Owner Only */}
+            {/* All values read directly from API fields — NO frontend calculations */}
             {canViewAll && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {(() => {
-                        const annualCtc = displaySalaryData.annualCtc || displaySalaryData.ctc_annual || 0;
-                        const monthly_ctc = displaySalaryData.monthly_ctc || (annualCtc / 12);
+                        const raw = salaryData as any;
+                        const viewMonth = selectedMonth !== "all" ? parseInt(selectedMonth) : (new Date().getMonth() + 1);
 
-                        let currentMonthlyInHand = displaySalaryData.monthlyInHand;
-                        const currentMonthlyCTC = monthly_ctc;
+                        // 1. Annual CTC → display_ctc_annual
+                        const annualCtc = raw?.display_ctc_annual ?? raw?.annualCtc ?? 0;
+
+                        // 2. Monthly Gross → display_monthly_ctc
+                        const monthlyGross = raw?.display_monthly_ctc ?? raw?.monthlyGross ?? 0;
+
+                        // 3. Monthly In-Hand → feb_monthly_in_hand (Feb) / other_monthly_in_hand (others)
+                        const monthlyInHand = viewMonth === 2
+                            ? (raw?.feb_monthly_in_hand ?? raw?.febMonthlyInHand ?? raw?.monthly_in_hand ?? 0)
+                            : (raw?.other_monthly_in_hand ?? raw?.otherMonthlyInHand ?? raw?.monthly_in_hand ?? 0);
 
                         return (
                             <>
@@ -1161,22 +1035,22 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     iconBg="bg-blue-50"
                                 />
                                 <SummaryCard
-                                    title="Monthly In-Hand"
-                                    value={formatCurrency(currentMonthlyInHand)}
+                                    title={viewMonth === 2 ? "Monthly In-Hand (Feb)" : "Monthly In-Hand"}
+                                    value={formatCurrency(monthlyInHand)}
                                     icon={DollarSign}
                                     iconColor="text-green-600"
                                     iconBg="bg-green-50"
                                 />
                                 <SummaryCard
-                                    title="Monthly CTC"
-                                    value={formatCurrency(currentMonthlyCTC)}
+                                    title="Monthly Gross"
+                                    value={formatCurrency(monthlyGross)}
                                     icon={TrendingUp}
                                     iconColor="text-indigo-600"
                                     iconBg="bg-indigo-50"
                                 />
                                 <SummaryCard
                                     title="Payment Mode"
-                                    value={displaySalaryData.paymentMode.replace('_', ' ')}
+                                    value={(raw?.payment_mode || raw?.paymentMode || 'Bank Transfer').replace('_', ' ')}
                                     icon={CreditCard}
                                     iconColor="text-amber-600"
                                     iconBg="bg-amber-50"

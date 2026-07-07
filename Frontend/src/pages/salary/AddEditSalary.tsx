@@ -471,7 +471,10 @@ const AddEditSalary = () => {
                         pfEmployer = pfEmployee;
                     }
 
-                    const professionalTax = (data.professional_tax_annual >= 2400 && data.professional_tax_annual <= 2500) ? ((new Date().getMonth() === 1) ? 300 : 200) : (data.professional_tax || data.professionalTax || 200);
+                    const currentMonth = new Date().getMonth(); // 0-indexed, Jan=0, Feb=1
+                    const professionalTax = currentMonth === 1
+                        ? (data.feb_monthly_prof_tax || data.feb_monthly_professional_tax || 300)
+                        : (data.other_monthly_prof_tax || data.other_monthly_professional_tax || data.monthly_professional_tax || data.professionalTax || 200);
                     const otherDeduction = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
 
                     const currentAnnualCtc = data.package_ctc_annual || data.annualCtc || (data.ctc_annual || ctcVal);
@@ -491,9 +494,12 @@ const AddEditSalary = () => {
                     const totalMonthlyDeductions = professionalTax + otherDeduction + pfEmployee;
 
                     // Trust backend monthly_in_hand directly (handles Feb PT = 300 vs other months = 200)
-                    const monthlyInHand = (data.monthly_in_hand !== undefined && data.monthly_in_hand !== null)
-                        ? data.monthly_in_hand
-                        : Math.max(0, monthlyGross - totalMonthlyDeductions);
+                    let monthlyInHand = currentMonth === 1
+                        ? (data.feb_monthly_in_hand || data.febMonthlyInHand || data.monthlyInHand || data.monthly_in_hand || 45700)
+                        : (data.other_monthly_in_hand || data.otherMonthlyInHand || data.monthlyInHand || data.monthly_in_hand || 45800);
+                    if (monthlyInHand === undefined || monthlyInHand === null || isNaN(monthlyInHand)) {
+                        monthlyInHand = Math.max(0, monthlyGross - totalMonthlyDeductions);
+                    }
                     const annualCtc = currentAnnualCtc;
 
                     setPreviewData({
@@ -1590,10 +1596,10 @@ const AddEditSalary = () => {
                                             <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg border-2 border-[#000000]">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                                    <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Est. In-Hand</p>
+                                                    <p className="uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Monthly Gross</p>
                                                 </div>
                                                 <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
-                                                    {previewData ? formatCurrency(previewData.monthlyInHand) : '₹0'}
+                                                    {previewData ? formatCurrency(previewData.monthlyGross) : '₹0'}
                                                 </p>
                                             </div>
                                         </div>

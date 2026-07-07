@@ -112,10 +112,15 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   // Backend might return is_active as "true"/"false" strings or boolean
   let finalStatus = mapped.status || 'active';
   const rawActive = mapped.isActive !== undefined ? mapped.isActive : emp.is_active;
+  const resignationDate = mapped.resignationDate || emp.resignation_date;
 
-  if (rawActive !== undefined && rawActive !== null) {
+  if (resignationDate && resignationDate !== 'null' && resignationDate !== 'undefined') {
+    finalStatus = 'ex-employee';
+  } else if (rawActive !== undefined && rawActive !== null) {
     const s = String(rawActive).toLowerCase().trim();
-    if (s === 'true' || rawActive === true || s === 'active') {
+    if (s === 'ex-employee' || s === 'ex_employee' || mapped.status === 'ex-employee' || emp.status === 'ex-employee') {
+      finalStatus = 'ex-employee';
+    } else if (s === 'true' || rawActive === true || s === 'active') {
       finalStatus = 'active';
     } else if (s === 'false' || rawActive === false || s === 'inactive') {
       finalStatus = 'inactive';
@@ -353,6 +358,14 @@ export default function EmployeeManagement() {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [overallStats, setOverallStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    exEmployee: 0,
+    newJoiners: 0
+  });
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const { user } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -524,34 +537,93 @@ export default function EmployeeManagement() {
     { code: '+81', flag: '🇯🇵', name: 'Japan' },
   ];
 
+  // Debounce search query
   useEffect(() => {
-    const fetchEmployees = async () => {
-      setIsLoading(true);
-      try {
-        const data = await apiService.getEmployees();
-        const mappedData = data.map(mapEmployeeData);
-        console.log('Loaded employees:', mappedData); // ✅ Debug log
-        console.log('First employee structure:', mappedData[0]); // ✅ Debug log
-        setEmployees(mappedData);
-      } catch (error: any) {
-        console.error('Failed to fetch employees:', error);
-
-        // Check for 409 Conflict (Multiple scopes found)
-        const errorMessage = error.message || '';
-        if (error.status === 409 || errorMessage.includes('Multiple company') || errorMessage.includes('409') || errorMessage.includes('Scope conflict')) {
-          setActiveScopeError(true);
-        }
-
-        toast({
-          title: 'Error',
-          description: error.message || 'Failed to load employees. Please try again.',
-          variant: 'destructive'
-        });
-      } finally {
-        setIsLoading(false);
-      }
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 450);
+    return () => {
+      clearTimeout(handler);
     };
+  }, [searchQuery]);
 
+  const fetchStats = async () => {
+    try {
+      // Fetch 'all' status employees to calculate active and inactive
+      const allData = await apiService.getEmployees({ is_active: 'all' });
+      // Fetch 'ex-employee' status employees
+      const exData = await apiService.getEmployees({ is_active: 'ex-employee' });
+
+      const mappedAll = Array.isArray(allData) ? allData.map(mapEmployeeData) : [];
+      const mappedEx = Array.isArray(exData) ? exData.map(mapEmployeeData) : [];
+
+      // Exclude Admin users from the stats to align with the list view logic
+      const filteredAll = mappedAll.filter((e: any) => e.role !== 'admin');
+      const filteredEx = mappedEx.filter((e: any) => e.role !== 'admin');
+
+      const activeCount = filteredAll.filter((e: any) => e.status === 'active').length;
+      const inactiveCount = filteredAll.filter((e: any) => e.status === 'inactive').length;
+      const exCount = filteredEx.length;
+      const totalCount = activeCount + inactiveCount + exCount;
+
+      const newJoinersCount = [...filteredAll, ...filteredEx].filter((e: any) => {
+        if (!e.joiningDate) return false;
+        try {
+          const joinDate = new Date(e.joiningDate);
+          const now = new Date();
+          return joinDate.getMonth() === now.getMonth() && joinDate.getFullYear() === now.getFullYear();
+        } catch {
+          return false;
+        }
+      }).length;
+
+      setOverallStats({
+        total: totalCount,
+        active: activeCount,
+        inactive: inactiveCount,
+        exEmployee: exCount,
+        newJoiners: newJoinersCount
+      });
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const fetchEmployees = async (
+    search = debouncedSearchQuery,
+    status = selectedStatus,
+    dept = selectedDepartment,
+    role = selectedRole
+  ) => {
+    setIsLoading(true);
+    try {
+      const is_active_val = status === 'all' ? 'all' : (status === 'active' ? 'true' : (status === 'inactive' ? 'false' : 'ex-employee'));
+      const data = await apiService.getEmployees({
+        is_active: is_active_val,
+        search: search || undefined,
+        department: dept !== 'all' ? dept : undefined,
+        role: role !== 'all' ? role : undefined,
+      });
+      const mappedData = Array.isArray(data) ? data.map(mapEmployeeData) : [];
+      setEmployees(mappedData);
+    } catch (error: any) {
+      console.error('Failed to fetch employees:', error);
+      const errorMessage = error.message || '';
+      if (error.status === 409 || errorMessage.includes('Multiple company') || errorMessage.includes('409') || errorMessage.includes('Scope conflict')) {
+        setActiveScopeError(true);
+      }
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to load employees. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial load of departments and stats
+  useEffect(() => {
     const fetchDepartments = async () => {
       try {
         const departmentData = await apiService.getDepartmentNames();
@@ -569,9 +641,14 @@ export default function EmployeeManagement() {
       }
     };
 
-    fetchEmployees();
     fetchDepartments();
+    fetchStats();
   }, []);
+
+  // Fetch employees when filters change
+  useEffect(() => {
+    fetchEmployees(debouncedSearchQuery, selectedStatus, selectedDepartment, selectedRole);
+  }, [debouncedSearchQuery, selectedStatus, selectedDepartment, selectedRole]);
 
 
   const filteredEmployees = useMemo(() => {
@@ -612,23 +689,7 @@ export default function EmployeeManagement() {
 
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
 
-  const stats = useMemo(() => {
-    return {
-      total: employees.length,
-      active: employees.filter(e => e.status === 'active').length,
-      inactive: employees.filter(e => e.status === 'inactive').length,
-      newJoiners: employees.filter(e => {
-        if (!e.joiningDate) return false;
-        try {
-          const joinDate = new Date(e.joiningDate);
-          const now = new Date();
-          return joinDate.getMonth() === now.getMonth() && joinDate.getFullYear() === now.getFullYear();
-        } catch (error) {
-          return false;
-        }
-      }).length
-    };
-  }, [employees]);
+
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -966,6 +1027,8 @@ export default function EmployeeManagement() {
       setEmployees([...employees, mappedNewEmployee]);
       setIsCreateDialogOpen(false);
       resetForm();
+      fetchEmployees();
+      fetchStats();
       toast({
         title: 'Success',
         description: 'Employee created successfully'
@@ -1142,6 +1205,8 @@ export default function EmployeeManagement() {
       setEmployees(employees.map(emp => emp.id === userIdToUpdate ? mappedUpdated : emp));
       setIsEditDialogOpen(false);
       resetForm();
+      fetchEmployees();
+      fetchStats();
       toast({
         title: 'Success',
         description: 'Employee updated successfully'
@@ -1182,6 +1247,8 @@ export default function EmployeeManagement() {
 
       // Remove employee from list using user_id (id field)
       setEmployees(prev => prev.filter(emp => emp.id !== userId));
+      fetchEmployees();
+      fetchStats();
 
       toast({
         title: 'Success',
@@ -1218,6 +1285,8 @@ export default function EmployeeManagement() {
           emp.id === employee.id ? mappedUpdated : emp
         )
       );
+      fetchEmployees();
+      fetchStats();
 
       toast({
         title: 'Success',
@@ -1256,6 +1325,8 @@ export default function EmployeeManagement() {
     setEmployees(updatedEmployees);
     setSelectedEmployeeIds([]);
     setIsBulkUpdating(false);
+    fetchEmployees();
+    fetchStats();
     toast({
       title: 'Bulk Update Complete',
       description: `${successCount} employee(s) ${targetStatus === 'active' ? 'activated' : 'deactivated'}${failCount > 0 ? `, ${failCount} failed` : ''}`
@@ -1478,6 +1549,8 @@ export default function EmployeeManagement() {
 
     if (createdEmployees.length > 0) {
       setEmployees((prev) => [...prev, ...createdEmployees]);
+      fetchEmployees();
+      fetchStats();
     }
 
     setBulkSummary(summary);
@@ -2111,10 +2184,10 @@ export default function EmployeeManagement() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <SummaryCard
           title="Total Employees"
-          value={stats.total}
+          value={overallStats.total}
           icon={Users}
           iconColor="text-blue-600"
           iconBg="bg-blue-50"
@@ -2125,7 +2198,7 @@ export default function EmployeeManagement() {
         />
         <SummaryCard
           title="Active Users"
-          value={stats.active}
+          value={overallStats.active}
           icon={UserCheck}
           iconColor="text-green-600"
           iconBg="bg-green-50"
@@ -2136,7 +2209,7 @@ export default function EmployeeManagement() {
         />
         <SummaryCard
           title="Inactive Users"
-          value={stats.inactive}
+          value={overallStats.inactive}
           icon={UserX}
           iconColor="text-red-600"
           iconBg="bg-red-50"
@@ -2146,11 +2219,22 @@ export default function EmployeeManagement() {
           }}
         />
         <SummaryCard
-          title="New Joiners"
-          value={stats.newJoiners}
-          icon={UserPlus}
+          title="Ex-Employees"
+          value={overallStats.exEmployee}
+          icon={UserX}
           iconColor="text-orange-600"
           iconBg="bg-orange-50"
+          onClick={() => {
+            setSelectedStatus('ex-employee');
+            setSearchQuery('');
+          }}
+        />
+        <SummaryCard
+          title="New Joiners"
+          value={overallStats.newJoiners}
+          icon={UserPlus}
+          iconColor="text-pink-600"
+          iconBg="bg-pink-50"
           onClick={() => {
             setSelectedStatus('all');
             setSearchQuery('');
@@ -2901,6 +2985,9 @@ export default function EmployeeManagement() {
                   <SelectItem value="inactive" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
                     Inactive
                   </SelectItem>
+                  <SelectItem value="ex-employee" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
+                    Ex-Employee
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -3001,8 +3088,8 @@ export default function EmployeeManagement() {
                         })()}
                       </TableCell>
                       <TableCell>
-                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: employee.status === 'active' ? "#10B981" : "#EF4444", fontSize: "12px", fontWeight: "bold" }}>
-                          {employee.status ? employee.status.charAt(0).toUpperCase() + employee.status.slice(1) : '-'}
+                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: employee.status === 'active' ? "#10B981" : employee.status === 'ex-employee' ? "#F97316" : "#EF4444", fontSize: "12px", fontWeight: "bold" }}>
+                          {employee.status ? (employee.status === 'ex-employee' ? 'Ex-Employee' : employee.status.charAt(0).toUpperCase() + employee.status.slice(1)) : '-'}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">

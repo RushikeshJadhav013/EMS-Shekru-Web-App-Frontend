@@ -69,44 +69,46 @@ const SalaryDashboard = () => {
                 let salary = (salariesData || []).find((s: any) => String(s.user_id) === String(id));
 
                 if (salary) {
-                    // Core fields for analytics
-                    const annualCtc = salary.annualCtc || salary.package_ctc_annual || salary.ctc_annual || 0;
+                    // \u2500\u2500 Annual CTC: use display_ctc_annual (backend authoritative) \u2500\u2500
+                    const annualCtc =
+                        salary.display_ctc_annual ||
+                        salary.package_ctc_annual ||
+                        salary.ctc_annual ||
+                        salary.annualCtc ||
+                        0;
 
-                    // Monthly Fixed CTC (Excluding variable pay)
-                    const annualVariable = salary.variable_pay_annual || 0;
-                    const monthlyFixedCtc = (annualCtc - annualVariable) / 12;
-
-                    // PF Split: prefer pf_annual (combined both sides), else compute from percentage
+                    // \u2500\u2500 Monthly Gross: use display_monthly_ctc (backend authoritative) \u2500\u2500
+                    // Fall back to component-based computation only when field is absent
                     const annualPfTotal = salary.pf_annual || 0;
-                    let monthlyPfEmployer = 0;
-                    let monthlyPfEmployee = 0;
-                    if (annualPfTotal > 0) {
-                        monthlyPfEmployer = annualPfTotal / 24;
-                        monthlyPfEmployee = annualPfTotal / 24;
-                    } else if (salary.employer_pf_percentage && salary.employer_pf_percentage > 0) {
-                        // Percentage-based: approximate monthly basic to compute PF
-                        const approxMonthlyBasic = (salary.basic_annual || 0) / 12 || (monthlyFixedCtc * 0.5);
+                    let monthlyPfEmployer = annualPfTotal > 0 ? annualPfTotal / 24 : 0;
+                    let monthlyPfEmployee = monthlyPfEmployer;
+                    if (annualPfTotal === 0 && salary.employer_pf_percentage > 0) {
+                        const approxMonthlyBasic = (salary.basic_annual || 0) / 12;
                         monthlyPfEmployer = Math.round(approxMonthlyBasic * (salary.employer_pf_percentage / 100));
                         monthlyPfEmployee = monthlyPfEmployer;
                     }
 
-                    // Monthly Gross = Monthly Fixed CTC - Employer PF (since CTC = Gross + Employer PF)
-                    const monthlyGross = monthlyFixedCtc - monthlyPfEmployer;
+                    const fallbackGross = (annualCtc / 12) - monthlyPfEmployer;
+                    const monthlyGross =
+                        salary.display_monthly_ctc ||
+                        (salary.total_earnings_annual ? salary.total_earnings_annual / 12 : 0) ||
+                        fallbackGross;
 
-                    // Professional Tax (PT)
-                    const currentMonth = new Date().getMonth() + 1; // 1-indexed
-                    let monthlyPt = 200;
-                    if (salary.professional_tax_annual >= 2400) {
-                        monthlyPt = (currentMonth === 2) ? 300 : 200;
-                    }
+                    // \u2500\u2500 Professional Tax \u2500\u2500
+                    const currentMonth = new Date().getMonth() + 1;
+                    const monthlyPt = currentMonth === 2
+                        ? (salary.feb_monthly_prof_tax || salary.feb_monthly_professional_tax || 300)
+                        : (salary.other_monthly_prof_tax || salary.other_monthly_professional_tax || salary.monthly_professional_tax || 200);
 
-                    // Other Deductions: Use stored other_deduction_annual if it exists, otherwise back-calculate from total
-                    const salaryOtherDedAnnual = salary.other_deduction_annual !== undefined ? salary.other_deduction_annual : 0;
-                    const backCalcOtherDeductionsAnnual = Math.max(0, (salary.total_deductions_annual || 0) - (salary.professional_tax_annual || 2500) - (annualPfTotal / 2));
-                    const monthlyOtherDeductions = (salaryOtherDedAnnual || backCalcOtherDeductionsAnnual) / 12;
+                    // \u2500\u2500 Monthly In-Hand: use month-specific backend fields \u2500\u2500
+                    const salaryOtherDedAnnual = salary.other_deduction_annual || 0;
+                    const monthlyOtherDeductions = salaryOtherDedAnnual / 12;
+                    const computedInHand = monthlyGross - (monthlyPfEmployee + monthlyPt + monthlyOtherDeductions);
 
-                    // Monthly In-Hand = Monthly Gross - (Employee PF + PT + Other Deductions)
-                    const monthlyInHand = monthlyGross - (monthlyPfEmployee + monthlyPt + monthlyOtherDeductions);
+                    let monthlyInHand = currentMonth === 2
+                        ? (salary.feb_monthly_in_hand ?? salary.febMonthlyInHand ?? computedInHand)
+                        : (salary.other_monthly_in_hand ?? salary.otherMonthlyInHand ?? salary.monthly_in_hand ?? salary.monthlyInHand ?? computedInHand);
+                    if (!Number.isFinite(monthlyInHand)) monthlyInHand = computedInHand;
 
                     salary = {
                         ...salary,
@@ -431,7 +433,7 @@ const SalaryDashboard = () => {
                                     <TableHead className="w-[100px] font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMP ID</TableHead>
                                     <TableHead className="font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMPLOYEE</TableHead>
                                     <TableHead className="font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ROLE/DEPT</TableHead>
-                                    <TableHead className="text-right font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MONTHLY CTC</TableHead>
+                                    <TableHead className="text-right font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>MONTHLY GROSS</TableHead>
                                     <TableHead className="text-right font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>IN-HAND PAY</TableHead>
                                     <TableHead className="text-right font-bold uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                                 </TableRow>
