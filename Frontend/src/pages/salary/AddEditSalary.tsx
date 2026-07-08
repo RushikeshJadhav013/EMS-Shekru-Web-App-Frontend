@@ -484,22 +484,17 @@ const AddEditSalary = () => {
                         Math.max(0, (currentAnnualCtc / 12 - (data.variable_pay_annual || 0) / 12) -
                             (monthlyBasic + hra + (medicalAllowance || 0) + (conveyanceAllowance || 0) + (otherAllowance || 0) + (pfEmployer || 0)));
 
-                    // Monthly Gross: prefer backend's total_earnings_annual / 12 (authoritative)
-                    // Falls back to summing all earning components
-                    const monthlyGross = data.total_earnings_annual
-                        ? data.total_earnings_annual / 12
-                        : monthlyBasic + hra + (calculatedSpecial || specialAllowance) + medicalAllowance + conveyanceAllowance + otherAllowance;
+                    // Monthly Gross = Annual CTC / 12
+                    // This is the correct definition: Monthly Gross is what the employee earns per month
+                    // before any deductions, and equals Annual CTC divided by 12.
+                    const monthlyGross = Math.round(currentAnnualCtc / 12);
 
                     // Deductions = PT + Employee PF + Other (NOT employer PF — that's a CTC item, not deducted from pay)
                     const totalMonthlyDeductions = professionalTax + otherDeduction + pfEmployee;
 
-                    // Trust backend monthly_in_hand directly (handles Feb PT = 300 vs other months = 200)
-                    let monthlyInHand = currentMonth === 1
-                        ? (data.feb_monthly_in_hand || data.febMonthlyInHand || data.monthlyInHand || data.monthly_in_hand || 45700)
-                        : (data.other_monthly_in_hand || data.otherMonthlyInHand || data.monthlyInHand || data.monthly_in_hand || 45800);
-                    if (monthlyInHand === undefined || monthlyInHand === null || isNaN(monthlyInHand)) {
-                        monthlyInHand = Math.max(0, monthlyGross - totalMonthlyDeductions);
-                    }
+                    // Estimated In-Hand = Monthly Gross - All Deductions
+                    // Always compute from monthlyGross so it stays consistent with the CTC definition
+                    const monthlyInHand = Math.max(0, monthlyGross - totalMonthlyDeductions);
                     const annualCtc = currentAnnualCtc;
 
                     setPreviewData({
@@ -557,9 +552,10 @@ const AddEditSalary = () => {
                     // MonthlyFixedCtc = Basic + HRA + Medical + Conveyance + Other + PF_Empr + Special
                     const monthlySpecial = Math.max(0, monthlyCtc - (monthlyBasic + monthlyHra + monthlyMedical + monthlyConveyance + monthlyOtherAllowance + monthlyPfOneSide + monthlyVariable));
 
-                    const monthlyGross = monthlyBasic + monthlyHra + monthlySpecial + monthlyMedical + monthlyConveyance + monthlyOtherAllowance;
+                    // Monthly Gross = Annual CTC / 12 (consistent definition)
+                    const monthlyGross = monthlyCtc;
                     const monthlyDeductions = monthlyPt + monthlyOtherTax + monthlyPfOneSide;
-                    const monthlyInHand = monthlyGross - monthlyDeductions;
+                    const monthlyInHand = Math.max(0, monthlyGross - monthlyDeductions);
 
                     setPreviewData({
                         annualCtc: ctcVal,

@@ -114,7 +114,18 @@ const mapEmployeeData = (emp: any): EmployeeRecord => {
   const rawActive = mapped.isActive !== undefined ? mapped.isActive : emp.is_active;
   const resignationDate = mapped.resignationDate || emp.resignation_date;
 
-  if (resignationDate && resignationDate !== 'null' && resignationDate !== 'undefined') {
+  // Only treat as ex-employee if resignation date has ALREADY PASSED (strictly after today)
+  const resignationPassed = (() => {
+    if (!resignationDate || resignationDate === 'null' || resignationDate === 'undefined') return false;
+    try {
+      const resDate = new Date(resignationDate);
+      resDate.setHours(23, 59, 59, 999); // end of resignation day
+      return new Date() > resDate;
+    } catch {
+      return false;
+    }
+  })();
+  if (resignationPassed) {
     finalStatus = 'ex-employee';
   } else if (rawActive !== undefined && rawActive !== null) {
     const s = String(rawActive).toLowerCase().trim();
