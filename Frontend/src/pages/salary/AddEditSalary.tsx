@@ -102,7 +102,60 @@ const parseNumber = (val: any) => {
 
 type SalaryFormValues = z.infer<typeof salarySchema>;
 
+// ── Controlled numeric input ──────────────────────────────────────────────────
+// Keeps the raw string visible while the user types (so they can type "1800"
+// digit-by-digit without the field going blank), then commits the parsed number
+// to React Hook Form on every keystroke.
+interface NumericInputProps {
+    value: number;
+    onChange: (val: number) => void;
+    onBlur: () => void;
+    placeholder?: string;
+    disabled?: boolean;
+    className?: string;
+    style?: React.CSSProperties;
+    inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+}
+const NumericInput: React.FC<NumericInputProps> = ({
+    value, onChange, onBlur, placeholder, disabled, className, style, inputMode,
+}) => {
+    const [raw, setRaw] = React.useState(value !== 0 ? String(value) : '');
+
+    // Sync when the form resets / external value changes
+    React.useEffect(() => {
+        setRaw(value !== 0 ? String(value) : '');
+    }, [value]);
+
+    return (
+        <Input
+            type="text"
+            inputMode={inputMode ?? 'decimal'}
+            className={className}
+            style={style}
+            placeholder={placeholder}
+            disabled={disabled}
+            value={raw}
+            onChange={(e) => {
+                const cleaned = e.target.value.replace(/[^0-9.]/g, '');
+                setRaw(cleaned);
+                const num = parseFloat(cleaned);
+                onChange(isNaN(num) ? 0 : num);
+            }}
+            onFocus={(e) => { if (e.target.value === '0') setRaw(''); }}
+            onBlur={() => {
+                if (raw === '' || raw === '.') {
+                    setRaw('');
+                    onChange(0);
+                }
+                onBlur();
+            }}
+        />
+    );
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const AddEditSalary = () => {
+
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -1291,15 +1344,20 @@ const AddEditSalary = () => {
                                                                     {watchManualPfType === 'fixed' && (
                                                                         <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                                                                     )}
-                                                                    <Input
-                                                                        type="text"
-                                                                        className={`h-10 bg-white dark:bg-slate-800 ${watchManualPfType === 'fixed' ? 'pl-8' : ''}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
-                                                                        placeholder={watchManualPfType === 'percentage' ? 'e.g. 12' : watchManualPfType === 'fixed' ? 'e.g. 1800' : '0'}
-                                                                        disabled={watchManualPfType === 'none'}
-                                                                        {...form.register("manualPfValue")}
-                                                                        onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')}
-                                                                        onFocus={handleNumericFocus}
-                                                                        onBlur={(e) => handleNumericBlur(e, 'manualPfValue')}
+                                                                    <Controller
+                                                                        name="manualPfValue"
+                                                                        control={form.control}
+                                                                        render={({ field }) => (
+                                                                            <NumericInput
+                                                                                value={field.value ?? 0}
+                                                                                onChange={field.onChange}
+                                                                                onBlur={field.onBlur}
+                                                                                placeholder={watchManualPfType === 'percentage' ? 'e.g. 12' : watchManualPfType === 'fixed' ? 'e.g. 1800' : '0'}
+                                                                                disabled={watchManualPfType === 'none'}
+                                                                                className={`h-10 bg-white dark:bg-slate-800 ${watchManualPfType === 'fixed' ? 'pl-8' : ''}`}
+                                                                                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}
+                                                                            />
+                                                                        )}
                                                                     />
                                                                     {watchManualPfType === 'percentage' && (
                                                                         <span className="absolute right-3 top-2.5 text-muted-foreground">%</span>
