@@ -452,11 +452,13 @@ const AddEditSalary = () => {
                 const monthlyVarPay = Math.round(annualVarPay / 12);
 
                 const monthlyGross = basic + hra + special + medical + conveyance + other;
-                const monthlyDeductions = pt + otherDed + pfEmp;
-                const monthlyInHand = monthlyGross - monthlyDeductions;
 
-                // CTC = (Monthly Gross + Employer PF) * 12 + Annual Variable Pay
-                const calculatedAnnualCtc = (monthlyGross + pfEmpr) * 12 + annualVarPay;
+                // Annual CTC = components only (PF is NOT added to CTC — it is a deduction from pay)
+                const calculatedAnnualCtc = monthlyGross * 12 + annualVarPay;
+
+                // PF (employee share) + PT + Other Deductions are subtracted from Monthly Gross
+                const monthlyDeductions = pfEmp + pt + otherDed;
+                const monthlyInHand = monthlyGross - monthlyDeductions;
 
                 setPreviewData({
                     annualCtc: calculatedAnnualCtc,
@@ -667,14 +669,18 @@ const AddEditSalary = () => {
                     // Working days for guided mode
                     workingDays: data.workingDays || 22,
 
-                    // ── MANUAL MODE FIELDS (independent defaults) ────────────────
-                    // These are zeroed by default — manual mode is a BLANK SLATE
-                    // unless the salary was originally created via manual mode.
-                    manualPfType: 'none',
-                    manualPfValue: 0,
-                    manualVariablePayType: 'none',
-                    manualVariablePayValue: 0,
-                    manualWorkingDays: 22,
+                    // ── MANUAL MODE FIELDS ───────────────────────────────────────
+                    // Restore saved PF config so the deduction is preserved on edit.
+                    // Priority: percentage > fixed > none.
+                    manualPfType: data.employer_pf_percentage
+                        ? 'percentage'
+                        : (data.pf_annual != null && data.pf_annual > 0 ? 'fixed' : 'none'),
+                    manualPfValue: data.employer_pf_percentage
+                        ? data.employer_pf_percentage
+                        : (data.pf_annual != null && data.pf_annual > 0 ? data.pf_annual / 12 : 0),
+                    manualVariablePayType: data.variable_pay_type || 'none',
+                    manualVariablePayValue: data.variable_pay || 0,
+                    manualWorkingDays: data.working_days_per_month || 22,
 
                     // Manual component fields: restore from backend annual values
                     basicAnnual: (data.monthlyBasic || 0) * 12,
@@ -750,12 +756,21 @@ const AddEditSalary = () => {
 
             if (activeTab === "manual") {
                 // PF Payload for Manual Mode
+                // 'none'       → pf_annual: null, employer_pf_percentage: null  (PF absent)
+                // 'fixed'      → pf_annual: value * 12, employer_pf_percentage: null
+                // 'percentage' → employer_pf_percentage: value (pf_annual omitted — backend derives it)
                 const mPfPayload: Record<string, any> = {};
                 if (data.manualPfType === 'percentage') {
                     mPfPayload.employer_pf_percentage = parseNumber(data.manualPfValue);
+                    // Do NOT include pf_annual for percentage mode — backend computes it from the percentage
                 } else if (data.manualPfType === 'fixed') {
                     // pf_annual = employee PF annual only; manualPfValue is monthly per-side
                     mPfPayload.pf_annual = parseNumber(data.manualPfValue) * 12;
+                    mPfPayload.employer_pf_percentage = null;
+                } else {
+                    // 'none' — PF is not applicable; send null for both fields
+                    mPfPayload.pf_annual = null;
+                    mPfPayload.employer_pf_percentage = null;
                 }
 
                 // Calculate variable pay for manual mode
@@ -767,6 +782,10 @@ const AddEditSalary = () => {
                         : 0;
 
                 // Administrative Manual Entry Payload
+                // Spread mPfPayload at the end so only relevant PF fields are included.
+                // For percentage mode: only employer_pf_percentage is set; pf_annual is omitted.
+                // For fixed mode: pf_annual is set; employer_pf_percentage is null.
+                // For none mode: both are null.
                 const manualPayload = {
                     user_id: userIdInt,
                     basic_annual: data.basicAnnual || 0,
@@ -777,11 +796,6 @@ const AddEditSalary = () => {
                     other_allowance_annual: data.otherAllowanceAnnual || 0,
                     professional_tax_annual: data.professionalTaxAnnual || 0,
                     other_deduction_annual: data.otherDeductionAnnual || 0,
-                    // pf_annual in payload = employee PF annual (one side only).
-                    // When type is 'percentage', employer_pf_percentage is set via ...mPfPayload spread below.
-                    // When type is 'fixed', mPfPayload.pf_annual holds the annual amount.
-                    // When type is 'none', send 0 — do NOT fall back to the guided pfAnnual field.
-                    pf_annual: mPfPayload.pf_annual !== undefined ? mPfPayload.pf_annual : 0,
                     variable_pay: calculatedVariablePay,
                     working_days_per_month: data.manualWorkingDays || 22,
                     uan_number: data.uanNumber?.trim() || null,
@@ -790,7 +804,7 @@ const AddEditSalary = () => {
                     bank_account: data.bankAccount?.trim() || null,
                     ifsc_code: data.ifscCode?.trim() || null,
                     payment_mode: data.paymentMode || 'Bank Transfer',
-                    ...mPfPayload
+                    ...mPfPayload,
                 };
 
                 let response;
