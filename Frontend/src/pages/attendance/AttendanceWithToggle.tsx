@@ -901,7 +901,7 @@ const AttendanceWithToggle: React.FC = () => {
     }
     let subset = exportEmployees;
     const normalizedDept = selectedExportDepartment.trim().toLowerCase();
-    if (normalizedDept) {
+    if (normalizedDept && normalizedDept !== "all") {
       subset = subset.filter(
         (emp) => (emp.department || "").trim().toLowerCase() === normalizedDept,
       );
@@ -1005,12 +1005,16 @@ const AttendanceWithToggle: React.FC = () => {
 
     if (exportDepartments.length === 1) {
       setSelectedExportDepartment(exportDepartments[0]);
+    } else if (user?.role && ["admin", "hr"].includes(user.role.toLowerCase())) {
+      setSelectedExportDepartment("all");
     } else if (user?.department) {
       const normalized = exportDepartments.find(
         (dept) =>
           dept.trim().toLowerCase() === user.department.trim().toLowerCase(),
       );
-      setSelectedExportDepartment(normalized || selectedExportDepartment || "");
+      setSelectedExportDepartment(normalized || "all");
+    } else {
+      setSelectedExportDepartment("all");
     }
   };
 
@@ -1034,10 +1038,11 @@ const AttendanceWithToggle: React.FC = () => {
     }
 
     // Allow Admin/HR to export without selecting a department
+    const isAllDept = selectedExportDepartment.toLowerCase() === "all";
     const departmentParam = (
-      selectedExportDepartment ||
-      user?.department ||
-      ""
+      isAllDept
+        ? ""
+        : (selectedExportDepartment || user?.department || "")
     ).trim();
     if (!departmentParam && canExportAttendance && user?.role === "manager") {
       toast({
@@ -1162,11 +1167,14 @@ const AttendanceWithToggle: React.FC = () => {
     }
     if (
       selectedExportDepartment &&
-      exportDepartments.some(
-        (dept) =>
-          dept.trim().toLowerCase() ===
-          selectedExportDepartment.trim().toLowerCase(),
-      )
+      (selectedExportDepartment.toLowerCase() === "all" ||
+        selectedExportDepartment.toLowerCase() === "all departments" ||
+        selectedExportDepartment.toLowerCase() === "all_departments" ||
+        exportDepartments.some(
+          (dept) =>
+            dept.trim().toLowerCase() ===
+            selectedExportDepartment.trim().toLowerCase(),
+        ))
     ) {
       return;
     }
@@ -1176,7 +1184,7 @@ const AttendanceWithToggle: React.FC = () => {
         (dept) =>
           dept.trim().toLowerCase() === user.department.trim().toLowerCase(),
       );
-    setSelectedExportDepartment(preferred || exportDepartments[0]);
+    setSelectedExportDepartment(preferred || "all");
   }, [exportDepartments, selectedExportDepartment, user?.department]);
 
   const loadFromBackend = async () => {
@@ -5624,17 +5632,14 @@ const AttendanceWithToggle: React.FC = () => {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
                       {coreDepartments.length ? (
                         coreDepartments.map((dept) => (
                           <SelectItem key={dept} value={dept}>
                             {dept}
                           </SelectItem>
                         ))
-                      ) : (
-                        <SelectItem value="__empty" disabled>
-                          No departments found
-                        </SelectItem>
-                      )}
+                      ) : null}
                     </SelectContent>
                   </Select>
                 </div>

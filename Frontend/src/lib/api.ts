@@ -2288,13 +2288,34 @@ class ApiService {
     userId: string,
     month: number,
     year: number,
+    options?: {
+      optional_deduction_1_label?: string;
+      optional_deduction_1_amount?: number;
+      optional_deduction_2_label?: string;
+      optional_deduction_2_amount?: number;
+      optional_deduction_3_label?: string;
+      optional_deduction_3_amount?: number;
+      manual_leave_days?: number;
+    }
   ): Promise<any> {
-    return this.request(
-      `/salary/slip/send/${userId}?month=${month}&year=${year}`,
-      {
-        method: "POST",
-      },
-    );
+    const body: Record<string, any> = {
+      user_id: Number(userId),
+      month,
+      year,
+    };
+    if (options) {
+      if (options.optional_deduction_1_label) body.optional_deduction_1_label = options.optional_deduction_1_label;
+      if (options.optional_deduction_1_amount != null) body.optional_deduction_1_amount = options.optional_deduction_1_amount;
+      if (options.optional_deduction_2_label) body.optional_deduction_2_label = options.optional_deduction_2_label;
+      if (options.optional_deduction_2_amount != null) body.optional_deduction_2_amount = options.optional_deduction_2_amount;
+      if (options.optional_deduction_3_label) body.optional_deduction_3_label = options.optional_deduction_3_label;
+      if (options.optional_deduction_3_amount != null) body.optional_deduction_3_amount = options.optional_deduction_3_amount;
+      if (options.manual_leave_days != null) body.manual_leave_days = options.manual_leave_days;
+    }
+    return this.request(`/salary/slip/send/${userId}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   }
 
   // Salary Slip History

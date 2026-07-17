@@ -20,7 +20,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatTimeIST, formatIST, nowIST, todayIST } from '@/utils/timezone';
+import { formatTimeIST, formatIST, nowIST, todayIST, formatDateIST } from '@/utils/timezone';
 import { apiService, API_BASE_URL } from '@/lib/api';
 import TruncatedText from '@/components/ui/TruncatedText';
 import { cn } from '@/lib/utils';
@@ -135,12 +135,28 @@ const ManagerDashboard: React.FC = () => {
           });
         }
 
-        // Merge and Sort
+        // Merge, filter to current day, and Sort
         activities = [...activities, ...attendanceActivities];
+        activities = activities.filter((a: any) => {
+          if (!a.time) return false;
+          try {
+            return formatDateIST(a.time) === todayDateStr;
+          } catch (e) {
+            return false;
+          }
+        });
         activities.sort((a: any, b: any) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
       } catch (attError) {
         console.error("Failed to fetch fresh attendance for manager dashboard activities", attError);
+        try {
+          activities = activities.filter((a: any) => {
+            if (!a.time) return false;
+            return formatDateIST(a.time) === todayDateStr;
+          });
+        } catch (e) {
+          // ignore error
+        }
       }
 
       setTeamActivities(activities.slice(0, 100));

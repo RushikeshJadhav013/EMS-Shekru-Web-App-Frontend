@@ -93,7 +93,7 @@ const HRDashboard: React.FC = () => {
         // Avoid duplicate attendance as we fetch fresh ones next
         if (a.type === 'attendance') return false;
 
-        return true; // Show all recent activities, not just today's
+        return formatDateIST(a.time) === todayDateStr; // Show only current day's activities
       });
 
       // 2. Fetch fresh attendance records for today to get accurate timings
@@ -135,8 +135,9 @@ const HRDashboard: React.FC = () => {
           });
         }
 
-        // Merge and Sort
+        // Merge, filter for current day only and Sort
         activities = [...activities, ...attendanceActivities];
+        activities = activities.filter((a) => a.time && formatDateIST(a.time) === todayDateStr);
         activities.sort((a, b) => {
           const timeA = a.time ? new Date(a.time).getTime() : 0;
           const timeB = b.time ? new Date(b.time).getTime() : 0;
@@ -444,6 +445,7 @@ const HRDashboard: React.FC = () => {
               itemsPerPage={ACTIVITIES_PER_PAGE}
               onPageChange={setActivitiesPage}
               showItemsPerPage={false} // Activities feed usually has fixed limit on dashboard
+              showEntriesInfo={false}
             />
           </div>
         )}
