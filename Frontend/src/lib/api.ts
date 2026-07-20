@@ -2298,23 +2298,19 @@ class ApiService {
       manual_leave_days?: number;
     }
   ): Promise<any> {
-    const body: Record<string, any> = {
-      user_id: Number(userId),
-      month,
-      year,
-    };
+    const query = new URLSearchParams({
+      month: String(month),
+      year: String(year)
+    });
     if (options) {
-      if (options.optional_deduction_1_label) body.optional_deduction_1_label = options.optional_deduction_1_label;
-      if (options.optional_deduction_1_amount != null) body.optional_deduction_1_amount = options.optional_deduction_1_amount;
-      if (options.optional_deduction_2_label) body.optional_deduction_2_label = options.optional_deduction_2_label;
-      if (options.optional_deduction_2_amount != null) body.optional_deduction_2_amount = options.optional_deduction_2_amount;
-      if (options.optional_deduction_3_label) body.optional_deduction_3_label = options.optional_deduction_3_label;
-      if (options.optional_deduction_3_amount != null) body.optional_deduction_3_amount = options.optional_deduction_3_amount;
-      if (options.manual_leave_days != null) body.manual_leave_days = options.manual_leave_days;
+      Object.entries(options).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
     }
-    return this.request(`/salary/slip/send/${userId}`, {
+    return this.request(`/salary/slip/send/${userId}?${query.toString()}`, {
       method: "POST",
-      body: JSON.stringify(body),
     });
   }
 
