@@ -440,7 +440,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             if (userData && userData.name) {
                 setUserName(userData.name);
                 setUserEmail(userData.email);
-                setIsVerified(userData.is_verified || false);
+                setIsVerified(userData.is_verified ?? null);
                 console.log('User details loaded:', { name: userData.name, email: userData.email, pan: userData.pan_card, verified: userData.is_verified });
             }
         } catch (err: any) {
@@ -696,7 +696,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 Object.keys(options).length > 0 ? options : undefined
             );
 
-            if (response?.success) {
+            // Accept any non-error response — some backends return {message: ...} without a `success` boolean
+            if (response !== null && response !== undefined) {
                 toast({
                     title: 'Sent Successfully',
                     description: response.message || `Salary slip for ${months[month - 1]} ${year} sent to ${userEmail || 'employee'}.`,
@@ -705,7 +706,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 setIsSendSlipDialogOpen(false);
                 loadSalarySlipHistory();
             } else {
-                throw new Error('Failed to send salary slip');
+                throw new Error('Failed to send salary slip — empty response.');
             }
         } catch (err: any) {
             toast({
