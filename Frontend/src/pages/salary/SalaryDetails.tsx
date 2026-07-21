@@ -139,6 +139,19 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         manual_leave_days: '',
     });
 
+    // Send Salary Slip via Email dialog state
+    const [isSendSlipDialogOpen, setIsSendSlipDialogOpen] = useState(false);
+    const [sendSlipTarget, setSendSlipTarget] = useState<{ month: number; year: number } | null>(null);
+    const [sendSlipForm, setSendSlipForm] = useState({
+        optional_deduction_1_label: '',
+        optional_deduction_1_amount: '',
+        optional_deduction_2_label: '',
+        optional_deduction_2_amount: '',
+        optional_deduction_3_label: '',
+        optional_deduction_3_amount: '',
+        manual_leave_days: '',
+    });
+
     // Pagination states
     const [growthPage, setGrowthPage] = useState(1);
     const growthPerPage = 5;
@@ -427,7 +440,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             if (userData && userData.name) {
                 setUserName(userData.name);
                 setUserEmail(userData.email);
-                setIsVerified(userData.is_verified || false);
+                setIsVerified(userData.is_verified ?? null);
                 console.log('User details loaded:', { name: userData.name, email: userData.email, pan: userData.pan_card, verified: userData.is_verified });
             }
         } catch (err: any) {
@@ -640,7 +653,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         }
     };
 
-    const handleSendSlip = async (month: number, year: number) => {
+    const handleOpenSendSlip = async (month: number, year: number) => {
         if (isVerified === false) {
             toast({
                 title: "Email Not Verified",
@@ -649,20 +662,20 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             });
             return;
         }
-
+        // Directly send without showing any form dialog
         try {
             setIsSalarySlipSending(true);
             const response = await apiService.sendSalarySlip(targetUserId!, month, year);
-
-            if (response?.success) {
+            // Accept any non-error response — some backends return {message:...} without a `success` boolean
+            if (response !== null && response !== undefined) {
                 toast({
                     title: 'Sent Successfully',
                     description: response.message || `Salary slip for ${months[month - 1]} ${year} sent to ${userEmail || 'employee'}.`,
                     variant: 'success'
                 });
-                loadSalarySlipHistory(); // Refresh history to show email sent status
+                loadSalarySlipHistory();
             } else {
-                throw new Error('Failed to send salary slip');
+                throw new Error('Failed to send salary slip — empty response.');
             }
         } catch (err: any) {
             toast({
@@ -674,6 +687,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             setIsSalarySlipSending(false);
         }
     };
+
+    // Kept as no-op — dialog is removed; send happens directly via handleOpenSendSlip
+    const handleSendSlip = async () => { };
 
     const handleOpenGenerateSlip = () => {
         if (selectedMonth === 'all') {
@@ -1219,7 +1235,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                         <Button
                                                                             variant="outline"
                                                                             size="sm"
-                                                                            onClick={() => handleSendSlip(slip.month, slip.year)}
+                                                                            onClick={() => handleOpenSendSlip(slip.month, slip.year)}
                                                                             disabled={isSalarySlipSending}
                                                                             className="h-8 w-8 p-0 rounded-lg border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white transition-all active:scale-95"
                                                                             title="Send via Email"
@@ -2562,7 +2578,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                     </div>
                 </DialogContent>
             </Dialog>
-        </div >
+            {/* Send Salary Slip Dialog removed — email is sent directly on button click */}
+        </div>
     );
 };
 

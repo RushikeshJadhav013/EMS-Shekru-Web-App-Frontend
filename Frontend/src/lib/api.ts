@@ -2288,13 +2288,30 @@ class ApiService {
     userId: string,
     month: number,
     year: number,
+    options?: {
+      optional_deduction_1_label?: string;
+      optional_deduction_1_amount?: number;
+      optional_deduction_2_label?: string;
+      optional_deduction_2_amount?: number;
+      optional_deduction_3_label?: string;
+      optional_deduction_3_amount?: number;
+      manual_leave_days?: number;
+    }
   ): Promise<any> {
-    return this.request(
-      `/salary/slip/send/${userId}?month=${month}&year=${year}`,
-      {
-        method: "POST",
-      },
-    );
+    const query = new URLSearchParams({
+      month: String(month),
+      year: String(year)
+    });
+    if (options) {
+      Object.entries(options).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+          query.append(key, String(value));
+        }
+      });
+    }
+    return this.request(`/salary/slip/send/${userId}?${query.toString()}`, {
+      method: "POST",
+    });
   }
 
   // Salary Slip History
