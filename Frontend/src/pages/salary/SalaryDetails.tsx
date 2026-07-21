@@ -653,7 +653,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         }
     };
 
-    const handleOpenSendSlip = (month: number, year: number) => {
+    const handleOpenSendSlip = async (month: number, year: number) => {
         if (isVerified === false) {
             toast({
                 title: "Email Not Verified",
@@ -662,48 +662,17 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             });
             return;
         }
-        setSendSlipTarget({ month, year });
-        setSendSlipForm({
-            optional_deduction_1_label: '',
-            optional_deduction_1_amount: '',
-            optional_deduction_2_label: '',
-            optional_deduction_2_amount: '',
-            optional_deduction_3_label: '',
-            optional_deduction_3_amount: '',
-            manual_leave_days: '',
-        });
-        setIsSendSlipDialogOpen(true);
-    };
-
-    const handleSendSlip = async () => {
-        if (!sendSlipTarget) return;
-        const { month, year } = sendSlipTarget;
+        // Directly send without showing any form dialog
         try {
             setIsSalarySlipSending(true);
-            const options: Record<string, any> = {};
-            if (sendSlipForm.optional_deduction_1_label) options.optional_deduction_1_label = sendSlipForm.optional_deduction_1_label;
-            if (sendSlipForm.optional_deduction_1_amount) options.optional_deduction_1_amount = Number(sendSlipForm.optional_deduction_1_amount);
-            if (sendSlipForm.optional_deduction_2_label) options.optional_deduction_2_label = sendSlipForm.optional_deduction_2_label;
-            if (sendSlipForm.optional_deduction_2_amount) options.optional_deduction_2_amount = Number(sendSlipForm.optional_deduction_2_amount);
-            if (sendSlipForm.optional_deduction_3_label) options.optional_deduction_3_label = sendSlipForm.optional_deduction_3_label;
-            if (sendSlipForm.optional_deduction_3_amount) options.optional_deduction_3_amount = Number(sendSlipForm.optional_deduction_3_amount);
-            if (sendSlipForm.manual_leave_days) options.manual_leave_days = Number(sendSlipForm.manual_leave_days);
-
-            const response = await apiService.sendSalarySlip(
-                targetUserId!,
-                month,
-                year,
-                Object.keys(options).length > 0 ? options : undefined
-            );
-
-            // Accept any non-error response — some backends return {message: ...} without a `success` boolean
+            const response = await apiService.sendSalarySlip(targetUserId!, month, year);
+            // Accept any non-error response — some backends return {message:...} without a `success` boolean
             if (response !== null && response !== undefined) {
                 toast({
                     title: 'Sent Successfully',
                     description: response.message || `Salary slip for ${months[month - 1]} ${year} sent to ${userEmail || 'employee'}.`,
                     variant: 'success'
                 });
-                setIsSendSlipDialogOpen(false);
                 loadSalarySlipHistory();
             } else {
                 throw new Error('Failed to send salary slip — empty response.');
@@ -718,6 +687,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             setIsSalarySlipSending(false);
         }
     };
+
+    // Kept as no-op — dialog is removed; send happens directly via handleOpenSendSlip
+    const handleSendSlip = async () => { };
 
     const handleOpenGenerateSlip = () => {
         if (selectedMonth === 'all') {
@@ -2606,137 +2578,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                     </div>
                 </DialogContent>
             </Dialog>
-            {/* Send Salary Slip via Email Dialog */}
-            <Dialog open={isSendSlipDialogOpen} onOpenChange={setIsSendSlipDialogOpen}>
-                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-2 border-[#000000] rounded-3xl shadow-2xl">
-                    <div className="bg-blue-600 p-6 text-white rounded-t-3xl relative">
-                        <div className="absolute top-0 right-0 -mr-12 -mt-12 h-32 w-32 bg-white/10 rounded-full blur-2xl" />
-                        <div className="flex items-center gap-3 justify-center">
-                            <Send className="h-6 w-6" />
-                            <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>Send Salary Slip via Email</h2>
-                        </div>
-                        {sendSlipTarget && (
-                            <p className="mt-2 text-blue-100 opacity-90 font-medium text-center">
-                                {months[sendSlipTarget.month - 1]} {sendSlipTarget.year} — {userEmail || 'Employee Email'}
-                            </p>
-                        )}
-                    </div>
-                    <div className="p-8 space-y-6">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                            Optionally add custom deductions or leave adjustments. These will be applied when generating and sending the slip.
-                        </p>
-
-                        {/* Deduction 1 */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 1 (Label)</Label>
-                                <Input
-                                    value={sendSlipForm.optional_deduction_1_label}
-                                    onChange={(e) => setSendSlipForm(prev => ({ ...prev, optional_deduction_1_label: e.target.value }))}
-                                    placeholder="e.g. Gratuity"
-                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
-                                <Input
-                                    type="number"
-                                    value={sendSlipForm.optional_deduction_1_amount}
-                                    onChange={(e) => setSendSlipForm(prev => ({ ...prev, optional_deduction_1_amount: e.target.value }))}
-                                    placeholder="0"
-                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Deduction 2 */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 2 (Label)</Label>
-                                <Input
-                                    value={sendSlipForm.optional_deduction_2_label}
-                                    onChange={(e) => setSendSlipForm(prev => ({ ...prev, optional_deduction_2_label: e.target.value }))}
-                                    placeholder="e.g. Insurance"
-                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
-                                <Input
-                                    type="number"
-                                    value={sendSlipForm.optional_deduction_2_amount}
-                                    onChange={(e) => setSendSlipForm(prev => ({ ...prev, optional_deduction_2_amount: e.target.value }))}
-                                    placeholder="0"
-                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Deduction 3 */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 3 (Label)</Label>
-                                <Input
-                                    value={sendSlipForm.optional_deduction_3_label}
-                                    onChange={(e) => setSendSlipForm(prev => ({ ...prev, optional_deduction_3_label: e.target.value }))}
-                                    placeholder="e.g. Loan Recovery"
-                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
-                                <Input
-                                    type="number"
-                                    value={sendSlipForm.optional_deduction_3_amount}
-                                    onChange={(e) => setSendSlipForm(prev => ({ ...prev, optional_deduction_3_amount: e.target.value }))}
-                                    placeholder="0"
-                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Manual Leave Days */}
-                        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                                <CalendarDays className="h-4 w-4 text-blue-600" />
-                                Manual Leave Days Deduction
-                            </Label>
-                            <Input
-                                type="number"
-                                step="0.5"
-                                value={sendSlipForm.manual_leave_days}
-                                onChange={(e) => setSendSlipForm(prev => ({ ...prev, manual_leave_days: e.target.value }))}
-                                placeholder="Number of days (e.g. 1.5)"
-                                className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000] w-full"
-                            />
-                            <p className="text-xs text-slate-500 mt-1">Leave deduction will be calculated based on monthly gross and applied to the emailed slip.</p>
-                        </div>
-                    </div>
-
-                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-800">
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsSendSlipDialogOpen(false)}
-                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-slate-500"
-                            disabled={isSalarySlipSending}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleSendSlip}
-                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none"
-                            disabled={isSalarySlipSending}
-                        >
-                            {isSalarySlipSending ? (
-                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
-                            ) : (
-                                <><Send className="h-4 w-4 mr-2" />Send Salary Slip
-                                </>)}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </div >
+            {/* Send Salary Slip Dialog removed — email is sent directly on button click */}
+        </div>
     );
 };
 
