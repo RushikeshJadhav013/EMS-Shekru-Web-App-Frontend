@@ -760,6 +760,56 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         }
     };
 
+    const handleSendSlipFromDialog = async () => {
+        if (isVerified === false) {
+            toast({
+                title: "Email Not Verified",
+                description: "Cannot send salary slip. The employee's email must be verified first.",
+                variant: "destructive"
+            });
+            return;
+        }
+        const month = parseInt(selectedMonth);
+        try {
+            setIsSalarySlipSending(true);
+            const options: Record<string, any> = {};
+            if (generateSlipForm.optional_deduction_1_label) options.optional_deduction_1_label = generateSlipForm.optional_deduction_1_label;
+            if (generateSlipForm.optional_deduction_1_amount) options.optional_deduction_1_amount = Number(generateSlipForm.optional_deduction_1_amount);
+            if (generateSlipForm.optional_deduction_2_label) options.optional_deduction_2_label = generateSlipForm.optional_deduction_2_label;
+            if (generateSlipForm.optional_deduction_2_amount) options.optional_deduction_2_amount = Number(generateSlipForm.optional_deduction_2_amount);
+            if (generateSlipForm.optional_deduction_3_label) options.optional_deduction_3_label = generateSlipForm.optional_deduction_3_label;
+            if (generateSlipForm.optional_deduction_3_amount) options.optional_deduction_3_amount = Number(generateSlipForm.optional_deduction_3_amount);
+            if (generateSlipForm.manual_leave_days) options.manual_leave_days = Number(generateSlipForm.manual_leave_days);
+
+            const response = await apiService.sendSalarySlip(
+                targetUserId!,
+                month,
+                selectedYear,
+                Object.keys(options).length > 0 ? options : undefined
+            );
+
+            if (response !== null && response !== undefined) {
+                toast({
+                    title: 'Sent Successfully',
+                    description: response.message || `Salary slip for ${months[month - 1]} ${selectedYear} sent to ${userEmail || 'employee'}.`,
+                    variant: 'success'
+                });
+                setIsGenerateSlipDialogOpen(false);
+                loadSalarySlipHistory();
+            } else {
+                throw new Error('Failed to send salary slip — empty response.');
+            }
+        } catch (err: any) {
+            toast({
+                title: 'Send Failed',
+                description: err.message || 'Failed to send salary slip via email.',
+                variant: 'destructive'
+            });
+        } finally {
+            setIsSalarySlipSending(false);
+        }
+    };
+
     const handleDownloadAnnexure = async () => {
         try {
             toast({ title: 'Preparing Annexure', description: 'Generating PDF...', variant: 'default' });
@@ -2554,7 +2604,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             variant="outline"
                             onClick={() => setIsGenerateSlipDialogOpen(false)}
                             className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-slate-500"
-                            disabled={isGenerating}
+                            disabled={isGenerating || isSalarySlipSending}
                         >
                             Cancel
                         </Button>
@@ -2562,15 +2612,25 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             variant="outline"
                             onClick={() => handleGenerateSlipAction('preview')}
                             className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                            disabled={isGenerating}
+                            disabled={isGenerating || isSalarySlipSending}
                         >
                             {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeIcon className="h-4 w-4 mr-2" />}
                             Preview
                         </Button>
+                        {canViewAll && (
+                            <Button
+                                onClick={handleSendSlipFromDialog}
+                                className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none"
+                                disabled={isGenerating || isSalarySlipSending}
+                            >
+                                {isSalarySlipSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                                Send
+                            </Button>
+                        )}
                         <Button
                             onClick={() => handleGenerateSlipAction('download')}
                             className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none"
-                            disabled={isGenerating}
+                            disabled={isGenerating || isSalarySlipSending}
                         >
                             {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                             Download
