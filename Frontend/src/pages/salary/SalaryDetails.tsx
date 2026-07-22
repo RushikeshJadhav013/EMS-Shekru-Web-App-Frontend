@@ -2505,15 +2505,15 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 </DialogContent>
             </Dialog>
             <Dialog open={isGenerateSlipDialogOpen} onOpenChange={setIsGenerateSlipDialogOpen}>
-                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-2 border-[#000000] rounded-3xl shadow-2xl">
-                    <div className="bg-emerald-600 p-6 text-white text-center rounded-t-3xl relative">
+                <DialogContent className="sm:max-w-[650px] md:max-w-[680px] p-0 overflow-hidden bg-white dark:bg-slate-900 border-2 border-[#000000] rounded-3xl shadow-2xl">
+                    <div className="dialog-header bg-emerald-600 p-6 text-white text-center rounded-t-3xl relative">
                         <div className="absolute top-0 right-0 -mr-12 -mt-12 h-32 w-32 bg-white/10 rounded-full blur-2xl" />
                         <h2 className="text-2xl font-bold tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>Generate Salary Slip</h2>
                         <p className="mt-2 text-emerald-100 opacity-90 font-medium">Add manual deductions before generating</p>
                     </div>
-                    <div className="p-8 space-y-6">
+                    <div className="p-6 sm:p-8 space-y-6">
                         {/* Other Deduction 1 */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 1 (Label)</Label>
                                 <Input
@@ -2536,7 +2536,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         </div>
 
                         {/* Other Deduction 2 */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 2 (Label)</Label>
                                 <Input
@@ -2559,7 +2559,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         </div>
 
                         {/* Other Deduction 3 */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 3 (Label)</Label>
                                 <Input
@@ -2599,11 +2599,11 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         </div>
                     </div>
 
-                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-800">
+                    <div className="dialog-footer p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap justify-end gap-2 sm:gap-3 rounded-b-3xl border-t border-slate-100 dark:border-slate-800">
                         <Button
                             variant="outline"
                             onClick={() => setIsGenerateSlipDialogOpen(false)}
-                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-slate-500"
+                            className="h-11 px-4 sm:px-6 rounded-xl font-bold uppercase tracking-widest text-slate-500 text-xs sm:text-sm"
                             disabled={isGenerating || isSalarySlipSending}
                         >
                             Cancel
@@ -2611,7 +2611,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         <Button
                             variant="outline"
                             onClick={() => handleGenerateSlipAction('preview')}
-                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                            className="h-11 px-4 sm:px-6 rounded-xl font-bold uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm"
                             disabled={isGenerating || isSalarySlipSending}
                         >
                             {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <EyeIcon className="h-4 w-4 mr-2" />}
@@ -2620,7 +2620,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         {canViewAll && (
                             <Button
                                 onClick={handleSendSlipFromDialog}
-                                className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none"
+                                className="h-11 px-4 sm:px-6 rounded-xl font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 dark:shadow-none text-xs sm:text-sm"
                                 disabled={isGenerating || isSalarySlipSending}
                             >
                                 {isSalarySlipSending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
@@ -2629,7 +2629,7 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                         )}
                         <Button
                             onClick={() => handleGenerateSlipAction('download')}
-                            className="h-11 px-6 rounded-xl font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none"
+                            className="h-11 px-4 sm:px-6 rounded-xl font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none text-xs sm:text-sm"
                             disabled={isGenerating || isSalarySlipSending}
                         >
                             {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
