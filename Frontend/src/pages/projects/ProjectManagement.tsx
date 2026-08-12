@@ -904,6 +904,25 @@ function ProjectCard({
                   );
                 }
 
+                if (role === 'team_lead') {
+                  return (
+                    <>
+                      {/* Team leads can add members to projects they are part of */}
+                      {(isPIC || isMember) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                          title="Add Team Members"
+                          onClick={onManageMembers}
+                        >
+                          <UserPlus className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </>
+                  );
+                }
+
                 // Default behavior for Admin/HR/others using canManageProjects
                 if (canManageProjects) {
                   return (
@@ -2491,6 +2510,34 @@ export default function ProjectManagement() {
                         {selectedProject?.members?.length || 0}
                       </span>
                     </h3>
+                    {/* Team Lead: Add member button in the view dialog */}
+                    {(() => {
+                      const role = normalizeRole(user?.role);
+                      const isPIC = String(user?.id) === String(selectedProject?.person_in_charge_id || selectedProject?.pic_id);
+                      const isMember = selectedProject?.members?.some(m => String(m.user_id) === String(user?.id));
+                      if (role === 'team_lead' && (isPIC || isMember)) {
+                        return (
+                          <Button
+                            size="sm"
+                            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white gap-1.5 h-8 px-3 text-xs shadow-md"
+                            onClick={() => {
+                              setIsViewDialogOpen(false);
+                              if (selectedProject) {
+                                setSelectedMemberIds([]);
+                                setMemberSearch("");
+                                setIsMemberDialogOpen(true);
+                                loadFullProjectDetails(selectedProject.project_id)
+                                  .then(full => setSelectedProject(full))
+                                  .catch(() => { });
+                              }
+                            }}
+                          >
+                            <UserPlus className="h-3.5 w-3.5" /> Add Member
+                          </Button>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                   {!selectedProject?.members?.length ? (
                     <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 text-center border border-slate-100 dark:border-slate-800 border-dashed">

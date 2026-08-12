@@ -1133,6 +1133,21 @@ const TaskManagement: React.FC = () => {
     ];
   }, [employees, user, userId, normalizedUserRole]);
 
+  const employeeProjectMates = useMemo(() => {
+    const mates = new Set<string>();
+    if (!userId || normalizedUserRole !== "employee") return mates;
+    projects.forEach(p => {
+      const isMember = p.members?.some((m: any) => String(m.user_id || m.userId || m.id) === String(userId));
+      if (isMember) {
+        p.members?.forEach((m: any) => {
+          const id = String(m.user_id || m.userId || m.id);
+          if (id && id !== "undefined") mates.add(id);
+        });
+      }
+    });
+    return mates;
+  }, [projects, userId, normalizedUserRole]);
+
   const assignableEmployees = useMemo(() => {
     if (!user || !userId) return [];
 
@@ -1144,11 +1159,19 @@ const TaskManagement: React.FC = () => {
 
       // 1. Role Hierarchy Check
       const targetIndex = ROLE_ORDER.indexOf(emp.role);
+
+      const isProjectMateEmployee =
+        normalizedUserRole === "employee" &&
+        emp.role === "employee" &&
+        employeeProjectMates.has(String(emp.userId));
+
       // Only allow assigning to lower hierarchy (higher index in ROLE_ORDER index)
+      // Exception: Employees can assign to their project peers
       if (
         currentIndex !== -1 &&
         targetIndex !== -1 &&
-        targetIndex <= currentIndex
+        targetIndex <= currentIndex &&
+        !isProjectMateEmployee
       ) {
         return false;
       }
@@ -1178,7 +1201,7 @@ const TaskManagement: React.FC = () => {
 
       return true;
     });
-  }, [extendedEmployees, user, userId, normalizedUserRole, showAllDepartments]);
+  }, [extendedEmployees, user, userId, normalizedUserRole, showAllDepartments, employeeProjectMates]);
 
   const passEligibleEmployees = useMemo(() => {
     if (!user || !userId) return [] as EmployeeSummary[];
@@ -1191,8 +1214,13 @@ const TaskManagement: React.FC = () => {
       const targetIndex = ROLE_ORDER.indexOf(emp.role);
       if (targetIndex === -1) return false;
 
+      const isProjectMateEmployee =
+        normalizedUserRole === "employee" &&
+        emp.role === "employee" &&
+        employeeProjectMates.has(String(emp.userId));
+
       // Can only pass to lower hierarchy (higher index in ROLE_ORDER)
-      if (targetIndex <= currentIndex) return false;
+      if (targetIndex <= currentIndex && !isProjectMateEmployee) return false;
 
       // Non-admin users can only pass within their department
       if (normalizedUserRole !== "admin") {
@@ -1210,11 +1238,11 @@ const TaskManagement: React.FC = () => {
           empDepts.length === 0 ||
           empDepts.some((ed) => managerDepts.includes(ed));
 
-        if (!hasOverlap) return false;
+        if (!hasOverlap && !isProjectMateEmployee) return false;
       }
       return true;
     });
-  }, [extendedEmployees, user, userId, normalizedUserRole]);
+  }, [extendedEmployees, user, userId, normalizedUserRole, employeeProjectMates]);
 
   // Group pass eligible employees by department with role hierarchy
   const passEligibleByDepartment = useMemo(() => {
@@ -4047,7 +4075,8 @@ const TaskManagement: React.FC = () => {
                                     onClick={() => setSelectedTask(task)}
                                   >
                                     <div className="max-w-[300px] py-1">
-                                      <div className="mb-1">
+                                      <div className="mb-1 flex items-center gap-2">
+                                        <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0">#{task.id}</span>
                                         <TruncatedText
                                           text={task.title}
                                           maxLength={40}
@@ -4327,7 +4356,8 @@ const TaskManagement: React.FC = () => {
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white" style={{}}>
+                                <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white flex items-center gap-1.5" style={{}}>
+                                  <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0">#{task.id}</span>
                                   <TruncatedText
                                     text={task.title}
                                     maxLength={30}
@@ -5561,7 +5591,8 @@ const TaskManagement: React.FC = () => {
           >
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader className="flex-shrink-0">
-                <DialogTitle className="text-2xl font-bold whitespace-pre-wrap break-words">
+                <DialogTitle className="text-2xl font-bold whitespace-pre-wrap break-words flex items-center gap-2">
+                  <span className="text-[14px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-2 py-0.5 rounded shrink-0">#{selectedTask.id}</span>
                   {selectedTask.title}
                 </DialogTitle>
                 <DialogDescription>
