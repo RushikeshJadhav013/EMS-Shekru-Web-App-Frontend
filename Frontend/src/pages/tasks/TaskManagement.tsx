@@ -1085,6 +1085,50 @@ const TaskManagement: React.FC = () => {
 
       setProjects(normalizedProjects);
 
+      // Immediately populate userCache with whatever name/role data the project member
+      // API already returned. This avoids "Member #X" placeholders in the Assign To list.
+      // Tries multiple common field name variants since different APIs shape member objects differently.
+      const memberEntries: Array<[string, EmployeeSummary]> = [];
+      normalizedProjects.forEach((p) => {
+        (p.members || []).forEach((m: any) => {
+          const id = String(m.user_id || m.userId || m.id || "");
+          if (!id || id === "undefined") return;
+          // Try every common field name variant for the member's full name
+          const name =
+            m.name ||
+            m.user_name ||
+            m.full_name ||
+            m.employee_name ||
+            m.display_name ||
+            (m.first_name
+              ? `${m.first_name}${m.last_name ? ` ${m.last_name}` : ""}`.trim()
+              : "");
+          if (name) {
+            memberEntries.push([id, {
+              userId: id,
+              employeeId: m.employee_id || m.employeeId || "",
+              name,
+              email: m.email || m.user_email || "",
+              role: normalizeRole(m.role || m.user_role || m.member_role) || "employee",
+              department: m.department || undefined,
+              photo_url: m.photo_url || m.avatar || m.profile_photo || undefined,
+            }]);
+          }
+        });
+      });
+      if (memberEntries.length > 0) {
+        setUserCache((prev) => {
+          const next = new Map(prev);
+          memberEntries.forEach(([id, emp]) => {
+            const existing = next.get(id);
+            if (!existing || existing.name?.startsWith("Member #")) {
+              next.set(id, emp);
+            }
+          });
+          return next;
+        });
+      }
+
       // Also merge all project tasks into the main tasks state to ensure they show up in stats and global list if visible
       const allProjectTasks = normalizedProjects.flatMap(p => p.tasks || []);
       if (allProjectTasks.length > 0) {
@@ -1162,7 +1206,6 @@ const TaskManagement: React.FC = () => {
 
       const isProjectMateEmployee =
         normalizedUserRole === "employee" &&
-        emp.role === "employee" &&
         employeeProjectMates.has(String(emp.userId));
 
       // Only allow assigning to lower hierarchy (higher index in ROLE_ORDER index)
@@ -1206,7 +1249,7 @@ const TaskManagement: React.FC = () => {
   const passEligibleEmployees = useMemo(() => {
     if (!user || !userId) return [] as EmployeeSummary[];
     const currentIndex = ROLE_ORDER.indexOf(normalizedUserRole);
-    return extendedEmployees.filter((emp) => {
+    let eligible = extendedEmployees.filter((emp) => {
       // Filter out current user (self)
       if (emp.userId === userId || String(emp.userId) === String(userId))
         return false;
@@ -1216,7 +1259,6 @@ const TaskManagement: React.FC = () => {
 
       const isProjectMateEmployee =
         normalizedUserRole === "employee" &&
-        emp.role === "employee" &&
         employeeProjectMates.has(String(emp.userId));
 
       // Can only pass to lower hierarchy (higher index in ROLE_ORDER)
@@ -1242,7 +1284,17 @@ const TaskManagement: React.FC = () => {
       }
       return true;
     });
-  }, [extendedEmployees, user, userId, normalizedUserRole, employeeProjectMates]);
+
+    if (passTaskTarget?.projectId) {
+      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(passTaskTarget.projectId));
+      if (selectedProject?.members) {
+        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
+        eligible = eligible.filter(emp => memberIds.includes(String(emp.userId)));
+      }
+    }
+
+    return eligible;
+  }, [extendedEmployees, user, userId, normalizedUserRole, employeeProjectMates, passTaskTarget?.projectId, projects]);
 
   // Group pass eligible employees by department with role hierarchy
   const passEligibleByDepartment = useMemo(() => {
@@ -1547,6 +1599,48 @@ const TaskManagement: React.FC = () => {
     });
   }, [employees]);
 
+  // Fetch real names for project members that aren't yet in the employee list or cache
+  // This resolves the "Member #X" placeholder names shown in the Assign To dropdown
+  useEffect(() => {
+    if (!projects.length || !authToken) return;
+    const unresolvedIds = new Set<string>();
+    projects.forEach((p) => {
+      (p.members || []).forEach((m: any) => {
+        const id = String(m.user_id || m.userId || m.id || "");
+        if (!id || id === "undefined") return;
+        const fromEmp = employeesRef.current.find((e) => e.userId === id);
+        const fromCache = userCacheRef.current.get(id);
+        // Only fetch if we have no name or have a placeholder fallback name
+        if (!fromEmp && (!fromCache?.name || fromCache.name.startsWith("Member #"))) {
+          unresolvedIds.add(id);
+        }
+      });
+    });
+    if (unresolvedIds.size === 0) return;
+    unresolvedIds.forEach(async (id) => {
+      try {
+        const userData = await apiService.getEmployeeById(id);
+        if (userData?.name) {
+          setUserCache((prev) => {
+            const next = new Map(prev);
+            next.set(id, {
+              userId: id,
+              employeeId: userData.employee_id || "",
+              name: userData.name,
+              email: userData.email || "",
+              role: normalizeRole(userData.role) || "employee",
+              department: userData.department || undefined,
+              photo_url: userData.photo_url || undefined,
+            });
+            return next;
+          });
+        }
+      } catch {
+        // Silently ignore fetch errors for individual members
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projects, authToken]); // Uses refs (userCacheRef, employeesRef) to avoid stale closure loops
   useEffect(() => {
     if (!user || !userId || !isCreateDialogOpen) return;
     if (!newTask.assignedTo.length) {
@@ -1907,16 +2001,48 @@ const TaskManagement: React.FC = () => {
 
   const canAssignToSelection = useMemo(() => {
     if (!user || !userId) return [];
-    let base = assignableEmployees;
+
     if (newTask.projectId) {
-      const selectedProject = projects.find(p => String(p.project_id || p.id) === String(newTask.projectId));
-      if (selectedProject?.members) {
-        const memberIds = selectedProject.members.map((m: any) => String(m.user_id || m.userId || m.id || ''));
-        base = base.filter(emp => memberIds.includes(String(emp.userId)));
+      const selectedProject = projects.find(
+        (p) => String(p.project_id || p.id) === String(newTask.projectId)
+      );
+      if (selectedProject?.members && selectedProject.members.length > 0) {
+        const seen = new Set<string>();
+        const result: EmployeeSummary[] = [];
+
+        selectedProject.members.forEach((m: any) => {
+          const memberId = String(m.user_id || m.userId || m.id || "");
+          if (!memberId || memberId === "undefined" || seen.has(memberId)) return;
+          seen.add(memberId);
+
+          const fromList = employeesById.get(memberId);
+          const fromCache = userCache.get(memberId);
+          const isSelf = memberId === String(userId);
+
+          result.push({
+            userId: memberId,
+            employeeId: fromList?.employeeId || fromCache?.employeeId || m.employee_id || "",
+            name: fromList?.name || fromCache?.name || m.name || (isSelf ? user.name : `Member #${memberId}`),
+            email: fromList?.email || fromCache?.email || m.email || "",
+            role: fromList?.role || fromCache?.role || normalizeRole(m.role) || "employee",
+            department: fromList?.department || fromCache?.department || m.department || undefined,
+            photo_url: fromList?.photo_url || fromCache?.photo_url || m.photo_url || undefined,
+          });
+        });
+
+        // For employee role: only show employees, exclude team leads and above
+        if (normalizedUserRole === "employee") {
+          return result.filter(
+            (emp) => emp.role === "employee" || emp.userId === String(userId)
+          );
+        }
+
+        return result;
       }
     }
-    return base;
-  }, [assignableEmployees, user, userId, newTask.projectId, projects]);
+
+    return assignableEmployees;
+  }, [assignableEmployees, employeesById, userCache, user, userId, normalizedUserRole, newTask.projectId, projects]);
 
   const departmentOptions = useMemo(() => {
     const sanitized = assignableDepartments.filter(
@@ -3304,40 +3430,60 @@ const TaskManagement: React.FC = () => {
                       </div>
                     </div>
 
-                    {canSeeAdminFilters && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="projectId"
-                            className="text-sm font-semibold flex items-center gap-2"
-                          >
-                            <FileText className="h-4 w-4 text-violet-600" />
-                            Project (Optional)
-                          </Label>
-                          <Select
-                            value={newTask.projectId || "none"}
-                            onValueChange={(value) =>
-                              setNewTask({
-                                ...newTask,
-                                projectId: value === "none" ? "" : value,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
-                              <SelectValue placeholder="Select Project" />
-                            </SelectTrigger>
-                            <SelectContent className="border-2 shadow-xl" side="bottom">
-                              <SelectItem value="none">None</SelectItem>
-                              {projects.map((p: any) => (
-                                <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
-                                  {p.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                    {(() => {
+                      // For employees: only show projects they are a member of
+                      // For admin/HR/manager/team_lead: show all projects
+                      const visibleProjects = normalizedUserRole === "employee"
+                        ? projects.filter((p: any) =>
+                          p.members?.some((m: any) =>
+                            String(m.user_id || m.userId || m.id) === String(userId)
+                          )
+                        )
+                        : projects;
+                      // Show project selector for ALL roles (as long as there are projects to show)
+                      if (visibleProjects.length === 0) return null;
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label
+                              htmlFor="projectId"
+                              className="text-sm font-semibold flex items-center gap-2"
+                            >
+                              <FileText className="h-4 w-4 text-violet-600" />
+                              Project (Optional)
+                            </Label>
+                            <Select
+                              value={newTask.projectId || "none"}
+                              onValueChange={(value) =>
+                                setNewTask({
+                                  ...newTask,
+                                  projectId: value === "none" ? "" : value,
+                                  // Clear assignees when project changes to avoid stale selections
+                                  assignedTo: [],
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                                <SelectValue placeholder="Select Project" />
+                              </SelectTrigger>
+                              <SelectContent className="border-2 shadow-xl" side="bottom">
+                                <SelectItem value="none">None</SelectItem>
+                                {visibleProjects.map((p: any) => (
+                                  <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+                                    {p.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {newTask.projectId && (
+                              <p className="text-xs text-violet-600 dark:text-violet-400 font-medium mt-1">
+                                ✓ Assignee list is filtered to project members
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {canSeeAdminFilters && normalizedUserRole !== "team_lead" && (
@@ -3455,6 +3601,7 @@ const TaskManagement: React.FC = () => {
                                   )
                                   .filter(
                                     (emp) =>
+                                      newTask.projectId ||
                                       !newTask.department ||
                                       (emp.department &&
                                         emp.department
@@ -3489,6 +3636,7 @@ const TaskManagement: React.FC = () => {
                                   )
                                   .filter(
                                     (emp) =>
+                                      newTask.projectId ||
                                       !newTask.department ||
                                       (emp.department &&
                                         emp.department
@@ -3522,6 +3670,7 @@ const TaskManagement: React.FC = () => {
                                   )
                                   .filter(
                                     (emp) =>
+                                      newTask.projectId ||
                                       !newTask.department ||
                                       (emp.department &&
                                         emp.department
@@ -3639,6 +3788,7 @@ const TaskManagement: React.FC = () => {
                           )
                           .filter(
                             (emp) =>
+                              newTask.projectId ||
                               !newTask.department ||
                               (emp.department &&
                                 emp.department

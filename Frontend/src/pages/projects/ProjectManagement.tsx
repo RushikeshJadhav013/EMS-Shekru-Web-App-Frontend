@@ -1019,15 +1019,41 @@ function ProjectCard({
               </span>
             </div>
 
-            {/* Full View Details Link (Always visible for all profiles) */}
-            <button
-              onClick={onView}
-              className="ml-auto flex items-center gap-1.5 font-bold hover:underline decoration-violet-300 underline-offset-4"
-              style={{ color: "#2563EB", fontSize: "12px" }}
-            >
-              <Eye className="h-5 w-5" />
-              View details
-            </button>
+            <div className="ml-auto flex items-center gap-4">
+              {/* Add Member Link (Shown for authorized users) */}
+              {(() => {
+                const role = normalizeRole(user?.role);
+                const isPIC = String(user?.id) === String(project.person_in_charge_id || project.pic_id);
+                // Team Lead, Admin, HR, or Manager (if PIC) can see the button on projects.
+                const canAddMember =
+                  canManageProjects || // Admin/HR
+                  role === "team_lead" || // Team Lead (on every project)
+                  (role === "manager" && isPIC); // Manager PIC
+
+                if (canAddMember) {
+                  return (
+                    <button
+                      onClick={onManageMembers}
+                      className="flex items-center justify-center h-6 w-6 rounded-full hover:bg-blue-50 text-blue-600 hover:text-blue-700 transition-colors"
+                      title="Add Member"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                    </button>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Full View Details Link (Always visible for all profiles) */}
+              <button
+                onClick={onView}
+                className="flex items-center gap-1.5 font-bold hover:underline decoration-violet-300 underline-offset-4"
+                style={{ color: "#2563EB", fontSize: "12px" }}
+              >
+                <Eye className="h-4 w-4" />
+                View details
+              </button>
+            </div>
           </div>
         </div>
       </CardContent>
