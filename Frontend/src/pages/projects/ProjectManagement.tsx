@@ -532,12 +532,21 @@ function TaskRow({
   return (
     <TableRow className="hover:bg-slate-50/60 dark:hover:bg-slate-900/30 transition-colors">
       <TableCell className="pl-4">
-        <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate" title={task.task_name}>
-          {task.task_name}
-        </p>
-        {task.description && (
-          <p className="text-xs text-slate-400 mt-0.5 truncate" title={task.description}>{task.description}</p>
-        )}
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded font-mono font-medium border border-slate-200 dark:border-slate-700">
+              #{id}
+            </span>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate flex-1" title={task.task_name}>
+              {task.task_name}
+            </p>
+          </div>
+          {task.description && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate line-clamp-1 max-w-[300px]" title={task.description}>
+              {task.description}
+            </p>
+          )}
+        </div>
       </TableCell>
       <TableCell className="text-sm text-slate-600 dark:text-slate-300">
         <div className="flex items-center gap-1.5 min-w-[120px]">

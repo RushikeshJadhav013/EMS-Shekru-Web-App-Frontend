@@ -4940,8 +4940,11 @@ const TaskManagement: React.FC = () => {
                                           <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
                                             <TableCell className="py-4">
                                               <div className="flex flex-col">
-                                                <span className="text-[14px] font-bold text-black dark:text-white">{task.title}</span>
-                                                {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2 mt-1">{task.description}</span>}
+                                                <div className="mb-1 flex items-center gap-2">
+                                                  <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0">#{task.id}</span>
+                                                  <span className="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors line-clamp-1 break-all">{task.title}</span>
+                                                </div>
+                                                {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2">{task.description}</span>}
                                               </div>
                                             </TableCell>
                                             <TableCell>
