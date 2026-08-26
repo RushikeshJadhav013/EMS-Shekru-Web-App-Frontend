@@ -585,7 +585,6 @@ const AddEditSalary = () => {
                     const monthlyMedical = 1100;
                     const monthlyConveyance = 1250;
                     const monthlyOtherAllowance = 250;
-                    const monthlyOtherTax = 1000;
 
                     // PF fallback — always read pfType/pfValue from the guided form fields.
                     // NEVER auto-generate 12% when pfType is 'none'.
@@ -609,7 +608,7 @@ const AddEditSalary = () => {
 
                     // Monthly Gross = Annual CTC / 12 (consistent definition)
                     const monthlyGross = monthlyCtc;
-                    const monthlyDeductions = monthlyPt + monthlyOtherTax + monthlyPfOneSide;
+                    const monthlyDeductions = monthlyPt + monthlyPfOneSide;
                     const monthlyInHand = Math.max(0, monthlyGross - monthlyDeductions);
 
                     setPreviewData({
@@ -627,7 +626,7 @@ const AddEditSalary = () => {
                         variablePay: vType === 'percentage' ? ctcVal * (vValueVal / 100) : vValueVal,
                         monthlyGross,
                         monthlyDeductions,
-                        otherDeduction: monthlyOtherTax,
+                        otherDeduction: 0,
                         monthlyInHand,
                         pfNo: form.getValues('pfNo')
                     });
@@ -1325,10 +1324,7 @@ const AddEditSalary = () => {
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Working Days</Label>
                                                         <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("manualWorkingDays")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'manualWorkingDays')} />
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Taxes (₹)</Label>
-                                                        <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'otherDeductionAnnual')} />
-                                                    </div>
+
 
                                                     <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border-2 border-[#000000]">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Provident Fund (PF)</Label>
@@ -1599,19 +1595,14 @@ const AddEditSalary = () => {
                                                                 <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Professional Tax</span>
                                                                 <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.professionalTax)}</span>
                                                             </div>
-                                                            {previewData.otherDeduction > 0 && (
-                                                                <div className="flex justify-between items-center py-2 border-b border-rose-100/50 dark:border-rose-900/30">
-                                                                    <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Other Taxes</span>
-                                                                    <span className="font-semibold text-destructive">-{formatCurrency(previewData.otherDeduction)}</span>
-                                                                </div>
-                                                            )}
+
                                                             <div className="flex flex-col py-2 mt-4 bg-rose-100/50 dark:bg-rose-900/30 px-2 rounded">
                                                                 <div className="flex justify-between items-center font-semibold">
                                                                     <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Total Deductions</span>
                                                                     <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>-{formatCurrency(previewData.monthlyDeductions)}</span>
                                                                 </div>
                                                                 <div className="text-[10px] text-rose-600 mt-1 font-bold text-right italic">
-                                                                    ({Math.round(previewData.pfEmployee)} EPF + {Math.round(previewData.professionalTax)} PT + {Math.round(previewData.otherDeduction)} Other = {Math.round(previewData.monthlyDeductions)})
+                                                                    ({Math.round(previewData.pfEmployee)} EPF + {Math.round(previewData.professionalTax)} PT = {Math.round(previewData.monthlyDeductions)})
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1620,7 +1611,7 @@ const AddEditSalary = () => {
                                                 <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg border-2 border-[#000000] flex items-start gap-3">
                                                     <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                                                     <p className="leading-relaxed" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#A16207", fontSize: "14px" }}>
-                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> EPF (Employee share), Professional Tax, and Other Taxes are deducted from the Monthly Gross to calculate the final In-Hand pay.
+                                                        <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> EPF (Employee share) and Professional Tax are deducted from the Monthly Gross to calculate the final In-Hand pay.
                                                     </p>
                                                 </div>
                                             </div>
