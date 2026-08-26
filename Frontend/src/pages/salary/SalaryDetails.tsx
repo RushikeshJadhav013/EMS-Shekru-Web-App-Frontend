@@ -44,7 +44,8 @@ import {
     Save,
     LayoutGrid,
     CheckCircle2,
-    Ban
+    Ban,
+    ArrowLeft
 } from 'lucide-react';
 import SummaryCard from "@/components/ui/SummaryCard";
 import {
@@ -136,6 +137,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         optional_deduction_2_amount: '',
         optional_deduction_3_label: '',
         optional_deduction_3_amount: '',
+        optional_deduction_4_label: '',
+        optional_deduction_4_amount: '',
         manual_leave_days: '',
     });
 
@@ -149,6 +152,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
         optional_deduction_2_amount: '',
         optional_deduction_3_label: '',
         optional_deduction_3_amount: '',
+        optional_deduction_4_label: '',
+        optional_deduction_4_amount: '',
         manual_leave_days: '',
     });
 
@@ -707,6 +712,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             optional_deduction_2_amount: '',
             optional_deduction_3_label: '',
             optional_deduction_3_amount: '',
+            optional_deduction_4_label: '',
+            optional_deduction_4_amount: '',
             manual_leave_days: '',
         });
         setIsGenerateSlipDialogOpen(true);
@@ -724,6 +731,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 optional_deduction_2_amount: generateSlipForm.optional_deduction_2_amount ? Number(generateSlipForm.optional_deduction_2_amount) : undefined,
                 optional_deduction_3_label: generateSlipForm.optional_deduction_3_label || undefined,
                 optional_deduction_3_amount: generateSlipForm.optional_deduction_3_amount ? Number(generateSlipForm.optional_deduction_3_amount) : undefined,
+                optional_deduction_4_label: generateSlipForm.optional_deduction_4_label || undefined,
+                optional_deduction_4_amount: generateSlipForm.optional_deduction_4_amount ? Number(generateSlipForm.optional_deduction_4_amount) : undefined,
                 manual_leave_days: generateSlipForm.manual_leave_days ? Number(generateSlipForm.manual_leave_days) : undefined,
                 inline: action === 'preview',
                 preview: action === 'preview'
@@ -779,6 +788,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             if (generateSlipForm.optional_deduction_2_amount) options.optional_deduction_2_amount = Number(generateSlipForm.optional_deduction_2_amount);
             if (generateSlipForm.optional_deduction_3_label) options.optional_deduction_3_label = generateSlipForm.optional_deduction_3_label;
             if (generateSlipForm.optional_deduction_3_amount) options.optional_deduction_3_amount = Number(generateSlipForm.optional_deduction_3_amount);
+            if (generateSlipForm.optional_deduction_4_label) options.optional_deduction_4_label = generateSlipForm.optional_deduction_4_label;
+            if (generateSlipForm.optional_deduction_4_amount) options.optional_deduction_4_amount = Number(generateSlipForm.optional_deduction_4_amount);
             if (generateSlipForm.manual_leave_days) options.manual_leave_days = Number(generateSlipForm.manual_leave_days);
 
             const response = await apiService.sendSalarySlip(
@@ -1042,6 +1053,17 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                 <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-teal-500/5 rounded-full blur-3xl" />
 
                 <div className="relative flex items-center gap-5">
+                    {isAdminOrHr && (
+                        <Button
+                            variant="outline"
+                            size="lg"
+                            onClick={() => navigate('/salary')}
+                            className="rounded-xl px-4 h-12 transition-all active:scale-95 flex items-center gap-2"
+                            style={{ color: '#000000', backgroundColor: '#F3F4F6', fontSize: '14px', border: '1.5px solid #D1D5DB' }}
+                        >
+                            <ArrowLeft className="h-4 w-4" /> Back
+                        </Button>
+                    )}
                     <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-200 dark:shadow-none">
                         <FileText className="h-8 w-8 text-white" />
                     </div>
@@ -2575,6 +2597,29 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     type="number"
                                     value={generateSlipForm.optional_deduction_3_amount}
                                     onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_3_amount: e.target.value }))}
+                                    placeholder="0"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Other Deduction 4 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Other Deduction 4 (Label)</Label>
+                                <Input
+                                    value={generateSlipForm.optional_deduction_4_label}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_4_label: e.target.value }))}
+                                    placeholder="e.g. Advance Recovery"
+                                    className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (₹)</Label>
+                                <Input
+                                    type="number"
+                                    value={generateSlipForm.optional_deduction_4_amount}
+                                    onChange={(e) => setGenerateSlipForm(prev => ({ ...prev, optional_deduction_4_amount: e.target.value }))}
                                     placeholder="0"
                                     className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-[#000000]"
                                 />
