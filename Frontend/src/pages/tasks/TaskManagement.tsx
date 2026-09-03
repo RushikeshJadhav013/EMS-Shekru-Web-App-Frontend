@@ -1988,7 +1988,8 @@ const TaskManagement: React.FC = () => {
   }, [assignableEmployees, editTaskForm.projectId, projects]);
 
   const canAssignToReassign = useMemo(() => {
-    let base = assignableEmployees;
+    // Use the full employee list so any employee can be selected when reassigning
+    let base = extendedEmployees;
     if (reassignForm.projectId) {
       const selectedProject = projects.find(p => String(p.project_id || p.id) === String(reassignForm.projectId));
       if (selectedProject?.members) {
@@ -1997,7 +1998,7 @@ const TaskManagement: React.FC = () => {
       }
     }
     return base;
-  }, [assignableEmployees, reassignForm.projectId, projects]);
+  }, [extendedEmployees, reassignForm.projectId, projects]);
 
   const canAssignToSelection = useMemo(() => {
     if (!user || !userId) return [];
