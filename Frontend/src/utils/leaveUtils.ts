@@ -4,7 +4,7 @@ import { LeaveBalance } from '@/contexts/LeaveBalanceContext';
  * Calculate the number of leave days between two dates (inclusive)
  */
 export const calculateLeaveDays = (startDate: Date, endDate: Date): number => {
-  return Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  return 1;
 };
 
 /**
