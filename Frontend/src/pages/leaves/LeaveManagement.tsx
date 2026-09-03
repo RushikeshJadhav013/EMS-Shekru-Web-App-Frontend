@@ -941,7 +941,7 @@ export default function LeaveManagement() {
             reason: req.reason,
             status,
             requestDate: new Date(req.start_date),
-            duration_days: req.duration_days,
+            duration_days: 1,
             leave_session: req.leave_session,
           };
         });
@@ -1162,7 +1162,7 @@ export default function LeaveManagement() {
         end_date: format(formData.endDate, "yyyy-MM-dd"),
         reason: reasonWithSubType,
         leave_type: formData.type,
-        duration_days: durationDays,
+        duration_days: 1,
         leave_session: leaveSession,
       };
 
@@ -1439,7 +1439,7 @@ export default function LeaveManagement() {
         end_date: format(editFormData.endDate, "yyyy-MM-dd"),
         reason: editFormData.reason,
         leave_type: editingLeave.type,
-        duration_days: durationDays,
+        duration_days: 1,
         leave_session: editingLeave.leave_session,
       });
       await loadLeaveRequests(leaveHistoryPeriod);
