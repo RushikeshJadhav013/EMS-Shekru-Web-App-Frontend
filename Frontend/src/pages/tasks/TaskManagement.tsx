@@ -1735,16 +1735,81 @@ const TaskManagement: React.FC = () => {
     return false;
   }, [userId, user, normalizedUserRole, employees, projects]);
 
+  // Helper to check if task matches search query (title, description, assigner, or assignee)
+  const checkTaskMatchesSearch = useCallback(
+    (task: any, query: string) => {
+      if (!query) return true;
+      const q = query.toLowerCase().trim();
+      if (!q) return true;
+
+      // 1. Task ID (e.g. "#12" or "12")
+      const rawIdQuery = q.startsWith("#") ? q.slice(1).trim() : q;
+      if (rawIdQuery && String(task.id).toLowerCase() === rawIdQuery) {
+        return true;
+      }
+
+      // 2. Title & Description
+      if ((task.title || "").toLowerCase().includes(q)) return true;
+      if ((task.description || "").toLowerCase().includes(q)) return true;
+
+      // 3. Assigned By (Creator / Assigner name & details)
+      if ((task.assignedByName || "").toLowerCase().includes(q)) return true;
+      const assignedByInfo = getAssignedByInfo(
+        task.assignedBy,
+        task.assignedByRole,
+        task.assignedByName,
+      );
+      if (assignedByInfo?.name && assignedByInfo.name.toLowerCase().includes(q)) {
+        return true;
+      }
+      const assigner = employeesById.get(String(task.assignedBy));
+      if (assigner) {
+        if (assigner.name && assigner.name.toLowerCase().includes(q)) return true;
+        if (assigner.email && assigner.email.toLowerCase().includes(q)) return true;
+        if (assigner.employeeId && assigner.employeeId.toLowerCase().includes(q)) return true;
+      }
+
+      // 4. Assigned To (Assignee name & details)
+      if ((task.assignedToName || "").toLowerCase().includes(q)) return true;
+
+      const assignedToIds: any[] = Array.isArray(task.assignedTo)
+        ? task.assignedTo
+        : task.assignedTo !== undefined && task.assignedTo !== null
+          ? [task.assignedTo]
+          : [];
+
+      for (const toId of assignedToIds) {
+        const toIdStr = String(toId);
+        const assignedToInfo = getAssignedToInfo(
+          toIdStr,
+          task.assignedToRole,
+          task.assignedToName,
+        );
+        if (assignedToInfo?.name && assignedToInfo.name.toLowerCase().includes(q)) {
+          return true;
+        }
+
+        const assignee = employeesById.get(toIdStr);
+        if (assignee) {
+          if (assignee.name && assignee.name.toLowerCase().includes(q)) return true;
+          if (assignee.email && assignee.email.toLowerCase().includes(q)) return true;
+          if (assignee.employeeId && assignee.employeeId.toLowerCase().includes(q)) return true;
+        }
+      }
+
+      return false;
+    },
+    [getAssignedByInfo, getAssignedToInfo, employeesById],
+  );
+
   // 1. Base Visibility & Search Filter (Status-independent)
   const baseVisibleTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const matchesSearch =
-        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = checkTaskMatchesSearch(task, searchQuery);
 
       return matchesSearch && isTaskVisible(task);
     });
-  }, [searchQuery, tasks, isTaskVisible]);
+  }, [searchQuery, tasks, isTaskVisible, checkTaskMatchesSearch]);
 
   // 2. Ownership & Department Scoped Filter (Status-independent)
   const scopedTasks = useMemo(() => {
@@ -1904,7 +1969,7 @@ const TaskManagement: React.FC = () => {
           if (isOverdueFilterActive && task.status !== "overdue") return false;
 
           // 5. Search filter
-          if (query && !task.title.toLowerCase().includes(query) && !task.description.toLowerCase().includes(query)) {
+          if (query && !checkTaskMatchesSearch(task, query)) {
             return false;
           }
 
@@ -1918,7 +1983,7 @@ const TaskManagement: React.FC = () => {
         };
       })
       .filter((p) => p.projectMatchesSearch || p.filteredTasks.length > 0);
-  }, [projects, tasks, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId]);
+  }, [projects, tasks, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId, checkTaskMatchesSearch]);
 
   // Paginated projects
   const paginatedProjects = useMemo(() => {
@@ -4003,8 +4068,8 @@ const TaskManagement: React.FC = () => {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
                         <Input
-                          className="pl-9 w-full sm:w-[200px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium focus:ring-1 focus:ring-black rounded-lg shadow-sm"
-                          placeholder="Search tasks..."
+                          className="pl-9 w-full sm:w-[260px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium focus:ring-1 focus:ring-black rounded-lg shadow-sm"
+                          placeholder="Search tasks, assigner, assignee..."
                           style={{}}
                           value={searchQuery}
                           onChange={(e) =>
@@ -4827,8 +4892,8 @@ const TaskManagement: React.FC = () => {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
                         <Input
-                          className="pl-9 w-full sm:w-[200px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 focus:ring-1 focus:ring-black rounded-lg shadow-sm"
-                          placeholder="Search projects or tasks..."
+                          className="pl-9 w-full sm:w-[280px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 focus:ring-1 focus:ring-black rounded-lg shadow-sm"
+                          placeholder="Search projects, tasks, assignees..."
                           style={{ color: '#000000', fontSize: '14px' }}
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
