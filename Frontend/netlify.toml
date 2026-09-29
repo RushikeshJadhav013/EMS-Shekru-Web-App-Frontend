@@ -11,7 +11,7 @@
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
-    Content-Security-Policy = "connect-src 'self' https://staffly.space https://api.staffly.space https://staffly.space https://nominatim.openstreetmap.org 'unsafe-inline'; img-src 'self' data: https://staffly.space https://api.staffly.space https://staffly.space https://nominatim.openstreetmap.org"
+    Content-Security-Policy = "connect-src 'self' https://api.staffly.space https://api.api.staffly.space https://api.staffly.space https://nominatim.openstreetmap.org 'unsafe-inline'; img-src 'self' data: https://api.staffly.space https://api.api.staffly.space https://api.staffly.space https://nominatim.openstreetmap.org"
     Referrer-Policy = "no-referrer-when-downgrade"
 
 
@@ -37,43 +37,43 @@
 
 [[redirects]]
   from = "https://stafflyhrms.netlify.app/*"
-  to = "https://www.staffly.space/:splat"
+  to = "https://www.api.staffly.space/:splat"
   status = 301
   force = true
 
 [[redirects]]
   from = "http://stafflyhrms.netlify.app/*"
-  to = "https://www.staffly.space/:splat"
+  to = "https://www.api.staffly.space/:splat"
   status = 301
   force = true
 
 [[redirects]]
   from = "https://stafflytesting.netlify.app/*"
-  to = "https://www.staffly.space/:splat"
+  to = "https://www.api.staffly.space/:splat"
   status = 301
   force = true
 
 [[redirects]]
   from = "http://stafflytesting.netlify.app/*"
-  to = "https://www.staffly.space/:splat"
+  to = "https://www.api.staffly.space/:splat"
   status = 301
   force = true
 
 [[redirects]]
-  from = "https://staffly.space/*"
-  to = "https://www.staffly.space/:splat"
+  from = "https://api.staffly.space/*"
+  to = "https://www.api.staffly.space/:splat"
   status = 301
   force = true
 
 [[redirects]]
-  from = "http://staffly.space/*"
-  to = "https://www.staffly.space/:splat"
+  from = "http://api.staffly.space/*"
+  to = "https://www.api.staffly.space/:splat"
   status = 301
   force = true
 
 [[redirects]]
-  from = "http://www.staffly.space/*"
-  to = "https://www.staffly.space/:splat"
+  from = "http://www.api.staffly.space/*"
+  to = "https://www.api.staffly.space/:splat"
   status = 301
   force = true
 
