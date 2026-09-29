@@ -15,8 +15,27 @@
   <meta property="og:title" content="Employee Management System" />
   <meta property="og:description" content="Complete Employee Management Solution" />
   <meta property="og:type" content="website" />
+  <link rel="canonical" href="https://www.staffly.space" />
 
   <meta name="twitter:card" content="summary_large_image" />
+
+  <script>
+    (function () {
+      var hostname = window.location.hostname;
+      if (
+        hostname === 'stafflyhrms.netlify.app' ||
+        hostname === 'stafflytesting.netlify.app' ||
+        hostname === 'staffly.space'
+      ) {
+        window.location.replace(
+          'https://www.staffly.space' +
+          window.location.pathname +
+          window.location.search +
+          window.location.hash
+        );
+      }
+    })();
+  </script>
 </head>
 
 <body>

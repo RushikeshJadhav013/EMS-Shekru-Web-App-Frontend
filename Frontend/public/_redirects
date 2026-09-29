@@ -1,3 +1,11 @@
-# https://stafflytesting.netlify.app/* https://testing.api-testing.staffly.space/:splat 301!
-/company_slug/profile 301!
-/* /index.html 200 
+# Redirect Netlify subdomains and apex domain to primary custom domain www.staffly.space
+https://stafflyhrms.netlify.app/* https://www.staffly.space/:splat 301!
+http://stafflyhrms.netlify.app/* https://www.staffly.space/:splat 301!
+https://stafflytesting.netlify.app/* https://www.staffly.space/:splat 301!
+http://stafflytesting.netlify.app/* https://www.staffly.space/:splat 301!
+https://staffly.space/* https://www.staffly.space/:splat 301!
+http://staffly.space/* https://www.staffly.space/:splat 301!
+http://www.staffly.space/* https://www.staffly.space/:splat 301!
+
+# SPA Routing Fallback
+/* /index.html 200
