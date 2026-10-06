@@ -1,0 +1,20 @@
+67: otherDeductionAnnual: z.preprocess(preprocessNumber, z.number().min(0).optional()),
+219: otherDeductionAnnual: 0,
+288: const watchDeductionAnn = form.watch('otherDeductionAnnual');
+415: const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
+478: otherDeduction: otherDed,
+533: const otherDeduction = data.other_deduction || data.otherDeduction || (data.other_deduction_annual ? data.other_deduction_annual / 12 : 0);
+548: const totalMonthlyDeductions = professionalTax + otherDeduction + pfEmployee;
+566: otherDeduction,
+588: const monthlyOtherTax = 1000;
+612: const monthlyDeductions = monthlyPt + monthlyOtherTax + monthlyPfOneSide;
+630: otherDeduction: monthlyOtherTax,
+698: otherDeductionAnnual: (data.otherDeduction || 0) * 12,
+798: other_deduction_annual: data.otherDeductionAnnual || 0,
+1329: <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Other Taxes (₹)</Label>
+1330: <Input type="text" className="h-10 bg-white dark:bg-slate-800 border-2 border-[#000000]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} {...form.register("otherDeductionAnnual")} onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9\s.]/g, '')} onFocus={handleNumericFocus} onBlur={(e) => handleNumericBlur(e, 'otherDeductionAnnual')} />
+1602: {previewData.otherDeduction > 0 && (
+1604: <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Other Taxes</span>
+1605: <span className="font-semibold text-destructive">-{formatCurrency(previewData.otherDeduction)}</span>
+1614: ({Math.round(previewData.pfEmployee)} EPF + {Math.round(previewData.professionalTax)} PT + {Math.round(previewData.otherDeduction)} Other = {Math.round(previewData.monthlyDeductions)})
+1623: <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000" }}>Values are estimates based on standard Indian payroll regulations.</span> EPF (Employee share), Professional Tax, and Other Taxes are deducted from the Monthly Gross to calculate the final In-Hand pay.

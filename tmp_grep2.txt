@@ -1,0 +1,5 @@
+218: otherDeductionAnnual: 0,
+287: const watchDeductionAnn = form.watch('otherDeductionAnnual');
+414: const otherDed = Math.round(parseNumber(values.otherDeductionAnnual || 0) / 12);
+477: otherDeduction: otherDed,
+693: otherDeductionAnnual: (data.otherDeduction || 0) * 12,
