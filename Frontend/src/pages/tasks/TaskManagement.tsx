@@ -55,6 +55,7 @@ import {
   Pause,
   PlayCircle,
   Calendar,
+  CalendarDays,
   User,
   Filter,
   Search,
@@ -84,6 +85,11 @@ import {
   ClipboardList,
   LayoutGrid,
   Eye,
+  Users,
+  Check,
+  X,
+  Sparkles,
+  Layers,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -613,7 +619,11 @@ const TaskManagement: React.FC = () => {
   }, []);
 
   const isCreateDisabled =
-    !newTask.title.trim() || !newTask.description.trim() || isSubmitting;
+    !newTask.title.trim() ||
+    !newTask.description.trim() ||
+    !newTask.deadline ||
+    newTask.assignedTo.length === 0 ||
+    isSubmitting;
 
   const userId = useMemo(() => {
     if (user?.id === undefined || user?.id === null) return null;
@@ -2054,6 +2064,30 @@ const TaskManagement: React.FC = () => {
     return [];
   }, [assignableDepartments, user?.department]);
 
+  const filteredCreateAssignees = useMemo(() => {
+    return canAssignToSelection
+      .filter((emp) => assignRoleFilter === "all" || emp.role === assignRoleFilter)
+      .filter((emp) => {
+        if (newTask.projectId || !newTask.department || newTask.department === "all") return true;
+        return (
+          emp.department &&
+          emp.department
+            .split(",")
+            .map((d) => d.trim().toLowerCase())
+            .includes(newTask.department.trim().toLowerCase())
+        );
+      })
+      .filter((emp) => {
+        if (!assigneeSearchQuery.trim()) return true;
+        const search = assigneeSearchQuery.toLowerCase();
+        return (
+          emp.name.toLowerCase().includes(search) ||
+          emp.email.toLowerCase().includes(search) ||
+          (emp.employeeId && emp.employeeId.toLowerCase().includes(search))
+        );
+      });
+  }, [canAssignToSelection, assignRoleFilter, newTask.projectId, newTask.department, assigneeSearchQuery]);
+
   const handleCreateTask = async () => {
     if (!user || !userId) return;
 
@@ -3273,24 +3307,28 @@ const TaskManagement: React.FC = () => {
                     Create Task
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 shadow-2xl p-0">
-                  <DialogHeader className="pb-4 border-b bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 -m-6 mb-0 p-6 rounded-t-lg">
+                <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border-2 shadow-2xl bg-white dark:bg-slate-950">
+                  {/* Dialog Top Header */}
+                  <div className="p-6 pb-0 bg-[#eee6fc] relative rounded-t-2xl">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg text-white flex-shrink-0">
                         <Plus className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <DialogTitle className="text-2xl font-bold">
+                        <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-white">
                           Create New Task
                         </DialogTitle>
-                        <DialogDescription className="mt-1">
+                        <DialogDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                           Assign a new task to team members
                         </DialogDescription>
                       </div>
                     </div>
-                  </DialogHeader>
+                    {/* Horizontal Divider Line */}
+                    <div className="mt-[18px] mx-0 h-[1px] bg-[#7a7a7a]" />
+                  </div>
 
-                  <div className="space-y-5 mt-6">
+                  <div className="p-6 space-y-6 bg-white">
+                    {/* Task Title */}
                     <div className="space-y-2">
                       <Label
                         htmlFor="title"
@@ -3312,10 +3350,11 @@ const TaskManagement: React.FC = () => {
                           })
                         }
                         placeholder="Enter task title"
-                        className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                        className="h-11 border-2 rounded-xl placeholder:italic focus:ring-2 focus:ring-violet-500 transition-all bg-white dark:bg-gray-950"
                       />
                     </div>
 
+                    {/* Description */}
                     <div className="space-y-2">
                       <Label
                         htmlFor="description"
@@ -3338,10 +3377,11 @@ const TaskManagement: React.FC = () => {
                         }
                         placeholder="Enter task description"
                         rows={4}
-                        className="resize-none border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                        className="resize-none border-2 rounded-xl placeholder:italic focus:ring-2 focus:ring-violet-500 transition-all bg-white dark:bg-gray-950"
                       />
                     </div>
 
+                    {/* Priority & Start Date Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label
@@ -3357,7 +3397,7 @@ const TaskManagement: React.FC = () => {
                             setNewTask({ ...newTask, priority: value })
                           }
                         >
-                          <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white dark:bg-gray-950">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent
@@ -3407,7 +3447,7 @@ const TaskManagement: React.FC = () => {
                           onChange={(e) =>
                             setNewTask({ ...newTask, startDate: e.target.value })
                           }
-                          className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                          className="h-11 border-2 rounded-xl focus:ring-2 focus:ring-violet-500 transition-all bg-white dark:bg-gray-950"
                         />
                       </div>
 
@@ -3426,31 +3466,30 @@ const TaskManagement: React.FC = () => {
                           onChange={(e) =>
                             setNewTask({ ...newTask, deadline: e.target.value })
                           }
-                          className="h-11 border-2 focus:ring-2 focus:ring-violet-500 transition-all"
+                          className="h-11 border-2 rounded-xl focus:ring-2 focus:ring-violet-500 transition-all bg-white dark:bg-gray-950"
                         />
                       </div>
-                    </div>
 
-                    {(() => {
-                      // For employees: only show projects they are a member of
-                      // For admin/HR/manager/team_lead: show all projects
-                      const visibleProjects = normalizedUserRole === "employee"
-                        ? projects.filter((p: any) =>
-                          p.members?.some((m: any) =>
-                            String(m.user_id || m.userId || m.id) === String(userId)
-                          )
-                        )
-                        : projects;
-                      // Show project selector for ALL roles (as long as there are projects to show)
-                      if (visibleProjects.length === 0) return null;
-                      return (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {(() => {
+                        const visibleProjects =
+                          normalizedUserRole === "employee"
+                            ? projects.filter((p: any) =>
+                              p.members?.some(
+                                (m: any) =>
+                                  String(m.user_id || m.userId || m.id) ===
+                                  String(userId),
+                              ),
+                            )
+                            : projects;
+
+                        if (visibleProjects.length === 0) return null;
+                        return (
                           <div className="space-y-2">
                             <Label
                               htmlFor="projectId"
                               className="text-sm font-semibold flex items-center gap-2"
                             >
-                              <FileText className="h-4 w-4 text-violet-600" />
+                              <FolderKanban className="h-4 w-4 text-violet-600" />
                               Project (Optional)
                             </Label>
                             <Select
@@ -3459,33 +3498,39 @@ const TaskManagement: React.FC = () => {
                                 setNewTask({
                                   ...newTask,
                                   projectId: value === "none" ? "" : value,
-                                  // Clear assignees when project changes to avoid stale selections
                                   assignedTo: [],
                                 })
                               }
                             >
-                              <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                              <SelectTrigger className="h-11 border-2 rounded-xl bg-white dark:bg-gray-950">
                                 <SelectValue placeholder="Select Project" />
                               </SelectTrigger>
-                              <SelectContent className="border-2 shadow-xl" side="bottom">
+                              <SelectContent
+                                className="border-2 shadow-xl"
+                                side="bottom"
+                              >
                                 <SelectItem value="none">None</SelectItem>
                                 {visibleProjects.map((p: any) => (
-                                  <SelectItem key={p.project_id || p.id} value={(p.project_id || p.id)?.toString()}>
+                                  <SelectItem
+                                    key={p.project_id || p.id}
+                                    value={(p.project_id || p.id)?.toString()}
+                                  >
                                     {p.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                             {newTask.projectId && (
-                              <p className="text-xs text-violet-600 dark:text-violet-400 font-medium mt-1">
+                              <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">
                                 ✓ Assignee list is filtered to project members
                               </p>
                             )}
                           </div>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })()}
+                    </div>
 
+                    {/* Admin Filters (Role & Department) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {canSeeAdminFilters && normalizedUserRole !== "team_lead" && (
                         <>
@@ -3503,7 +3548,7 @@ const TaskManagement: React.FC = () => {
                                 setAssignRoleFilter(value)
                               }
                             >
-                              <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                              <SelectTrigger className="h-11 border-2 rounded-xl bg-white dark:bg-gray-950">
                                 <SelectValue placeholder="All Roles" />
                               </SelectTrigger>
                               <SelectContent
@@ -3541,7 +3586,7 @@ const TaskManagement: React.FC = () => {
                                 })
                               }
                             >
-                              <SelectTrigger className="h-11 border-2 bg-white dark:bg-gray-950">
+                              <SelectTrigger className="h-11 border-2 rounded-xl bg-white dark:bg-gray-950">
                                 <SelectValue placeholder="All Departments" />
                               </SelectTrigger>
                               <SelectContent
@@ -3563,8 +3608,9 @@ const TaskManagement: React.FC = () => {
                       )}
                     </div>
 
+                    {/* Assign To Section */}
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1">
                         <Label
                           htmlFor="assignTo"
                           className="text-sm font-semibold flex items-center gap-2"
@@ -3572,134 +3618,83 @@ const TaskManagement: React.FC = () => {
                           <User className="h-4 w-4 text-violet-600" />
                           Assign To <span className="text-red-500">*</span>
                         </Label>
-                        {/* Show All Departments toggle removed as per request */}
                       </div>
 
-                      {/* Assign To Filter / Search */}
+                      {/* Search Bar */}
                       <div className="relative mb-2">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           placeholder="Search employees by name, ID or email..."
-                          className="pl-9 h-10 border-2 border-violet-100 focus:border-violet-500 transition-all text-sm rounded-xl"
+                          className="pl-9 pr-8 h-10 border-2 rounded-xl border-violet-100 focus:border-violet-500 transition-all text-sm bg-white dark:bg-gray-950"
                           value={assigneeSearchQuery}
                           onChange={(e) => setAssigneeSearchQuery(e.target.value)}
                         />
+                        {assigneeSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setAssigneeSearchQuery("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
 
+                      {/* Selected Assignees Chips */}
+                      {newTask.assignedTo.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-gray-900 rounded-xl border border-slate-200 dark:border-slate-800 max-h-24 overflow-y-auto custom-scrollbar">
+                          {newTask.assignedTo.map((id) => {
+                            const emp =
+                              canAssignToSelection.find((e) => String(e.userId) === String(id)) ||
+                              employeesById.get(String(id));
+                            const isSelf = String(id) === String(userId);
+                            const name = isSelf ? `${user?.name || "User"} (Self)` : (emp?.name || `Member #${id}`);
+                            return (
+                              <span
+                                key={id}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 dark:bg-violet-900/60 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 shadow-sm"
+                              >
+                                <span className="h-4 w-4 rounded-full bg-violet-600 text-white text-[9px] flex items-center justify-center font-bold">
+                                  {emp?.name?.[0]?.toUpperCase() || user?.name?.[0]?.toUpperCase() || "U"}
+                                </span>
+                                {name}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNewTask((prev) => ({
+                                      ...prev,
+                                      assignedTo: prev.assignedTo.filter((empId) => empId !== id),
+                                    }));
+                                  }}
+                                  className="text-violet-400 hover:text-violet-700 dark:hover:text-violet-200 ml-0.5"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Employees List Container */}
                       <div className="border-2 rounded-xl max-h-[280px] overflow-y-auto bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50 relative">
-                        {/* Select All Option */}
+                        {/* Select All Option Header */}
                         <div className="flex items-center space-x-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-20 px-4 pt-3 shadow-sm">
                           <div className="flex items-center space-x-3 flex-1">
                             <Checkbox
                               id="select-all-employees"
                               checked={
-                                canAssignToSelection
-                                  .filter((emp) => emp.userId !== userId)
-                                  .filter(
-                                    (emp) =>
-                                      assignRoleFilter === "all" ||
-                                      emp.role === assignRoleFilter,
-                                  )
-                                  .filter(
-                                    (emp) =>
-                                      newTask.projectId ||
-                                      !newTask.department ||
-                                      (emp.department &&
-                                        emp.department
-                                          .split(",")
-                                          .map((d) => d.trim().toLowerCase())
-                                          .includes(
-                                            newTask.department
-                                              .trim()
-                                              .toLowerCase(),
-                                          )),
-                                  )
-                                  .filter((emp) => {
-                                    const search =
-                                      assigneeSearchQuery.toLowerCase();
-                                    return (
-                                      emp.name.toLowerCase().includes(search) ||
-                                      emp.email.toLowerCase().includes(search) ||
-                                      emp.employeeId
-                                        .toLowerCase()
-                                        .includes(search)
-                                    );
-                                  })
-                                  .every((emp) =>
-                                    newTask.assignedTo.includes(emp.userId),
-                                  ) &&
-                                canAssignToSelection
-                                  .filter((emp) => emp.userId !== userId)
-                                  .filter(
-                                    (emp) =>
-                                      assignRoleFilter === "all" ||
-                                      emp.role === assignRoleFilter,
-                                  )
-                                  .filter(
-                                    (emp) =>
-                                      newTask.projectId ||
-                                      !newTask.department ||
-                                      (emp.department &&
-                                        emp.department
-                                          .split(",")
-                                          .map((d) => d.trim().toLowerCase())
-                                          .includes(
-                                            newTask.department
-                                              .trim()
-                                              .toLowerCase(),
-                                          )),
-                                  )
-                                  .filter((emp) => {
-                                    const search =
-                                      assigneeSearchQuery.toLowerCase();
-                                    return (
-                                      emp.name.toLowerCase().includes(search) ||
-                                      emp.email.toLowerCase().includes(search) ||
-                                      emp.employeeId
-                                        .toLowerCase()
-                                        .includes(search)
-                                    );
-                                  }).length > 0
+                                filteredCreateAssignees.length > 0 &&
+                                filteredCreateAssignees.every((emp) =>
+                                  newTask.assignedTo.includes(emp.userId),
+                                )
                               }
                               onCheckedChange={(checked) => {
-                                const filteredEmps = canAssignToSelection
-                                  .filter((emp) => emp.userId !== userId)
-                                  .filter(
-                                    (emp) =>
-                                      assignRoleFilter === "all" ||
-                                      emp.role === assignRoleFilter,
-                                  )
-                                  .filter(
-                                    (emp) =>
-                                      newTask.projectId ||
-                                      !newTask.department ||
-                                      (emp.department &&
-                                        emp.department
-                                          .split(",")
-                                          .map((d) => d.trim().toLowerCase())
-                                          .includes(
-                                            newTask.department
-                                              .trim()
-                                              .toLowerCase(),
-                                          )),
-                                  )
-                                  .filter((emp) => {
-                                    const search =
-                                      assigneeSearchQuery.toLowerCase();
-                                    return (
-                                      emp.name.toLowerCase().includes(search) ||
-                                      emp.email.toLowerCase().includes(search) ||
-                                      emp.employeeId
-                                        .toLowerCase()
-                                        .includes(search)
-                                    );
-                                  });
-
                                 if (checked) {
                                   const newIds = Array.from(
                                     new Set([
                                       ...newTask.assignedTo,
-                                      ...filteredEmps.map((e) => e.userId),
+                                      ...filteredCreateAssignees.map((e) => e.userId),
                                     ]),
                                   );
                                   setNewTask((prev) => ({
@@ -3707,7 +3702,7 @@ const TaskManagement: React.FC = () => {
                                     assignedTo: newIds,
                                   }));
                                 } else {
-                                  const idsToRemove = filteredEmps.map(
+                                  const idsToRemove = filteredCreateAssignees.map(
                                     (e) => e.userId,
                                   );
                                   setNewTask((prev) => ({
@@ -3731,155 +3726,107 @@ const TaskManagement: React.FC = () => {
                           </span>
                         </div>
 
-                        {/* Current User (Self) */}
-                        {userId &&
-                          user &&
-                          canAssignToSelection.some((e) => e.userId === userId) &&
-                          (!assigneeSearchQuery ||
-                            user.name
-                              .toLowerCase()
-                              .includes(assigneeSearchQuery.toLowerCase()) ||
-                            user.email
-                              .toLowerCase()
-                              .includes(assigneeSearchQuery.toLowerCase())) && (
-                            <div className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
-                              <Checkbox
-                                id={`emp-${userId}`}
-                                checked={newTask.assignedTo.includes(userId)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setNewTask((prev) => ({
-                                      ...prev,
-                                      assignedTo: [...prev.assignedTo, userId],
-                                    }));
-                                  } else {
-                                    setNewTask((prev) => ({
-                                      ...prev,
-                                      assignedTo: prev.assignedTo.filter(
-                                        (id) => id !== userId,
-                                      ),
-                                    }));
-                                  }
-                                }}
-                              />
-                              <Label
-                                htmlFor={`emp-${userId}`}
-                                className="text-sm cursor-pointer font-semibold flex-1 flex items-center justify-between"
-                              >
-                                <span>
-                                  {user.name}{" "}
-                                  <span className="text-violet-500 font-bold ml-1">
-                                    (Self)
-                                  </span>
-                                </span>
-                                <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-                                  {formatRoleLabel(normalizedUserRole)}
-                                </span>
-                              </Label>
-                            </div>
-                          )}
-
                         {/* Filtered Employees List */}
-                        {canAssignToSelection
-                          .filter((emp) => emp.userId !== userId)
-                          .filter(
-                            (emp) =>
-                              assignRoleFilter === "all" ||
-                              emp.role === assignRoleFilter,
-                          )
-                          .filter(
-                            (emp) =>
-                              newTask.projectId ||
-                              !newTask.department ||
-                              (emp.department &&
-                                emp.department
-                                  .split(",")
-                                  .map((d) => d.trim().toLowerCase())
-                                  .includes(
-                                    newTask.department.trim().toLowerCase(),
-                                  )),
-                          )
-                          .filter((emp) => {
-                            const search = assigneeSearchQuery.toLowerCase();
+                        {filteredCreateAssignees.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-1.5">
+                            <Users className="h-6 w-6 opacity-30" />
+                            <p className="text-xs">No team members match your filter</p>
+                          </div>
+                        ) : (
+                          filteredCreateAssignees.map((emp) => {
+                            const isSelf = String(emp.userId) === String(userId);
                             return (
-                              emp.name.toLowerCase().includes(search) ||
-                              emp.email.toLowerCase().includes(search) ||
-                              emp.employeeId.toLowerCase().includes(search)
+                              <div
+                                key={emp.userId}
+                                className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800"
+                              >
+                                <Checkbox
+                                  id={`emp-${emp.userId}`}
+                                  checked={newTask.assignedTo.includes(emp.userId)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setNewTask((prev) => ({
+                                        ...prev,
+                                        assignedTo: [
+                                          ...prev.assignedTo,
+                                          emp.userId,
+                                        ],
+                                      }));
+                                    } else {
+                                      setNewTask((prev) => ({
+                                        ...prev,
+                                        assignedTo: prev.assignedTo.filter(
+                                          (id) => id !== emp.userId,
+                                        ),
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <Label
+                                  htmlFor={`emp-${emp.userId}`}
+                                  className="text-sm cursor-pointer flex-1"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                                      {emp.name}{" "}
+                                      {isSelf && (
+                                        <span className="text-violet-500 font-bold ml-1">
+                                          (Self)
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-muted-foreground uppercase tracking-widest font-semibold">
+                                      {formatRoleLabel(emp.role)}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                    {emp.department && (
+                                      <span className="flex items-center gap-1">
+                                        <Building2 className="h-2.5 w-2.5 text-violet-400" />
+                                        {emp.department}
+                                      </span>
+                                    )}
+                                    {emp.employeeId && (
+                                      <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded italic border border-slate-200 dark:border-slate-700">
+                                        ID: {emp.employeeId}
+                                      </span>
+                                    )}
+                                  </div>
+                                </Label>
+                              </div>
                             );
                           })
-                          .map((emp) => (
-                            <div
-                              key={emp.userId}
-                              className="flex items-center space-x-3 py-2 px-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-lg transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800"
-                            >
-                              <Checkbox
-                                id={`emp-${emp.userId}`}
-                                checked={newTask.assignedTo.includes(emp.userId)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setNewTask((prev) => ({
-                                      ...prev,
-                                      assignedTo: [
-                                        ...prev.assignedTo,
-                                        emp.userId,
-                                      ],
-                                    }));
-                                  } else {
-                                    setNewTask((prev) => ({
-                                      ...prev,
-                                      assignedTo: prev.assignedTo.filter(
-                                        (id) => id !== emp.userId,
-                                      ),
-                                    }));
-                                  }
-                                }}
-                              />
-                              <Label
-                                htmlFor={`emp-${emp.userId}`}
-                                className="text-sm cursor-pointer flex-1"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                                    {emp.name}
-                                  </span>
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-muted-foreground uppercase tracking-widest font-semibold">
-                                    {formatRoleLabel(emp.role)}
-                                  </span>
-                                </div>
-                                <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
-                                  {emp.department && (
-                                    <span className="flex items-center gap-1">
-                                      <Building2 className="h-2.5 w-2.5 text-violet-400" />
-                                      {emp.department}
-                                    </span>
-                                  )}
-                                  {emp.employeeId && (
-                                    <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded italic border border-slate-200 dark:border-slate-700">
-                                      ID: {emp.employeeId}
-                                    </span>
-                                  )}
-                                </div>
-                              </Label>
-                            </div>
-                          ))}
+                        )}
                       </div>
                     </div>
 
+                    {/* Footer Buttons */}
                     <div className="flex justify-end gap-3 pt-6 border-t mt-6">
                       <Button
+                        type="button"
                         variant="outline"
                         onClick={() => setIsCreateDialogOpen(false)}
-                        className="h-11 px-6 border-2 hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all"
+                        className="h-11 px-6 border-2 rounded-xl hover:shadow-lg hover:border-slate-400 dark:hover:border-slate-600 transition-all font-semibold"
                       >
                         Cancel
                       </Button>
                       <Button
+                        type="button"
                         onClick={handleCreateTask}
                         disabled={isCreateDisabled}
-                        className="h-11 px-6 gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-11 px-6 gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-white"
                       >
-                        <Plus className="h-5 w-5" />
-                        {isSubmitting ? "Creating..." : "Create Task"}
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-5 w-5" />
+                            Create Task
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -3986,7 +3933,7 @@ const TaskManagement: React.FC = () => {
             <CardHeader className="border-b-2 border-[#000000] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 pb-6">
               <div className="flex flex-col gap-6">
                 <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-4">
-                  <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-lg bg-blue-600 dark:bg-blue-600 flex items-center justify-center">
                     <Filter className="h-5 w-5 text-white dark:text-black" />
                   </div>
                   <CardTitle className="text-[20px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>
@@ -4092,8 +4039,8 @@ const TaskManagement: React.FC = () => {
                           className={cn(
                             "rounded-lg h-full px-4 transition-all duration-200",
                             viewMode === "list"
-                              ? "bg-gradient-to-r from-slate-900 to-black text-white shadow-md font-black"
-                              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                              ? "bg-blue-600 text-white shadow-md font-black border border-blue-600"
+                              : "text-slate-500 hover:bg-blue-600 hover:text-white hover:border-blue-600 dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
                           )}
                         >
                           <ListTodo className="h-4 w-4 mr-2" />
@@ -4106,8 +4053,8 @@ const TaskManagement: React.FC = () => {
                           className={cn(
                             "rounded-lg h-full px-4 transition-all duration-200",
                             viewMode === "grid"
-                              ? "bg-gradient-to-r from-slate-900 to-black text-white shadow-md font-black"
-                              : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                              ? "bg-blue-600 text-white shadow-md font-black border border-blue-600"
+                              : "text-slate-500 hover:bg-blue-600 hover:text-white hover:border-blue-600 dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
                           )}
                         >
                           <Grid3x3 className="h-4 w-4 mr-2" />
@@ -4124,7 +4071,8 @@ const TaskManagement: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => setIsExportDialogOpen(true)}
-                          className="gap-2 h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-black dark:text-white text-[14px] font-black hover:bg-slate-50 dark:hover:bg-slate-900 transition-all duration-200 rounded-lg shadow-sm px-6"
+                          className="gap-2 h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-black dark:text-white text-[14px] font-black hover:bg-blue-600 hover:text-white hover:border-blue-600
+                          dark:hover:bg-blue-600 dark:hover:text-white dark:hover:border-blue-600 transition-all duration-200 rounded-lg shadow-sm px-6"
                           style={{}}
                         >
                           <Download className="h-4 w-4" />
@@ -4338,14 +4286,14 @@ const TaskManagement: React.FC = () => {
                                   </TableCell>
                                   <TableCell>
                                     <div
-                                      className={`flex flex-wrap items-center gap-2 ${task.status === "completed" ? "justify-center" : ""}`}
+                                      className={`flex flex-row items-center gap-1 flex-nowrap shrink-0 ${task.status === "completed" ? "justify-center" : ""}`}
                                     >
                                       {/* View Button - for everyone involved */}
                                       <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => setSelectedTask(task)}
-                                        className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        className="h-8 w-8 shrink-0 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
                                         title="View task details"
                                       >
                                         <Eye className="h-4 w-4" />
@@ -4357,7 +4305,7 @@ const TaskManagement: React.FC = () => {
                                           variant="ghost"
                                           size="icon"
                                           onClick={() => openPassDialog(task)}
-                                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                          className="h-8 w-8 shrink-0 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                           title="Pass task"
                                         >
                                           <Share2 className="h-4 w-4" />
@@ -4372,7 +4320,7 @@ const TaskManagement: React.FC = () => {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => handleEditClick(task)}
-                                            className="h-8 w-8 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                            className="h-8 w-8 shrink-0 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                                             title="Edit task"
                                           >
                                             <Pencil className="h-4 w-4" />
@@ -4385,7 +4333,7 @@ const TaskManagement: React.FC = () => {
                                           variant="ghost"
                                           size="icon"
                                           onClick={() => handleReassignClick(task)}
-                                          className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                          className="h-8 w-8 shrink-0 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                                           title="Reassign task"
                                         >
                                           <RefreshCcw className="h-4 w-4" />
@@ -4399,7 +4347,7 @@ const TaskManagement: React.FC = () => {
                                           size="icon"
                                           onClick={() => handleDeleteTask(task.id)}
                                           disabled={deletingTaskId === task.id}
-                                          className="h-8 w-8 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-50"
+                                          className="h-8 w-8 shrink-0 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-50"
                                           title="Delete task"
                                         >
                                           {deletingTaskId === task.id ? (
@@ -4615,7 +4563,7 @@ const TaskManagement: React.FC = () => {
                             </div>
 
                             {/* Footer Actions */}
-                            <div className="flex items-center justify-between pt-1">
+                            <div className="flex items-center justify-between pt-1 gap-2">
                               {/* Left Side: Pass History Info */}
                               <div className="flex items-center">
                                 {task.lastPassedBy ? (
@@ -4636,9 +4584,9 @@ const TaskManagement: React.FC = () => {
                               </div>
 
                               {/* Right Side: Action Buttons */}
-                              <div className="flex items-center gap-1">
+                              <div className="flex flex-row items-center gap-1 flex-nowrap shrink-0">
                                 {/* View Details Button */}
-                                <div className="flex items-center gap-1">
+                                <div className="flex flex-row items-center gap-1 flex-nowrap">
                                   {/* View Button */}
                                   <Button
                                     variant="ghost"
@@ -4647,7 +4595,7 @@ const TaskManagement: React.FC = () => {
                                       e.stopPropagation();
                                       setSelectedTask(task);
                                     }}
-                                    className="h-8 w-8 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    className=" h-8 w-8 shrink-0 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
                                     title="View task details"
                                   >
                                     <Eye className="h-4 w-4" />
@@ -4662,7 +4610,7 @@ const TaskManagement: React.FC = () => {
                                         e.stopPropagation();
                                         openPassDialog(task);
                                       }}
-                                      className="h-8 w-8 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                      className="h-8 w-8 shrink-0 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                       title="Pass task"
                                     >
                                       <Share2 className="h-4 w-4" />
@@ -4681,7 +4629,7 @@ const TaskManagement: React.FC = () => {
                                           e.stopPropagation();
                                           handleEditClick(task);
                                         }}
-                                        className="h-8 w-8 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                        className="h-8 w-8 shrink-0 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                                         title="Edit Task"
                                       >
                                         <Pencil className="h-4 w-4" />
@@ -4697,7 +4645,7 @@ const TaskManagement: React.FC = () => {
                                         e.stopPropagation();
                                         handleReassignClick(task);
                                       }}
-                                      className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                      className="h-8 w-8 shrink-0 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                                       title="Reassign Task"
                                     >
                                       <RefreshCcw className="h-4 w-4" />
@@ -4714,7 +4662,7 @@ const TaskManagement: React.FC = () => {
                                         handleDeleteTask(task.id);
                                       }}
                                       disabled={deletingTaskId === task.id}
-                                      className="h-8 w-8 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-30"
+                                      className="h-8 w-8 shrink-0 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 disabled:opacity-30"
                                       title="Delete Task"
                                     >
                                       {deletingTaskId === task.id ? (
@@ -5011,13 +4959,13 @@ const TaskManagement: React.FC = () => {
                                               ) : <span className="text-[12px] text-black/20">—</span>}
                                             </TableCell>
                                             <TableCell onClick={(e) => e.stopPropagation()}>
-                                              <div className="flex items-center gap-1">
+                                              <div className="flex flex-row items-center gap-1 flex-nowrap shrink-0">
                                                 {/* View Button - for everyone involved */}
                                                 <Button
                                                   variant="ghost"
                                                   size="icon"
                                                   onClick={() => setSelectedTask(task)}
-                                                  className="h-8 w-8 text-black dark:text-white hover:bg-slate-100"
+                                                  className="h-8 w-8 shrink-0 text-black dark:text-white hover:bg-slate-100"
                                                   title="View details"
                                                 >
                                                   <Eye className="h-4 w-4" />
@@ -5029,7 +4977,7 @@ const TaskManagement: React.FC = () => {
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => openPassDialog(task)}
-                                                    className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                                    className="h-8 w-8 shrink-0 text-blue-600 hover:bg-blue-50"
                                                     title="Pass task"
                                                   >
                                                     <Share2 className="h-4 w-4" />
@@ -5043,7 +4991,7 @@ const TaskManagement: React.FC = () => {
                                                       variant="ghost"
                                                       size="icon"
                                                       onClick={() => handleEditClick(task)}
-                                                      className="h-8 w-8 text-amber-600 hover:bg-amber-50"
+                                                      className="h-8 w-8 shrink-0 text-amber-600 hover:bg-amber-50"
                                                       title="Edit task"
                                                     >
                                                       <Pencil className="h-4 w-4" />
@@ -5056,7 +5004,7 @@ const TaskManagement: React.FC = () => {
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => handleReassignClick(task)}
-                                                    className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                                                    className="h-8 w-8 shrink-0 text-emerald-600 hover:bg-emerald-50"
                                                     title="Reassign task"
                                                   >
                                                     <RefreshCcw className="h-4 w-4" />
@@ -5070,7 +5018,7 @@ const TaskManagement: React.FC = () => {
                                                     size="icon"
                                                     onClick={() => handleDeleteTask(task.id)}
                                                     disabled={deletingTaskId === task.id}
-                                                    className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                                                    className="h-8 w-8 shrink-0 text-rose-600 hover:bg-rose-50"
                                                     title="Delete task"
                                                   >
                                                     {deletingTaskId === task.id ? (

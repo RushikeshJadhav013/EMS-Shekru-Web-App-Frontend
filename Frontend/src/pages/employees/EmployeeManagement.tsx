@@ -1988,7 +1988,7 @@ export default function EmployeeManagement() {
               variant="outline"
               className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-lg transition-all"
             >
-              <Download className="h-4 w-4 text-blue-600 transition-colors group-hover:text-white" />
+              <Download className="h-4 w-4 transition-colors group-hover:text-white" />
               Export
             </Button>
             <Dialog
@@ -2064,16 +2064,29 @@ export default function EmployeeManagement() {
                       <div className="h-6 w-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">1</div>
                       <Label htmlFor="bulk-file" className="font-semibold text-gray-900">Upload CSV File</Label>
                     </div>
-                    <div className="relative">
-                      <Input
-                        id="bulk-file"
-                        type="file"
-                        accept=".csv"
-                        onChange={handleBulkFileChange}
-                        ref={bulkFileInputRef}
-                        className="border-2 border-dashed border-gray-300 hover:border-purple-400 rounded-xl p-3 cursor-pointer transition-colors bg-gray-50 hover:bg-purple-50"
-                      />
-                    </div>
+                    <div className="relative border-2 border-dashed border-gray-300 hover:border-purple-400 rounded-xl p-3 transition-colors bg-gray-50 hover:bg-purple-50 flex items-center justify-center">
+  <label
+    htmlFor="bulk-file"
+    className="cursor-pointer flex items-center justify-between w-full"
+  >
+    <span className="bg-white border border-gray-400 rounded-md px-5 py-1.5 text-sm">
+      Choose File
+    </span>
+
+    <span className="ml-2 text-sm text-gray-700">
+      {bulkFileName || "No file chosen"}
+    </span>
+  </label>
+
+  <Input
+    id="bulk-file"
+    type="file"
+    accept=".csv"
+    onChange={handleBulkFileChange}
+    ref={bulkFileInputRef}
+    className="hidden"
+  />
+</div>
                     {bulkFileName && (
                       <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">✓</div>
@@ -2162,19 +2175,17 @@ export default function EmployeeManagement() {
                     </div>
                   )}
                 </div>
-                <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-3">
+                <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-row !justify-start gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setIsBulkUploadOpen(false)}
-                    className="border-gray-300 text-gray-700 hover:bg-gray-100 font-medium"
-                  >
+                    className="border-gray-300 text-gray-700 hover:bg-gray-100 font-medium">
                     Cancel
                   </Button>
                   <Button
                     onClick={handleBulkUpload}
                     className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg font-medium"
-                    disabled={isBulkUploading}
-                  >
+                    disabled={isBulkUploading}>
                     {isBulkUploading ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -2305,8 +2316,8 @@ export default function EmployeeManagement() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] border-2 border-[#000000] shadow-2xl flex flex-col">
-                  <DialogHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 -m-6 mb-0 p-6 rounded-t-lg flex-shrink-0">
-                    <div className="flex items-center gap-3">
+                  <DialogHeader className="w-full p-0 m-0 border-b-2 border-gray-500 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-t-xl flex-shrink-0">
+                    <div className="flex items-center gap-3 translate-y-0 translate-x-0">
                       <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
                         <Plus className="h-6 w-6 text-white" />
                       </div>
@@ -2861,7 +2872,7 @@ export default function EmployeeManagement() {
                       </Select>
                     </div>
                   </div>
-                  <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-900 flex gap-3 flex-shrink-0 -m-6 mt-0 p-6 rounded-b-lg">
+                  <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-900 flex items-center justify-between flex-shrink-0 -m-6 mt-0 p-6 rounded-b-lg">
                     <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium">
                       Cancel
                     </Button>
@@ -2906,15 +2917,9 @@ export default function EmployeeManagement() {
             <div className="flex flex-col gap-2 w-full sm:w-44">
               <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Department</Label>
               <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className={`w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] transition-all duration-300 hover:shadow-md flex-shrink-0 ${selectedDepartment === 'all'
-                  ? 'border-blue-400 dark:border-blue-600 hover:border-blue-400 dark:hover:border-blue-600'
-                  : 'hover:border-blue-300 dark:hover:border-blue-700'
-                  }`}>
-                  <Filter className={`h-4 w-4 mr-2 ${selectedDepartment === 'all'
-                    ? 'text-blue-600'
-                    : 'text-gray-600 dark:text-gray-400'
-                    }`} />
-                  <SelectValue placeholder="Department" />
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                  <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
+                  <SelectValue placeholder="Role" />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-2xl">
                   <SelectItem value="all" className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors font-medium">
@@ -2982,9 +2987,9 @@ export default function EmployeeManagement() {
             <div className="flex flex-col gap-2 w-full sm:w-44">
               <Label style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Status</Label>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] hover:border-emerald-300 dark:hover:border-emerald-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
-                  <Activity className="h-4 w-4 mr-2 text-emerald-600" />
-                  <SelectValue placeholder="Status" />
+                <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
+                  <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
+                  <SelectValue placeholder="Role" />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-2xl">
                   <SelectItem value="all" className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors font-medium">

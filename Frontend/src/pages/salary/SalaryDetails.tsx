@@ -1363,8 +1363,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                             {isAdminOrHr && (
                                 <TabsTrigger
                                     value="history"
-                                    className="px-8 h-full rounded-xl uppercase tracking-widest transition-all data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg active:scale-95"
-                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "900" }}
+                                    className="px-8 h-full rounded-xl uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-black data-[state=active]:shadow-lg active:scale-95"
+                                    style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", fontWeight: "900", color: "#000000" }}
                                 >
                                     Increment
                                 </TabsTrigger>
@@ -2223,10 +2223,19 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             {
                 showIncrementForm && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
-                            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <div className="bg-[#FFFFFF] rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
+                            <div className="p-6 border-b-2 border-black bg-[#FFFFFF]">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-xl font-bold">Process Salary Increment</h2>
+                                    <div className="flex items-center gap-3">
+                                       <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600 text-white">
+                                       <TrendingUp className="w-5 h-5" />
+                                    </div>
+
+                                       <div className="flex flex-col">
+                                       <h2>Process Salary Increment</h2>
+                                         <p className="text-sm text-gray-700 mt-1">Recognize performance, reward dedication, and support career growth.</p>
+                                 </div> 
+                             </div>
                                     <Button variant="ghost" size="sm" onClick={() => setShowIncrementForm(false)}>
                                         ×
                                     </Button>

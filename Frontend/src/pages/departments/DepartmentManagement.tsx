@@ -557,13 +557,29 @@ export default function BranchManagement() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 border-2 border-[#000000] shadow-2xl flex flex-col">
-                <div className="px-6 pt-6 pb-2">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold">
-                      Create New Department
-                    </DialogTitle>
-                  </DialogHeader>
-                </div>
+                <div className="px-6 pt-6 bg-[#B9E3F8]">
+  <DialogHeader>
+    <div className="flex items-center gap-3">
+
+      <div className="h-11 w-12 rounded-xl bg-white flex items-center justify-center shadow-sm">
+        <Building2 className="h-6 w-6 text-[#2563EB]" />
+      </div>
+
+      <div>
+        <DialogTitle className="text-xl font-semibold text-[#000000]">
+          Create New Department
+        </DialogTitle>
+
+        <p className="mt-1 text-sm text-[#334155]">
+          Create a dedicated department to organize teams, roles, and responsibilities.
+        </p>
+      </div>
+
+    </div>
+  </DialogHeader>
+
+  
+</div>
                 <div className="overflow-y-auto px-6 pb-6 flex-1">
                   <BranchForm
                     mode="create"

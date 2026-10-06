@@ -89,6 +89,7 @@ export const translations = {
       salary: 'Salary',
       meetings: 'Meetings',
       projects: 'Projects',
+      expenses: 'Expenses',
     },
     attendance: {
       checkIn: 'Check In',
@@ -117,7 +118,7 @@ export const translations = {
       locationRequired: 'Location access required',
       cameraRequired: 'Camera access required',
       // Attendance Manager specific
-      employeeAttendance: 'Attendance management',
+      employeeAttendance: 'Attendance Management',
       monitorTeamAttendance: 'Monitor team attendance and export reports',
       exportCSV: 'Export CSV',
       exportPDF: 'Export PDF',
@@ -126,7 +127,7 @@ export const translations = {
       presentToday: 'Present Today',
       lateArrivals: 'Late Arrivals',
       earlyDepartures: 'Early Departures',
-      attendanceRecords: 'Attendance records',
+      attendanceRecords: 'Attendance Records',
       viewAndManage: 'View and manage employee attendance',
       searchPlaceholder: 'Search by name, email, employee ID, or department...',
       filterByStatus: 'Filter by status',

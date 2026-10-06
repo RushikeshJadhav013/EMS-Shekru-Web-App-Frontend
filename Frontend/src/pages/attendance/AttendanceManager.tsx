@@ -2062,34 +2062,28 @@ const AttendanceManager: React.FC = () => {
 
   const tabsContainer = (
     <div className="flex justify-center w-full">
-      <div className="flex items-center w-full max-w-[500px]">
-        <TabsList className="grid grid-cols-3 h-12 w-full bg-white dark:bg-slate-900 border-2 border-[#000000] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
+      <div className="flex flex-1 max-w-[830px] overflow-hidden transition-all duration-500">
+        <TabsList className="flex items-center gap-3 bg-white p-1 rounded-[22px] w-full max-w-[830px] border-2 border-black">
           <TabsTrigger
             value="attendance"
-            className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
-            data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
-            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+            className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           >
-            Attendance
+            ATTENDANCE
           </TabsTrigger>
           <TabsTrigger
             value="office-hours"
-            className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300
-            data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
-            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+            className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           >
-            Office hours
+            OFFICE HOURS
           </TabsTrigger>
           <TabsTrigger
             value="wfh-requests"
-            className="rounded-xl font-bold text-[10px] tracking-wide transition-all duration-300 relative
-            data-[state=active]:bg-[#000000] data-[state=active]:text-white data-[state=active]:shadow-lg
-            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+            className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           >
-            Wfh requests
+            WFH REQUESTS
             {getAdminPendingWfhCount() > 0 && (
               <Badge
                 className="absolute -top-1 -right-1 h-4 min-w-4 rounded-full p-0 flex items-center justify-center text-[8px] font-black bg-rose-500 text-white border-2 border-white dark:border-gray-800"
@@ -2110,7 +2104,7 @@ const AttendanceManager: React.FC = () => {
         <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
 
         <div className="relative flex items-center gap-5 shrink-0">
-          <div className="h-16 w-16 rounded-2xl bg-[#000000] flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-105">
+          <div className="h-16 w-16 rounded-2xl bg-[#4343eb] flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-105">
             <Clock className="h-8 w-8 text-white" />
           </div>
           <div>
@@ -2129,7 +2123,7 @@ const AttendanceManager: React.FC = () => {
             <Button
               onClick={openExportModal}
               size="lg"
-              className="rounded-xl px-6 h-12 bg-[#000000] hover:bg-[#333333] text-white shadow-md transition-all active:scale-95 gap-2 font-bold text-xs tracking-wide border-2 border-black"
+              className="rounded-xl px-6 h-12 bg-[#4343eb] hover:bg-[#4343eb] text-white shadow-md transition-all active:scale-95 gap-2 font-bold text-xs tracking-wide border-2 border-black"
               disabled={isExporting}
               style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
             >
@@ -2288,44 +2282,44 @@ const AttendanceManager: React.FC = () => {
               <table className="w-full table-auto border-collapse min-w-[1400px]">
                 <thead className="bg-slate-50 dark:bg-slate-900 border-b-2 border-black sticky top-0 z-20">
                   <tr className="hover:bg-transparent">
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       Date
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.employeeId}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.employee}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.department}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Work Location</th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">Work Location</th>
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800 ">
                       {t.attendance.checkInTime}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.checkOutTime}
                     </th>
-                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white min-w-[120px] uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white min-w-[120px] uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.hours}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.location}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       Photo
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.common.status}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.workSummary}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">
                       {t.attendance.workReport}
                     </th>
-                    <th className="text-left p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit">Overdue</th>
+                    <th className="text-center p-4 font-black text-[12px] text-black dark:text-white uppercase tracking-widest font-outfit sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-900 dark:border-slate-800">Overdue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3232,7 +3226,7 @@ const AttendanceManager: React.FC = () => {
             <div className="flex flex-wrap justify-end gap-3 pt-6 border-t-2 border-black">
               <Button
                 variant="outline"
-                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
+                className="h-11 px-8 rounded-2xl border-2 border-blue-600 text-blue-600 bg-white font-bold tracking-wider hover:bg-blue-600 hover:text-white transition-all duration-200"
                 onClick={() => loadOfficeTimings()}
                 disabled={officeFormLoading}
               >
@@ -3241,8 +3235,7 @@ const AttendanceManager: React.FC = () => {
               <Button
                 onClick={handleGlobalTimingSave}
                 disabled={isGlobalSaving || officeFormLoading}
-                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-black text-white hover:bg-[#333333]"
-              >
+                className="h-11 px-6 rounded-xl border-2 border-blue-600 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-blue-600 text-white hover:bg-blue-700">
                 {isGlobalSaving ? "Saving..." : "Save Global Settings"}
               </Button>
             </div>
@@ -3444,7 +3437,7 @@ const AttendanceManager: React.FC = () => {
                     checkOutGrace: globalTimingForm.checkOutGrace,
                   })
                 }
-                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-white hover:bg-slate-50"
+                className="h-11 px-8 rounded-2xl border-2 border-blue-600 text-blue-600 bg-white font-bold tracking-wider hover:bg-blue-600 hover:text-white transition-all duration-200"
               >
                 Reset
               </Button>
@@ -3454,7 +3447,7 @@ const AttendanceManager: React.FC = () => {
                   isDeptSaving ||
                   officeFormLoading
                 }
-                className="h-11 px-6 rounded-xl border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-black text-white hover:bg-[#333333]"
+                className="h-11 px-6 rounded-xl border-2 border-blue-600 font-black text-xs uppercase tracking-widest transition-all active:scale-95 bg-blue-600 text-white hover:bg-blue-800"
               >
                 {isDeptSaving ? "Saving..." : "Save Department Timing"}
               </Button>
@@ -3659,23 +3652,23 @@ const AttendanceManager: React.FC = () => {
                                 <div className="flex flex-row lg:flex-col gap-3 min-w-[140px]">
                                   <Button
                                     size="lg"
-                                    className="h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-md flex-1 lg:w-full"
+                                    className="h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-md !h-[36px] min-h-[36px] lg:w-full"
                                     onClick={() => handleAdminWfhRequestAction(request.id, "approve")}
                                     disabled={isProcessingWfhRequest}
                                   >
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Approve
                                   </Button>
-                                  <Button
+                                  <Button   
                                     size="lg"
-                                    className="h-11 px-6 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border-2 border-rose-600 font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex-1 lg:w-full"
+                                    className="!h-[36px] min-h-[36px] px-6 rounded-xl bg-rose-600 hover:bg-rose-700 text-white border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 lg:w-full"
                                     onClick={() => {
                                       setSelectedWfhRequest(request);
                                       setShowWfhRequestDialog(true);
                                     }}
                                     disabled={isProcessingWfhRequest}
                                   >
-                                    <XCircle className="h-4 w-4 mr-2" />
+                                    <XCircle className="h-4 w-4 mr-2 text-white" />
                                     Reject
                                   </Button>
                                 </div>

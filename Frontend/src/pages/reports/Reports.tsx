@@ -590,25 +590,25 @@ export default function Reports() {
         {/* Tabs Navigation */}
         <Tabs value={selectedReportType} onValueChange={setSelectedReportType} className="space-y-4">
           <div className="flex justify-center w-full">
-            <TabsList className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg w-fit border border-slate-200/50 dark:border-slate-700/50">
+            <TabsList className="flex items-center gap-2 bg-white p-1 rounded-[22px] w-full max-w-[830px] border-2 border-black">
               <TabsTrigger
                 value="performance"
-                className="h-9 font-medium px-4 rounded-md data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"                
               >
                 <Users className="h-5 w-5 mr-1.5" />
                 Employee Performance
               </TabsTrigger>
               <TabsTrigger
                 value="department"
-                className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
+                className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+                
               >
                 <PieChart className="h-5 w-5 mr-1.5" />
                 Department Metrics
               </TabsTrigger>
               <TabsTrigger
                 value="summary"
-                className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
+                className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
               >
                 <BarChart3 className="h-5 w-5 mr-1.5" />
                 Executive Summary
@@ -656,7 +656,7 @@ export default function Reports() {
                         variant="ghost"
 
                         onClick={expandAllDepartments}
-                        className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
+                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-200"
                         style={{ fontSize: "14px" }}
                       >
                         Expand All
@@ -665,7 +665,7 @@ export default function Reports() {
                         variant="ghost"
 
                         onClick={collapseAllDepartments}
-                        className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
+                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-200"
                         style={{ fontSize: "14px" }}
                       >
                         Collapse All

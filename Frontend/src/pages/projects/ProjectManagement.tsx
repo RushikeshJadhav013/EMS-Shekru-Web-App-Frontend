@@ -133,147 +133,188 @@ const TaskFormSection = ({
 }: TaskFormSectionProps) => {
   return (
     <div className="space-y-4">
-      <div className="space-y-3 prose-slate overflow-x-auto scrollbar-visible pb-2 px-1">
-        <div className="min-w-[800px] space-y-3">
-          {taskList.map((task, index) => (
-            <div
-              key={index}
-              className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border-2 border-[#000000] space-y-3 shadow-sm"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div className="md:col-span-6 space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Name</p>
-                  <Input
-                    placeholder="Task name *"
-                    value={task.task_name}
-                    onChange={(e) =>
-                      updateTaskRow(index, "task_name", e.target.value)
-                    }
-                    className="h-12 shadow-inner text-sm"
-                  />
-                </div>
-                <div className="md:col-span-6 space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Priority</p>
-                  <div className="flex gap-2">
-                    <Select
-                      value={task.priority}
-                      onValueChange={(v) => updateTaskRow(index, "priority", v)}
-                    >
-                      <SelectTrigger className="h-12 text-sm shadow-inner">
-                        <SelectValue placeholder="Priority" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRIORITY_OPTIONS.map((opt) => (
-                          <SelectItem key={opt} value={opt}>
-                            {opt}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {taskList.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-12 w-12 hover:bg-red-50 hover:text-red-600 border border-slate-100 dark:border-slate-800 rounded-lg flex-shrink-0"
-                        onClick={() => removeTaskRow(index)}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="md:col-span-6 space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Start Date</p>
-                  <Input
-                    type="date"
-                    value={task.start_date || ""}
-                    onChange={(e) =>
-                      updateTaskRow(index, "start_date", e.target.value)
-                    }
-                    className="h-12 shadow-inner text-sm"
-                  />
-                </div>
-                <div className="md:col-span-6 space-y-1.5">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight pl-1">Due Date</p>
-                  <Input
-                    type="date"
-                    value={task.due_date || ""}
-                    onChange={(e) =>
-                      updateTaskRow(index, "due_date", e.target.value)
-                    }
-                    className="h-12 shadow-inner text-sm"
-                  />
-                </div>
-
+      <div className="space-y-3.5">
+        {taskList.map((task, index) => (
+          <div
+            key={index}
+            className="p-4 bg-slate-50/70 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3.5 shadow-sm transition-all hover:border-slate-300 dark:hover:border-slate-700"
+          >
+            {/* Task Card Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-800/60">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 text-xs items-center justify-center font-bold">
+                  {index + 1}
+                </span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                  Task #{index + 1}
+                </span>
               </div>
+              {taskList.length > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg flex items-center gap-1"
+                  onClick={() => removeTaskRow(index)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Remove</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Main Form Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              {/* Task Name */}
+              <div className="sm:col-span-8 space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Task Name <span className="text-rose-500">*</span>
+                </Label>
+                <Input
+                  placeholder="e.g. Design Landing Page UI"
+                  value={task.task_name}
+                  onChange={(e) =>
+                    updateTaskRow(index, "task_name", e.target.value)
+                  }
+                  className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500"
+                />
+              </div>
+
+              {/* Priority */}
+              <div className="sm:col-span-4 space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Priority
+                </Label>
+                <Select
+                  value={task.priority}
+                  onValueChange={(v) => updateTaskRow(index, "priority", v)}
+                >
+                  <SelectTrigger className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>
+                        {opt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Start Date */}
+              <div className="sm:col-span-6 space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-violet-500" /> Start Date
+                </Label>
+                <Input
+                  type="date"
+                  value={task.start_date || ""}
+                  onChange={(e) =>
+                    updateTaskRow(index, "start_date", e.target.value)
+                  }
+                  className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500"
+                />
+              </div>
+
+              {/* Due Date */}
+              <div className="sm:col-span-6 space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-violet-500" /> Due Date
+                </Label>
+                <Input
+                  type="date"
+                  value={task.due_date || ""}
+                  onChange={(e) =>
+                    updateTaskRow(index, "due_date", e.target.value)
+                  }
+                  className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500"
+                />
+              </div>
+
               {/* Description */}
-              <Input
-                placeholder="Description (optional)"
-                value={task.description || ""}
-                onChange={(e) =>
-                  updateTaskRow(index, "description", e.target.value)
-                }
-                className="text-xs shadow-inner"
-              />
-              {/* Multi-employee assignee */}
-              <div className="space-y-1.5">
+              <div className="sm:col-span-12 space-y-1.5">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Description <span className="text-slate-400 font-normal">(optional)</span>
+                </Label>
+                <Input
+                  placeholder="Brief description of task requirements and deliverables..."
+                  value={task.description || ""}
+                  onChange={(e) =>
+                    updateTaskRow(index, "description", e.target.value)
+                  }
+                  className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500"
+                />
+              </div>
+
+              {/* Assign to Employees */}
+              <div className="sm:col-span-12 space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Assign to employees *
-                  </p>
+                  <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-violet-500" /> Assign To Team Member(s) <span className="text-rose-500">*</span>
+                  </Label>
                   {task.assigned_to_ids.length > 0 && (
-                    <Badge className="text-[10px] bg-violet-600 text-white border-0 px-2 py-0.5">
+                    <Badge className="text-[11px] bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 border-0 px-2 py-0.5 font-medium">
                       {task.assigned_to_ids.length} selected
                     </Badge>
                   )}
                 </div>
-                <div className="max-h-40 overflow-y-auto border-2 border-[#000000] rounded-xl divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950 shadow-inner">
+
+                <div className="max-h-36 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-950 shadow-inner">
                   {assignableEmployees.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-1">
+                    <div className="flex flex-col items-center justify-center py-5 text-slate-400 gap-1">
                       <User className="h-5 w-5 opacity-20" />
-                      <p className="text-[10px]">No employees found.</p>
+                      <p className="text-xs">No team members available. Add team members in Step 2.</p>
                     </div>
                   ) : (
-                    assignableEmployees.map((emp) => (
-                      <label
-                        key={emp.user_id}
-                        className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors"
-                      >
-                        <Checkbox
-                          checked={task.assigned_to_ids.includes(emp.user_id)}
-                          onCheckedChange={() =>
-                            toggleTaskAssignee(index, emp.user_id)
-                          }
-                          className="h-5 w-5 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
-                        />
-                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-sm">
-                          {emp.name?.[0]?.toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
-                            {emp.name}
-                          </p>
-                          <p className="text-[10px] text-slate-400 capitalize truncate">
-                            {emp.role || "Employee"}
-                          </p>
-                        </div>
-                      </label>
-                    ))
+                    assignableEmployees.map((emp) => {
+                      const isChecked = task.assigned_to_ids.includes(emp.user_id);
+                      return (
+                        <label
+                          key={emp.user_id}
+                          className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors ${isChecked
+                            ? "bg-violet-50/60 dark:bg-violet-950/30"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-900"
+                            }`}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() =>
+                              toggleTaskAssignee(index, emp.user_id)
+                            }
+                            className="h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600 rounded"
+                          />
+                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 shadow-sm">
+                            {emp.name?.[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                              {emp.name}
+                            </p>
+                            {(emp.role || emp.department) && (
+                              <p className="text-[10px] text-slate-400 capitalize truncate">
+                                {[emp.role, emp.department].filter(Boolean).join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })
                   )}
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
-      <Button
-        variant="outline"
 
+      <Button
+        type="button"
+        variant="outline"
         onClick={addTaskRow}
-        className="gap-2 w-full border-dashed py-5 border-slate-300 dark:border-slate-600 text-slate-500 hover:text-violet-600 hover:border-violet-300 hover:bg-violet-50 transition-all rounded-xl"
+        className="w-full py-5 border-2 border-dashed border-violet-200 dark:border-violet-900/50 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:border-violet-400 transition-all rounded-xl font-medium flex items-center justify-center gap-2"
       >
-        <Plus className="h-5 w-5" /> Add Another Task Row
+        <Plus className="h-4 w-4" /> Add Another Task Row
       </Button>
     </div>
   );
@@ -808,32 +849,32 @@ function ProjectCard({
                     value={normalizeStatus(project.status)}
                     onValueChange={(v) => onProjectStatusChange(project.project_id, v)}
                   >
-                    <SelectTrigger className="h-7 border-none bg-slate-50 dark:bg-slate-900/40 rounded-full px-1.5 text-[9px] font-bold uppercase tracking-tighter w-fit min-w-[75px] focus:ring-0 shadow-sm border-slate-100 dark:border-slate-800">
+                    <SelectTrigger className="h-7 border border-black bg-slate-50 dark:bg-slate-900/40 rounded-full px-1.5 text-[9px] font-bold uppercase tracking-tighter w-fit min-w-[75px] focus:ring-0 shadow-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl shadow-xl border-slate-100 dark:border-slate-800">
-                      <SelectItem value="Pending">
-                        <span className="flex items-center gap-1 text-amber-600 text-[9px] font-black uppercase">
+                      <SelectItem value= "Pending" className="hover:bg-transparent focus:bg-transparent">
+                        <span className="flex items-center gap-1 text-amber-600 text-sm font-black uppercase px-2 py-1">
                           <Clock className="h-3 w-3" /> Pending
                         </span>
                       </SelectItem>
-                      <SelectItem value="In Progress">
-                        <span className="flex items-center gap-1 text-blue-600 text-[9px] font-black uppercase">
+                      <SelectItem value="In Progress" className="hover:bg-transparent focus:bg-transparent">
+                        <span className="flex items-center gap-1 text-blue-600 text-sm font-black uppercase px-2 py-1">
                           <Clock className="h-3 w-3" /> In Progress
                         </span>
                       </SelectItem>
-                      <SelectItem value="Completed">
-                        <span className="flex items-center gap-1 text-emerald-600 text-[9px] font-black uppercase">
+                      <SelectItem value="Completed" className="hover:bg-transparent focus:bg-transparent">
+                        <span className="flex items-center gap-1 text-emerald-600 text-sm font-black uppercase px-2 py-1">
                           <CheckCircle2 className="h-3 w-3" /> Completed
                         </span>
                       </SelectItem>
-                      <SelectItem value="Archived">
-                        <span className="flex items-center gap-1 text-slate-600 text-[9px] font-black uppercase">
+                      <SelectItem value="Archived" className="hover:bg-transparent focus:bg-transparent">
+                        <span className="flex items-center gap-1 text-slate-600 text-sm font-black uppercase px-2 py-1">
                           <ArchiveIcon className="h-3 w-3" /> Archived
                         </span>
                       </SelectItem>
-                      <SelectItem value="Cancelled">
-                        <span className="flex items-center gap-1 text-red-600 text-[9px] font-black uppercase">
+                      <SelectItem value="Cancelled" className="hover:bg-transparent focus:bg-transparent">
+                        <span className="flex items-center gap-1 text-red-600 text-sm font-black uppercase px-2 py-1">
                           <XCircle className="h-3 w-3" /> Cancelled
                         </span>
                       </SelectItem>
@@ -2204,7 +2245,7 @@ export default function ProjectManagement() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5 w-full">
         {[
           {
             label: "Total Projects",
@@ -2854,182 +2895,288 @@ export default function ProjectManagement() {
           CREATE PROJECT DIALOG
          ══════════════════════════════════════ */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <FolderKanban className="h-5 w-5 text-violet-500" />
-              Create New Project
-            </DialogTitle>
-            <DialogDescription>
-              Set up project details, build your team, and assign tasks all in
-              one step.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+          {/* Dialog Top Header */}
+          <div className="px-8 pt-7 pb-0 bg-white dark:bg-slate-900 relative rounded-t-2xl">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg text-white flex-shrink-0">
+                <FolderKanban className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-bold text-slate-900 dark:text-white">
+                  Create New Project
+                </DialogTitle>
+                <DialogDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Set up project details, build your team, and assign initial tasks in one place.
+                </DialogDescription>
+              </div>
+            </div>
+            {/* Horizontal Divider Line */}
+            <div className="mt-[28px] mx-1 h-[1.5px] bg-[#7a7a7a] dark:bg-[#7a7a7a]" />
+          </div>
 
-          <div className="space-y-5 py-2">
+          <div className="p-8 space-y-7 bg-slate-50 dark:bg-slate-950">
             {/* ── Project Details ── */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                <span className="flex h-5 w-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-600 text-xs items-center justify-center font-bold">
-                  1
-                </span>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-7 bg-white dark:bg-slate-900 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 text-lg font-bold text-slate-800 dark:text-slate-200">
+                <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 shadow-sm"></div>
                 Project Details
               </div>
-              <div className="grid gap-4 pl-7">
+
+              <div className="space-y-4">
+                {/* Project Name */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="cp_name">Project Name *</Label>
+                  <Label htmlFor="cp_name" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Project Name <span className="text-rose-500">*</span>
+                  </Label>
                   <Input
                     id="cp_name"
-                    placeholder="e.g., Website Redesign"
+                    placeholder="e.g., Website Redesign, Marketing Campaign"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
+                    className="h-14 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Description</Label>
-                  <Textarea
-                    placeholder="Brief overview of the project..."
-                    rows={2}
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">Start Date</Label>
+                    <Label htmlFor="cp_start" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 text-violet-500" /> Start Date
+                    </Label>
                     <Input
+                      id="cp_start"
                       type="date"
-                      className="h-12 rounded-xl text-sm shadow-inner"
                       value={formData.start_date}
                       onChange={(e) =>
                         setFormData({ ...formData, start_date: e.target.value })
                       }
+                      className="h-14 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-tight pl-1">End Date</Label>
+                    <Label htmlFor="cp_end" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5 text-violet-500" /> End Date
+                    </Label>
                     <Input
+                      id="cp_end"
                       type="date"
-                      className="h-12 rounded-xl text-sm shadow-inner"
                       value={formData.end_date}
                       onChange={(e) =>
                         setFormData({ ...formData, end_date: e.target.value })
                       }
+                      className="h-14 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                     />
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* ── Team Members ── */}
-            <div className="space-y-3 border-t pt-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                <span className="flex h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 text-xs items-center justify-center font-bold">
-                  2
-                </span>
-                Build Your Team
-                {selectedMemberIds.length > 0 && (
-                  <Badge className="ml-1 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0 text-xs">
-                    {selectedMemberIds.length} selected
-                  </Badge>
-                )}
-              </div>
-              <div className="pl-7 space-y-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search employees..."
-                    className="pl-8 h-9 text-sm"
-                    value={memberSearch}
-                    onChange={(e) => setMemberSearch(e.target.value)}
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="cp_desc" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Description <span className="text-slate-400 font-normal">(optional)</span>
+                  </Label>
+                  <Textarea
+                    id="cp_desc"
+                    placeholder="Describe project objectives, key milestones, and deliverables..."
+                    rows={4}
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl resize-none px-4 py-3 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                   />
                 </div>
-                <div className="max-h-44 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredMemberOptions.length === 0 ? (
-                    <p className="text-xs text-center text-slate-400 py-4">
-                      No employees found
-                    </p>
-                  ) : (
-                    filteredMemberOptions.map((emp) => (
-                      <label
-                        key={emp.user_id}
-                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer transition-colors"
-                      >
-                        <Checkbox
-                          checked={selectedMemberIds.includes(emp.user_id)}
-                          onCheckedChange={() => toggleMember(emp.user_id)}
-                          className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
-                        />
-                        <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                          {emp.name?.[0]?.toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                            {emp.name}
-                          </p>
-                          {(emp.role || emp.department) && (
-                            <p className="text-xs text-slate-400 truncate capitalize">
-                              {[emp.role, emp.department]
-                                .filter(Boolean)
-                                .join(" · ")}
-                            </p>
-                          )}
-                        </div>
-                      </label>
-                    ))
-                  )}
-                </div>
               </div>
             </div>
 
-            {/* ── Tasks ── */}
-            <div className="space-y-3 border-t pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  <span className="flex h-5 w-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 text-xs items-center justify-center font-bold">
-                    3
-                  </span>
-                  Assign Tasks{" "}
+            {/* ── Build Your Team ── */}
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-7 bg-white dark:bg-slate-900 shadow-sm space-y-5">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+                  <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
+                  Build Your Team
+                  {selectedMemberIds.length > 0 && (
+                    <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-0 text-xs font-medium">
+                      {selectedMemberIds.length} selected
+                    </Badge>
+                  )}
+                </div>
+                {filteredMemberOptions.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2 font-medium"
+                    onClick={() => {
+                      const allIds = filteredMemberOptions.map((m) => m.user_id);
+                      const allSelected = allIds.every((id) => selectedMemberIds.includes(id));
+                      if (allSelected) {
+                        setSelectedMemberIds((prev) => prev.filter((id) => !allIds.includes(id)));
+                      } else {
+                        setSelectedMemberIds((prev) => Array.from(new Set([...prev, ...allIds])));
+                      }
+                    }}
+                  >
+                    {filteredMemberOptions.every((m) => selectedMemberIds.includes(m.user_id))
+                      ? "Deselect All Filtered"
+                      : "Select All Filtered"}
+                  </Button>
+                )}
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Input
+                  placeholder="Search team members by name or role..."
+                  className="pl-11 pr-10 h-12 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl focus-visible:ring-0 focus-visible:ring-blue-500 focus-visible:border-blue-500"
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                />
+                {memberSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setMemberSearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Selected Members Badges Preview */}
+              {selectedMemberIds.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 p-2.5 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 max-h-24 overflow-y-auto">
+                  {assignableEmployees
+                    .filter((emp) => selectedMemberIds.includes(emp.user_id))
+                    .map((emp) => (
+                      <span
+                        key={emp.user_id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                      >
+                        <span className="h-4 w-4 rounded-full bg-blue-500 text-white text-[9px] flex items-center justify-center font-bold">
+                          {emp.name?.[0]?.toUpperCase()}
+                        </span>
+                        {emp.name}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMember(emp.user_id);
+                          }}
+                          className="text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 ml-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                </div>
+              )}
+
+              {/* Scrollable Employee Grid List */}
+              <div className="max-h-56 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 p-2 shadow-sm">
+                {filteredMemberOptions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-1.5">
+                    <Users className="h-6 w-6 opacity-30" />
+                    <p className="text-xs">No team members match "{memberSearch}"</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {filteredMemberOptions.map((emp) => {
+                      const isChecked = selectedMemberIds.includes(emp.user_id);
+                      return (
+                        <label
+                          key={emp.user_id}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-all border ${isChecked
+                            ? "bg-blue-50/70 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/60"
+                            : "bg-white dark:bg-slate-950 border-transparent hover:bg-slate-50 dark:hover:bg-slate-900"
+                            }`}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => toggleMember(emp.user_id)}
+                            className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded"
+                          />
+                          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-sm">
+                            {emp.name?.[0]?.toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                              {emp.name}
+                            </p>
+                            {(emp.role || emp.department) && (
+                              <p className="text-[10px] text-slate-400 truncate capitalize">
+                                {[emp.role, emp.department].filter(Boolean).join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Assign Initial Tasks ── */}
+            <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 px-6 py-5 dark:border-slate-800 dark:from-slate-900 dark:via-indigo-950/40 dark:to-purple-950/40">
+                <div className="flex items-center gap-3 text-lg font-bold text-slate-800 dark:text-slate-200">
+                  <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 shadow-sm"></div>
+                  Assign Initial Tasks{" "}
                   <span className="text-slate-400 font-normal text-xs">
                     (Optional)
                   </span>
                 </div>
+                {taskList.length > 0 && (
+                  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-0 text-xs font-medium">
+                    {taskList.filter((t) => t.task_name.trim()).length} of {taskList.length} configured
+                  </Badge>
+                )}
               </div>
-              <div className="pl-7">
-                <TaskFormSection
-                  taskList={taskList}
-                  assignableEmployees={assignableEmployees.filter(
-                    (emp) =>
-                      selectedMemberIds.includes(emp.user_id) ||
-                      String(emp.user_id) === String(user?.id)
-                  )}
-                  updateTaskRow={updateTaskRow}
-                  toggleTaskAssignee={toggleTaskAssignee}
-                  removeTaskRow={removeTaskRow}
-                  addTaskRow={addTaskRow}
-                />
-              </div>
+
+              <TaskFormSection
+                taskList={taskList}
+                assignableEmployees={assignableEmployees.filter(
+                  (emp) =>
+                    selectedMemberIds.includes(emp.user_id) ||
+                    String(emp.user_id) === String(user?.id)
+                )}
+                updateTaskRow={updateTaskRow}
+                toggleTaskAssignee={toggleTaskAssignee}
+                removeTaskRow={removeTaskRow}
+                addTaskRow={addTaskRow}
+              />
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          {/* Dialog Footer */}
+          <DialogFooter className="px-8 py-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 rounded-b-2xl">
             <Button
+              type="button"
               variant="outline"
               onClick={() => setIsCreateDialogOpen(false)}
+              className="rounded-xl px-6 h-11 text-sm font-semibold border-slate-300 hover:bg-slate-100"
             >
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={handleCreate}
               disabled={isCreating}
-              className="bg-violet-600 hover:bg-violet-700"
+              className="rounded-xl px-7 h-11 text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/20 transition-all"
             >
-              {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Project
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Project...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-1.5 h-4 w-4" /> Create Project
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
