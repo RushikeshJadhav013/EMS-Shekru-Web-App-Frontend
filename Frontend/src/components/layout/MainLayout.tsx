@@ -292,10 +292,7 @@ const MainLayout: React.FC = () => {
                     {companyName}
                   </span>
 
-                  {/* Workspace Tag */}
-                  <span className="hidden xl:inline-flex items-center rounded-full bg-slate-100/90 dark:bg-slate-800/90 border border-slate-900 dark:border-slate-200 px-2.5 py-0.5 text-[10px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider transition-all duration-300 hover:bg-blue-600 hover:text-white hover:border-blue-600 hover:scale-105 hover:shadow-md hover:shadow-blue-500/25 cursor-default">
-                    Workspace
-                  </span>
+                  
                 </div>
 
                 {/* Right decorative line with dark black gradient fade & dot */}

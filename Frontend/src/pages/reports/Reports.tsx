@@ -618,7 +618,7 @@ export default function Reports() {
 
           <TabsContent value="performance" className="mt-0 outline-none">
             <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#000000] shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="px-5 py-4 border-b-2 border-[#000000] dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Individual Performance</h2>
                   <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">Comprehensive behavior and task analysis per team member</p>
@@ -980,7 +980,7 @@ export default function Reports() {
                   onClick={() => openExportDialog()}
                   variant="outline"
 
-                  className="h-8 text-xs font-medium gap-1.5"
+                  className="h-8 text-xs font-medium gap-1.5 border border-black"
                 >
                   <Download className="h-5 w-5" />
                   Export
@@ -999,8 +999,7 @@ export default function Reports() {
                       return (
                         <div
                           key={dept.department}
-                          className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800/50 p-4 hover:border-blue-200 dark:hover:border-blue-800 transition-all"
-                        >
+                          className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg border border-black dark:border-black p-4">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                               <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
@@ -1014,7 +1013,7 @@ export default function Reports() {
                           </div>
 
                           <div className="space-y-3">
-                            <div className="flex justify-between items-center px-3 py-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100/50 dark:border-slate-800/50 shadow-sm">
+                            <div className="flex justify-between items-center px-3 py-2.5 bg-white dark:bg-slate-900 rounded-lg border border-black dark:border-black shadow-sm">
                               <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="font-bold flex items-center gap-2">
                                 <Users className="h-5 w-5" />
                                 Department Members
