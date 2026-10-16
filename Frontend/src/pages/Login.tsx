@@ -1180,7 +1180,7 @@ const Login: React.FC = () => {
                       rel="noopener noreferrer"
                       className="text-emerald-600 hover:text-emerald-700 font-bold transition-colors"
                     >
-                      Shekru Lab India Pvt. Ltd
+                      Shekru Lab India Pvt. Ltd.
                     </a>
                   </p>
                 </div>

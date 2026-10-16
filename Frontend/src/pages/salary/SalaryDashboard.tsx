@@ -286,7 +286,7 @@ const SalaryDashboard = () => {
 
                 <div className="relative flex items-center gap-5">
                     <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-none">
-                        <DollarSign className="h-8 w-8 text-white" />
+                        <span className="text-white text-4xl font-medium">₹</span>
                     </div>
                     <div>
                         <h1 className="font-bold tracking-tight" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "30px" }}>

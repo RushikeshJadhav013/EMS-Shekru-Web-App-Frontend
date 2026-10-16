@@ -159,7 +159,7 @@ const LandingPage: React.FC = () => {
 
                 {/* Footer */}
                 <footer className="text-center py-8 text-slate-400 text-sm font-medium">
-                    © 2026 Shekru Labs India Pvt.Ltd | Designed with transparency UI
+                    © 2026 Shekru Labs India Pvt.Ltd. | Designed with transparency UI
                 </footer>
             </div>
 

@@ -1599,27 +1599,27 @@ export default function HiringManagement() {
 
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full max-w-lg grid-cols-3 rounded-full bg-slate-100/80 dark:bg-slate-900/80 p-1 mx-auto">
+        <TabsList className="grid w-full max-w-4xl grid-cols-3 h-[50px] rounded-full bg-white dark:bg-slate-900 p-1.5 mx-auto border border-black gap-2">
           <TabsTrigger
             value="vacancies"
-            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full"
-            style={{ color: "#000000", fontSize: "14px" }}
+            className="flex-1 h-full rounded-full border border-slate-300 bg-white dark:bg-slate-900 text-black data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:border-blue-600 data-[state=active]:shadow-sm transition-all"
+            style={{ color: "#000000", fontSize: "16px" }}
           >
             <Briefcase className="mr-1.5 h-4 w-4" />
             Vacancies
           </TabsTrigger>
           <TabsTrigger
             value="candidates"
-            className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm rounded-full"
-            style={{ fontSize: "14px" }}
+            className="flex-1 h-full rounded-full border border-slate-300 bg-white dark:bg-slate-900 text-black data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:border-blue-600 data-[state=active]:shadow-sm transition-all"
+            style={{color: "#000000", fontSize: "16px" }}
           >
             <Users className="mr-1.5 h-4 w-4" />
             Candidates
           </TabsTrigger>
           <TabsTrigger
             value="interviews"
-            className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm rounded-full"
-            style={{ color: "#000000", fontSize: "14px" }}
+            className="flex-1 h-full rounded-full border border-slate-300 bg-white dark:bg-slate-900 text-black data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:border-blue-600 data-[state=active]:shadow-sm transition-all"
+            style={{ color: "#000000", fontSize: "16px" }}
           >
             <Calendar className="mr-1.5 h-4 w-4" />
             Interviews
@@ -1862,7 +1862,7 @@ export default function HiringManagement() {
                         <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMAIL</TableHead>
                         <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PHONE</TableHead>
                         <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>POSITION</TableHead>
-                        <TableHead>Department</TableHead>
+                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
                         <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>APPLIED DATE</TableHead>
                         <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
                         <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
@@ -3404,7 +3404,7 @@ export default function HiringManagement() {
       < Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen} >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
           <DialogHeader>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 pr-10">
               <div className="min-w-0 pr-4">
                 <DialogTitle className="truncate" title={`${selectedInterview?.candidate_name} • ${selectedInterview?.vacancy_title}`}>
                   Interview Details
@@ -3414,7 +3414,7 @@ export default function HiringManagement() {
                 </DialogDescription>
               </div>
               <Badge className={cn(
-                "capitalize px-3 py-1",
+                "capitalize px-3 py-1 shrink-0",
                 selectedInterview?.status === 'scheduled' && "bg-blue-500 hover:bg-blue-600",
                 selectedInterview?.status === 'completed' && "bg-emerald-500 hover:bg-emerald-600",
                 selectedInterview?.status === 'cancelled' && "bg-red-500 hover:bg-red-600",

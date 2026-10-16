@@ -557,7 +557,7 @@ export default function BranchManagement() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="w-[95vw] max-w-2xl max-h-[85vh] p-0 border-2 border-[#000000] shadow-2xl flex flex-col">
-                <div className="px-6 pt-6 pb-2">
+                <div className="px-6 pt-6 pb-2 bg-[#B9E3F8] dark:bg-[#1E3A5F]">
                   <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">
                       Create New Department

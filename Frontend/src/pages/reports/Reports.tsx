@@ -90,6 +90,48 @@ const CORE_DEPARTMENTS = [
   'Management'
 ];
 
+const getDepartmentCardTheme = (departmentName: string) => {
+  const name = (departmentName || '').toLowerCase().trim();
+  if (name.includes('eng') || name.includes('tech') || name.includes('dev') || name.includes('it')) {
+    return {
+      cardBorder: 'border-2 border-blue-500 hover:border-blue-600 dark:border-blue-400',
+      cardBg: 'bg-gradient-to-br from-blue-50/90 via-sky-50/40 to-white dark:from-blue-950/40 dark:via-slate-900/70 dark:to-slate-900',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/50',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      memberBoxBorder: 'border-blue-200/90 dark:border-blue-800/60',
+      progressFill: 'bg-blue-600',
+    };
+  }
+  if (name.includes('fin') || name.includes('account')) {
+    return {
+      cardBorder: 'border-2 border-emerald-500 hover:border-emerald-600 dark:border-emerald-400',
+      cardBg: 'bg-gradient-to-br from-emerald-50/90 via-teal-50/40 to-white dark:from-emerald-950/40 dark:via-slate-900/70 dark:to-slate-900',
+      iconBg: 'bg-emerald-100 dark:bg-emerald-900/50',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+      memberBoxBorder: 'border-emerald-200/90 dark:border-emerald-800/60',
+      progressFill: 'bg-emerald-600',
+    };
+  }
+  if (name.includes('sale') || name.includes('market') || name.includes('growth')) {
+    return {
+      cardBorder: 'border-2 border-purple-500 hover:border-purple-600 dark:border-purple-400',
+      cardBg: 'bg-gradient-to-br from-purple-50/90 via-fuchsia-50/40 to-white dark:from-purple-950/40 dark:via-slate-900/70 dark:to-slate-900',
+      iconBg: 'bg-purple-100 dark:bg-purple-900/50',
+      iconColor: 'text-purple-600 dark:text-purple-400',
+      memberBoxBorder: 'border-purple-200/90 dark:border-purple-800/60',
+      progressFill: 'bg-purple-600',
+    };
+  }
+  return {
+    cardBorder: 'border-2 border-indigo-400 hover:border-indigo-500 dark:border-indigo-400',
+    cardBg: 'bg-gradient-to-br from-indigo-50/80 via-slate-50/40 to-white dark:from-indigo-950/40 dark:via-slate-900/70 dark:to-slate-900',
+    iconBg: 'bg-indigo-100 dark:bg-indigo-900/50',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    memberBoxBorder: 'border-indigo-200/90 dark:border-indigo-800/60',
+    progressFill: 'bg-indigo-600',
+  };
+};
+
 export default function Reports() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -590,25 +632,25 @@ export default function Reports() {
         {/* Tabs Navigation */}
         <Tabs value={selectedReportType} onValueChange={setSelectedReportType} className="space-y-4">
           <div className="flex justify-center w-full">
-            <TabsList className="flex items-center gap-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-lg w-fit border border-slate-200/50 dark:border-slate-700/50">
+            <TabsList className="flex items-center gap-2 bg-white p-1 rounded-[22px] w-full max-w-[830px] border-2 border-black">
               <TabsTrigger
                 value="performance"
-                className="h-9 font-medium px-4 rounded-md data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[16px] text-[#000000] data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+                style={{ fontFamily: "" }}
               >
                 <Users className="h-5 w-5 mr-1.5" />
                 Employee Performance
               </TabsTrigger>
               <TabsTrigger
                 value="department"
-                className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-purple-600 dark:data-[state=active]:text-purple-400 data-[state=active]:shadow-sm transition-all"
+                className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[16px] text-[#000000] data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
               >
                 <PieChart className="h-5 w-5 mr-1.5" />
                 Department Metrics
               </TabsTrigger>
               <TabsTrigger
                 value="summary"
-                className="h-9 text-sm font-medium px-4 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 data-[state=active]:shadow-sm transition-all"
+                className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[16px] text-[#000000] data-[state=active]:bg-[#2563EB] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
               >
                 <BarChart3 className="h-5 w-5 mr-1.5" />
                 Executive Summary
@@ -618,19 +660,17 @@ export default function Reports() {
 
           <TabsContent value="performance" className="mt-0 outline-none">
             <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#000000] shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="px-5 py-4 border-b-2 border-[#000000] dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Individual Performance</h2>
                   <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">Comprehensive behavior and task analysis per team member</p>
                 </div>
                 <Button
                   onClick={() => openExportDialog()}
-                  variant="outline"
-
-                  className="h-8 text-xs font-medium gap-1.5"
+                  className="h-9 px-4 text-xs font-semibold gap-1.5 bg-[#2563EB] hover:bg-[#1d4ed8] text-white border-2 border-black rounded-lg shadow-sm transition-colors"
                 >
-                  <Download className="h-5 w-5" />
-                  <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Export</span>
+                  <Download className="h-4 w-4 text-white" />
+                  <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#ffffff", fontSize: "14px", fontWeight: "bold" }}>Export</span>
                 </Button>
               </div>
 
@@ -656,7 +696,7 @@ export default function Reports() {
                         variant="ghost"
 
                         onClick={expandAllDepartments}
-                        className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
+                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-900 "
                         style={{ fontSize: "14px" }}
                       >
                         Expand All
@@ -665,7 +705,7 @@ export default function Reports() {
                         variant="ghost"
 
                         onClick={collapseAllDepartments}
-                        className="h-7 uppercase tracking-wider bg-[#2563EB] text-white hover:bg-blue-700"
+                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-500"
                         style={{ fontSize: "14px" }}
                       >
                         Collapse All
@@ -971,23 +1011,21 @@ export default function Reports() {
 
           <TabsContent value="department" className="mt-0 outline-none">
             <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-[#000000] shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="px-5 py-4 border-b-2 border-[#000000] dark:border-slate-700 flex items-center justify-between">
                 <div>
                   <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="tracking-tight">Department Overview</h2>
                   <p style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="mt-0.5">Comparative analytics and cross-department efficiency metrics</p>
                 </div>
                 <Button
                   onClick={() => openExportDialog()}
-                  variant="outline"
-
-                  className="h-8 text-xs font-medium gap-1.5"
+                  className="h-9 px-4 text-xs font-semibold gap-1.5 bg-[#2563EB] hover:bg-[#1d4ed8] text-white border-2 border-black rounded-lg shadow-sm transition-colors"
                 >
-                  <Download className="h-5 w-5" />
-                  Export
+                  <Download className="h-4 w-4 text-white" />
+                  <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#ffffff", fontSize: "14px", fontWeight: "bold" }}>Export</span>
                 </Button>
               </div>
               <div className="p-4 pb-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {departmentMetrics
                     .filter((dept) => {
                       // Filter for Core Departments (case-insensitive)
@@ -996,66 +1034,87 @@ export default function Reports() {
                     .slice((deptPage - 1) * ITEMS_PER_PAGE_DEPT, deptPage * ITEMS_PER_PAGE_DEPT)
                     .map((dept) => {
                       const badge = getPerformanceBadge(dept.performanceScore);
+                      const deptTheme = getDepartmentCardTheme(dept.department);
                       return (
                         <div
                           key={dept.department}
-                          className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg border border-slate-100 dark:border-slate-800/50 p-4 hover:border-blue-200 dark:hover:border-blue-800 transition-all"
+                          className={cn(
+                            "rounded-xl p-5 transition-all duration-300 shadow-sm hover:shadow-md",
+                            deptTheme.cardBorder,
+                            deptTheme.cardBg
+                          )}
                         >
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
-                                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                              <div className={cn("p-2.5 rounded-xl shadow-2xs", deptTheme.iconBg)}>
+                                <Users className={cn("h-5 w-5", deptTheme.iconColor)} />
                               </div>
-                              <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate max-w-[150px]">{dept.department}</h3>
+                              <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }} className="truncate max-w-[160px] tracking-tight">{dept.department}</h3>
                             </div>
-                            <span className={cn("h-6 text-xs uppercase font-bold tracking-tighter", getPerformanceColor(dept.performanceScore))} style={{ background: "transparent" }}>
+                            <span
+                              className={cn(
+                                "px-2.5 py-0.5 text-xs uppercase font-extrabold tracking-wider rounded-full border shadow-2xs",
+                                dept.performanceScore >= 80 ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" :
+                                dept.performanceScore >= 60 ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800" :
+                                dept.performanceScore >= 40 ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" :
+                                "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800"
+                              )}
+                            >
                               {badge.text}
                             </span>
                           </div>
 
                           <div className="space-y-3">
-                            <div className="flex justify-between items-center px-3 py-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100/50 dark:border-slate-800/50 shadow-sm">
+                            <div className={cn(
+                              "flex justify-between items-center px-3.5 py-2.5 rounded-lg border shadow-xs bg-white/90 dark:bg-slate-900/90",
+                              deptTheme.memberBoxBorder
+                            )}>
                               <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="font-bold flex items-center gap-2">
-                                <Users className="h-5 w-5" />
+                                <Users className={cn("h-4 w-4", deptTheme.iconColor)} />
                                 Department Members
                               </span>
-                              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>{dept.totalEmployees}</span>
+                              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "15px", fontWeight: "bold" }}>{dept.totalEmployees}</span>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="p-2.5 bg-purple-50/50 dark:bg-purple-900/10 rounded-md">
-                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Productivity</p>
-                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <div className="p-2.5 bg-purple-50/80 dark:bg-purple-950/30 rounded-lg border border-purple-200/70 dark:border-purple-800/40 shadow-2xs">
+                                <p style={{ color: "#000000", fontSize: "11px" }} className="uppercase font-black tracking-widest mb-1 opacity-75">Productivity</p>
+                                <p style={{ color: "#000000", fontSize: "22px", fontWeight: "bold" }}>
                                   {dept.avgProductivity}%
                                 </p>
                               </div>
-                              <div className="p-2.5 bg-blue-50/50 dark:bg-blue-900/10 rounded-md">
-                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Attendance</p>
-                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>
+                              <div className="p-2.5 bg-blue-50/80 dark:bg-blue-950/30 rounded-lg border border-blue-200/70 dark:border-blue-800/40 shadow-2xs">
+                                <p style={{ color: "#000000", fontSize: "11px" }} className="uppercase font-black tracking-widest mb-1 opacity-75">Attendance</p>
+                                <p style={{ color: "#000000", fontSize: "22px", fontWeight: "bold" }}>
                                   {dept.avgAttendance}%
                                 </p>
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="p-2.5 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-md">
-                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Completed</p>
-                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{dept.tasksCompleted}</p>
+                            <div className="grid grid-cols-2 gap-2.5">
+                              <div className="p-2.5 bg-emerald-50/80 dark:bg-emerald-950/30 rounded-lg border border-emerald-200/70 dark:border-emerald-800/40 shadow-2xs">
+                                <p style={{ color: "#000000", fontSize: "11px" }} className="uppercase font-black tracking-widest mb-1 opacity-75">Completed</p>
+                                <p style={{ color: "#000000", fontSize: "22px", fontWeight: "bold" }}>{dept.tasksCompleted}</p>
                               </div>
-                              <div className="p-2.5 bg-amber-50/50 dark:bg-amber-900/10 rounded-md">
-                                <p style={{ color: "#000000", fontSize: "12px" }} className="uppercase font-black tracking-widest mb-1">Pending</p>
-                                <p style={{ color: "#000000", fontSize: "24px", fontWeight: "bold" }}>{dept.tasksPending}</p>
+                              <div className="p-2.5 bg-amber-50/80 dark:bg-amber-950/30 rounded-lg border border-amber-200/70 dark:border-amber-800/40 shadow-2xs">
+                                <p style={{ color: "#000000", fontSize: "11px" }} className="uppercase font-black tracking-widest mb-1 opacity-75">Pending</p>
+                                <p style={{ color: "#000000", fontSize: "22px", fontWeight: "bold" }}>{dept.tasksPending}</p>
                               </div>
                             </div>
 
                             <div className="pt-2">
                               <div className="flex justify-between items-center mb-1.5">
-                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="font-black uppercase tracking-widest">Efficiency Score</span>
+                                <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "13px" }} className="font-black uppercase tracking-widest">Efficiency Score</span>
                                 <span style={{ color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                   {dept.performanceScore}%
                                 </span>
                               </div>
-                              <Progress value={dept.performanceScore} className="h-1 bg-slate-100 dark:bg-slate-800" />
+                              <div className="w-full bg-slate-200/80 dark:bg-slate-700/80 h-2 rounded-full overflow-hidden">
+                                <div
+                                  className={cn("h-full rounded-full transition-all duration-500", deptTheme.progressFill)}
+                                  style={{ width: `${Math.min(100, Math.max(0, dept.performanceScore))}%` }}
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>

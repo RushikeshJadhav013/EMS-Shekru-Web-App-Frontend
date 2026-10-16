@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Globe, Palette, Bell, Lock, Check, Sparkles, Sun, Moon, Monitor, Shield } from "lucide-react";
+import { Globe, Palette, Bell, Lock, Check, Sparkles, Sun, Moon, Monitor, Shield, RotateCcw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,17 @@ import {
 import { apiService } from '@/lib/api';
 
 export default function SettingsPage() {
-  const { colorTheme, setColorTheme, themeMode, setThemeMode } = useTheme();
+  const { colorTheme, setColorTheme, themeMode, setThemeMode, resetToDefault } = useTheme();
   const { t, language, setLanguage } = useLanguage();
   const { toast } = useToast();
+
+  const handleResetToDefault = () => {
+    resetToDefault();
+    toast({
+      title: 'Default Theme Applied',
+      description: 'All custom themes deselected. Staffly default theme restored successfully!',
+    });
+  };
 
   // Notification settings state
   const [emailNotifications, setEmailNotifications] = useState(() => {
@@ -151,80 +159,327 @@ export default function SettingsPage() {
     { value: "system", label: "System", icon: Monitor, description: "Automatically match your system preference" },
   ];
 
-  const colorThemes = [
-    { name: 'default', label: 'Blue', color: 'from-blue-500 to-indigo-600', preview: 'bg-blue-500' },
-    { name: 'purple', label: 'Purple', color: 'from-purple-500 to-pink-600', preview: 'bg-purple-500' },
-    { name: 'green', label: 'Green', color: 'from-green-500 to-emerald-600', preview: 'bg-green-500' },
-    { name: 'orange', label: 'Orange', color: 'from-orange-500 to-amber-600', preview: 'bg-orange-500' },
-    { name: 'pink', label: 'Pink', color: 'from-pink-500 to-rose-600', preview: 'bg-pink-500' },
-    { name: 'cyan', label: 'Cyan', color: 'from-cyan-500 to-blue-600', preview: 'bg-cyan-500' },
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'it' | 'sales' | 'general'>('all');
+
+  interface ThemeOption {
+    id: ColorTheme;
+    name: string;
+    category: 'it' | 'sales' | 'general';
+    categoryLabel: string;
+    tagline: string;
+    bestFor: string;
+    primaryColor: string;
+    accentColor: string;
+    bgPreview: string;
+    sidebarPreview: string;
+    cardPreview: string;
+    palette: string[];
+  }
+
+  const allThemes: ThemeOption[] = [
+    // IT Professional Themes (4)
+    {
+      id: 'tech-blue',
+      name: 'Tech Blue (Staffly Default)',
+      category: 'it',
+      categoryLabel: 'Default',
+      tagline: 'Standard high-tech blue & clean SaaS workspace',
+      bestFor: 'Software Developers, IT Companies & SaaS Teams',
+      primaryColor: '#2563eb',
+      accentColor: '#0ea5e9',
+      bgPreview: 'bg-slate-100',
+      sidebarPreview: 'bg-slate-900',
+      cardPreview: 'bg-white',
+      palette: ['#2563eb', '#0ea5e9', '#ffffff', '#0f172a'],
+    },
+    {
+      id: 'cyber-dark',
+      name: 'Cyber Dark',
+      category: 'it',
+      categoryLabel: 'IT Professional',
+      tagline: 'Deep obsidian dark with neon cyan highlights',
+      bestFor: 'Cybersecurity, Cloud Infra & DevOps',
+      primaryColor: '#00f0ff',
+      accentColor: '#3b82f6',
+      bgPreview: 'bg-[#060810]',
+      sidebarPreview: 'bg-[#030408]',
+      cardPreview: 'bg-[#0d111d]',
+      palette: ['#00f0ff', '#3b82f6', '#0d111d', '#060810'],
+    },
+    {
+      id: 'cloud-professional',
+      name: 'Cloud Professional',
+      category: 'it',
+      categoryLabel: 'IT Professional',
+      tagline: 'Airy cloud white with sky blue aesthetic',
+      bestFor: 'Cloud Architectures, SaaS Products & Tech Ops',
+      primaryColor: '#0284c7',
+      accentColor: '#38bdf8',
+      bgPreview: 'bg-sky-50',
+      sidebarPreview: 'bg-sky-100',
+      cardPreview: 'bg-white',
+      palette: ['#0284c7', '#38bdf8', '#f0f9ff', '#ffffff'],
+    },
+    {
+      id: 'developer-dark',
+      name: 'Developer Dark',
+      category: 'it',
+      categoryLabel: 'IT Professional',
+      tagline: 'Code editor charcoal with terminal emerald & purple',
+      bestFor: 'Engineers, Architects & Data Scientists',
+      primaryColor: '#10b981',
+      accentColor: '#8b5cf6',
+      bgPreview: 'bg-[#12151c]',
+      sidebarPreview: 'bg-[#0c0e14]',
+      cardPreview: 'bg-[#1a1e28]',
+      palette: ['#10b981', '#8b5cf6', '#1a1e28', '#12151c'],
+    },
+
+    // Sales Themes (4)
+    {
+      id: 'sales-blue',
+      name: 'Sales Blue',
+      category: 'sales',
+      categoryLabel: 'Sales & Revenue',
+      tagline: 'High-trust royal blue for pipeline & performance',
+      bestFor: 'Sales Leadership, CRM & KPI Tracking',
+      primaryColor: '#1d4ed8',
+      accentColor: '#60a5fa',
+      bgPreview: 'bg-blue-50',
+      sidebarPreview: 'bg-blue-950',
+      cardPreview: 'bg-white',
+      palette: ['#1d4ed8', '#60a5fa', '#ffffff', '#172554'],
+    },
+    {
+      id: 'sales-orange',
+      name: 'Sales Orange',
+      category: 'sales',
+      categoryLabel: 'Sales & Revenue',
+      tagline: 'Energetic warm orange with motivating contrast',
+      bestFor: 'Inside Sales, SDRs & Fast-paced Outreach',
+      primaryColor: '#ea580c',
+      accentColor: '#f97316',
+      bgPreview: 'bg-orange-50',
+      sidebarPreview: 'bg-[#1c130d]',
+      cardPreview: 'bg-white',
+      palette: ['#ea580c', '#f97316', '#fff7ed', '#ffffff'],
+    },
+    {
+      id: 'revenue-green',
+      name: 'Revenue Green',
+      category: 'sales',
+      categoryLabel: 'Sales & Revenue',
+      tagline: 'Prosperity & financial growth focused emerald',
+      bestFor: 'Finance, Revenue Ops & Deal Closers',
+      primaryColor: '#059669',
+      accentColor: '#10b981',
+      bgPreview: 'bg-emerald-50',
+      sidebarPreview: 'bg-[#062016]',
+      cardPreview: 'bg-white',
+      palette: ['#059669', '#10b981', '#ecfdf5', '#062016'],
+    },
+    {
+      id: 'executive-sales',
+      name: 'Executive Sales',
+      category: 'sales',
+      categoryLabel: 'Sales & Revenue',
+      tagline: 'Premium midnight navy with gold luxury accents',
+      bestFor: 'Executives, Directors & Enterprise Accounts',
+      primaryColor: '#eab308',
+      accentColor: '#f59e0b',
+      bgPreview: 'bg-[#0b0f19]',
+      sidebarPreview: 'bg-[#070a12]',
+      cardPreview: 'bg-[#111827]',
+      palette: ['#eab308', '#f59e0b', '#111827', '#0b0f19'],
+    },
+
+    // General Professional Themes (7)
+    {
+      id: 'corporate-blue',
+      name: 'Corporate Blue',
+      category: 'general',
+      categoryLabel: 'General Professional',
+      tagline: 'Formal, deep corporate indigo & enterprise slate',
+      bestFor: 'Enterprise HR, Operations & Corporate Teams',
+      primaryColor: '#1e40af',
+      accentColor: '#3b82f6',
+      bgPreview: 'bg-slate-50',
+      sidebarPreview: 'bg-[#0f172a]',
+      cardPreview: 'bg-white',
+      palette: ['#1e40af', '#3b82f6', '#ffffff', '#0f172a'],
+    },
+    {
+      id: 'modern-purple',
+      name: 'Modern Purple',
+      category: 'general',
+      categoryLabel: 'General Professional',
+      tagline: 'Creative royal violet with smooth modern gradients',
+      bestFor: 'Design, Marketing & Creative Agencies',
+      primaryColor: '#9333ea',
+      accentColor: '#c084fc',
+      bgPreview: 'bg-purple-50',
+      sidebarPreview: 'bg-[#180a2a]',
+      cardPreview: 'bg-white',
+      palette: ['#9333ea', '#c084fc', '#faf5ff', '#180a2a'],
+    },
+    {
+      id: 'minimal-white',
+      name: 'Minimal White',
+      category: 'general',
+      categoryLabel: 'General Professional',
+      tagline: 'Ultra-clean monochrome Scandinavian minimalism',
+      bestFor: 'Distraction-free focus & Clean Management',
+      primaryColor: '#334155',
+      accentColor: '#64748b',
+      bgPreview: 'bg-gray-50',
+      sidebarPreview: 'bg-white',
+      cardPreview: 'bg-white',
+      palette: ['#0f172a', '#64748b', '#f8fafc', '#ffffff'],
+    },
+    {
+      id: 'ocean',
+      name: 'Ocean',
+      category: 'general',
+      categoryLabel: 'General Professional',
+      tagline: 'Deep coastal teal & refreshing aquamarine vibe',
+      bestFor: 'Consulting, HealthTech & Modern Organizations',
+      primaryColor: '#0891b2',
+      accentColor: '#06b6d4',
+      bgPreview: 'bg-cyan-50',
+      sidebarPreview: 'bg-[#08232c]',
+      cardPreview: 'bg-white',
+      palette: ['#0891b2', '#06b6d4', '#ecfeff', '#08232c'],
+    },
+    {
+      id: 'emerald',
+      name: 'Emerald',
+      category: 'general',
+      categoryLabel: 'General Professional',
+      tagline: 'Sophisticated jewel-tone green with luxury appeal',
+      bestFor: 'Sustainability, Healthcare & Corporate Services',
+      primaryColor: '#047857',
+      accentColor: '#10b981',
+      bgPreview: 'bg-emerald-50',
+      sidebarPreview: 'bg-[#051c14]',
+      cardPreview: 'bg-white',
+      palette: ['#047857', '#10b981', '#f0fdf4', '#051c14'],
+    },
+    {
+      id: 'sunset',
+      name: 'Sunset',
+      category: 'general',
+      categoryLabel: 'General Professional',
+      tagline: 'Warm coral, amber, and rose sunset glow',
+      bestFor: 'Hospitality, People Operations & Staff Care',
+      primaryColor: '#f43f5e',
+      accentColor: '#fb923c',
+      bgPreview: 'bg-rose-50',
+      sidebarPreview: 'bg-[#220a10]',
+      cardPreview: 'bg-white',
+      palette: ['#f43f5e', '#fb923c', '#fff1f2', '#220a10'],
+    },
+    {
+      id: 'premium-dark',
+      name: 'Premium Dark',
+      category: 'general',
+      categoryLabel: 'General Professional',
+      tagline: 'Pitch black onyx with refined titanium silver sheen',
+      bestFor: 'Night work, High-contrast dashboards & Power users',
+      primaryColor: '#60a5fa',
+      accentColor: '#94a3b8',
+      bgPreview: 'bg-[#090b10]',
+      sidebarPreview: 'bg-[#05060a]',
+      cardPreview: 'bg-[#12151e]',
+      palette: ['#60a5fa', '#94a3b8', '#12151e', '#090b10'],
+    },
   ];
 
+  const filteredThemes = selectedCategory === 'all'
+    ? allThemes
+    : allThemes.filter(t => t.category === selectedCategory);
+
+  const categories = [
+    { id: 'all', label: 'All Themes', count: allThemes.length },
+    { id: 'it', label: 'IT Professional', count: 4 },
+    { id: 'sales', label: 'Sales & Revenue', count: 4 },
+    { id: 'general', label: 'General Professional', count: 7 },
+  ];
+
+  // Active theme normalized name
+  const activeThemeId = colorTheme === 'default' ? 'tech-blue' :
+    colorTheme === 'purple' ? 'modern-purple' :
+      colorTheme === 'green' ? 'revenue-green' :
+        colorTheme === 'orange' ? 'sales-orange' :
+          colorTheme === 'pink' ? 'sunset' :
+            colorTheme === 'cyan' ? 'ocean' : colorTheme;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-primary/5 pb-12">
       <div className="w-full space-y-8">
         {/* Header */}
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-              <Sparkles className="h-6 w-6 text-primary-foreground" />
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg text-primary-foreground">
+              <Sparkles className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">Settings</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Theme & Workspace Settings</h1>
               <p className="text-muted-foreground">
-                Customize your workspace and preferences
+                Personalize your Staffly workspace with 15 modern, dynamic themes and display modes
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6">
-          {/* Theme Mode Section (Light/Dark) */}
-          <Card className="border border-slate-200 shadow-xl overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-slate-500 via-gray-500 to-zinc-500"></div>
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Sun className="h-6 w-6 text-primary" />
+        <div className="grid gap-8">
+          {/* Display Mode Section (Light/Dark/System) */}
+          <Card className="border border-border shadow-lg overflow-hidden bg-card text-card-foreground">
+            <div className="h-1.5 bg-gradient-to-r from-primary via-accent to-secondary"></div>
+            <CardHeader className="bg-muted/30 pb-4">
+              <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                <Sun className="h-5 w-5 text-primary" />
                 Display Mode
               </CardTitle>
-              <CardDescription className="text-base">
-                Choose between light, dark, or system theme for the entire dashboard
+              <CardDescription className="text-sm">
+                Choose between light, dark, or system preference for the entire application
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {themeModes.map((mode) => {
                   const Icon = mode.icon;
+                  const isSelected = themeMode === mode.value;
                   return (
                     <button
                       key={mode.value}
+                      type="button"
                       onClick={() => {
                         setThemeMode(mode.value as ThemeMode);
                         toast({
-                          title: 'Theme Mode Updated',
+                          title: 'Display Mode Updated',
                           description: `${mode.label} mode applied successfully!`,
                         });
                       }}
-                      className={`group relative p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${themeMode === mode.value
-                        ? 'border-primary shadow-xl ring-2 ring-primary/20 bg-primary/5'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-primary/50 bg-card'
+                      className={`group relative p-5 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-md text-left ${isSelected
+                        ? 'border-primary shadow-md ring-2 ring-primary/20 bg-primary/5'
+                        : 'border-border hover:border-primary/40 bg-card'
                         }`}
                     >
-                      <div className="flex flex-col items-center gap-3">
-                        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center transition-all ${themeMode === mode.value
-                          ? 'bg-gradient-to-br from-primary to-primary/60 text-white'
+                      <div className="flex items-start gap-4">
+                        <div className={`h-12 w-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${isSelected
+                          ? 'bg-primary text-primary-foreground shadow-md'
                           : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
                           }`}>
-                          <Icon className="h-8 w-8" />
+                          <Icon className="h-6 w-6" />
                         </div>
-                        <div className="text-center">
-                          <p className="font-semibold text-base mb-1">{mode.label}</p>
-                          <p className="text-xs text-muted-foreground">{mode.description}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-base text-foreground mb-1">{mode.label}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{mode.description}</p>
                         </div>
                       </div>
-                      {themeMode === mode.value && (
-                        <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg ring-2 ring-background">
-                          <Check className="h-5 w-5 text-white" />
+                      {isSelected && (
+                        <div className="absolute top-3 right-3 h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md">
+                          <Check className="h-3.5 w-3.5" />
                         </div>
                       )}
                     </button>
@@ -234,44 +489,204 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Color Theme Section */}
-          <Card className="border border-slate-200 shadow-xl overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent pb-4">
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <Palette className="h-6 w-6 text-primary" />
-                Color Theme
-              </CardTitle>
-              <CardDescription className="text-base">
-                Choose your favorite color scheme to personalize your dashboard
-              </CardDescription>
+          {/* 15 Themes Section */}
+          <Card className="border border-border shadow-lg overflow-hidden bg-card text-card-foreground">
+            <div className="h-1.5 bg-gradient-to-r from-blue-500 via-emerald-500 to-purple-500"></div>
+            <CardHeader className="bg-muted/30 pb-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                    <Palette className="h-5 w-5 text-primary" />
+                    Color Themes (15 Themes)
+                  </CardTitle>
+                  <CardDescription className="text-sm mt-1">
+                    Select a curated theme to transform the Header, Sidebar, Cards, Buttons, and Tables in real-time
+                  </CardDescription>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Reset to Default Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetToDefault}
+                    className="h-8 gap-1.5 rounded-lg border-primary/40 text-primary hover:bg-primary/10 font-bold text-xs shadow-sm transition-all active:scale-95"
+                    title="Deselect custom themes and restore Staffly default theme"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset to Default
+                  </Button>
+
+                  {/* Category Filters */}
+                  <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-muted/60 border border-border">
+                    {categories.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.id as any)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedCategory === cat.id
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                          }`}
+                      >
+                        {cat.label} ({cat.count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Banner when Custom Theme or Dark Mode is active */}
+              {activeThemeId !== 'tech-blue' && (
+                <div className="mt-3.5 px-3.5 py-2.5 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between gap-3 text-xs">
+                  <span className="text-foreground font-medium">
+                    Custom theme <strong className="text-primary font-bold">{allThemes.find(t => t.id === activeThemeId)?.name || activeThemeId}</strong> is currently active.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetToDefault}
+                    className="font-bold text-primary hover:underline flex items-center gap-1 flex-shrink-0"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Deselect & Restore Default
+                  </button>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                {colorThemes.map((themeOption) => (
-                  <button
-                    key={themeOption.name}
-                    onClick={() => {
-                      setColorTheme(themeOption.name as ColorTheme);
-                      toast({
-                        title: 'Theme Updated',
-                        description: `${themeOption.label} theme applied successfully!`,
-                      });
-                    }}
-                    className={`group relative p-4 rounded-2xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${colorTheme === themeOption.name
-                      ? 'border-primary shadow-xl ring-2 ring-primary/20'
-                      : 'border-gray-200 dark:border-gray-800 hover:border-primary/50'
-                      }`}
-                  >
-                    <div className={`h-16 w-full rounded-xl bg-gradient-to-r ${themeOption.color} shadow-md group-hover:shadow-lg transition-shadow`}></div>
-                    <p className="text-sm font-semibold mt-3 text-center">{themeOption.label}</p>
-                    {colorTheme === themeOption.name && (
-                      <div className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg ring-2 ring-background">
-                        <Check className="h-5 w-5 text-white" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredThemes.map((themeOption) => {
+                  const isSelected = activeThemeId === themeOption.id;
+                  return (
+                    <div
+                      key={themeOption.id}
+                      onClick={() => {
+                        setColorTheme(themeOption.id);
+                        toast({
+                          title: 'Theme Applied',
+                          description: `${themeOption.name} theme is now active across Staffly!`,
+                        });
+                      }}
+                      className={`group relative flex flex-col p-4 rounded-2xl border-2 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-xl ${isSelected
+                        ? 'border-primary shadow-xl ring-2 ring-primary/20 bg-primary/[0.03]'
+                        : 'border-border hover:border-primary/50 bg-card'
+                        }`}
+                    >
+                      {/* Mini UI Mockup Preview */}
+                      <div className="w-full h-28 rounded-xl p-2.5 overflow-hidden border border-border/80 shadow-inner flex flex-col justify-between"
+                        style={{
+                          background: themeOption.palette[3],
+                        }}
+                      >
+                        {/* Mini Header & Sidebar Layout */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: themeOption.primaryColor }}></div>
+                            <span className="text-[10px] font-black tracking-wide" style={{ color: themeOption.palette[0] === '#ffffff' ? '#000' : '#fff' }}>
+                              STAFFLY
+                            </span>
+                          </div>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
+                            style={{
+                              backgroundColor: `${themeOption.primaryColor}30`,
+                              color: themeOption.primaryColor,
+                            }}
+                          >
+                            {themeOption.categoryLabel}
+                          </span>
+                        </div>
+
+                        {/* Mini Dashboard Content */}
+                        <div className="flex gap-2 items-center">
+                          {/* Mini Sidebar */}
+                          <div className="w-6 h-12 rounded-lg flex flex-col gap-1 p-1"
+                            style={{ backgroundColor: `${themeOption.primaryColor}20` }}
+                          >
+                            <div className="h-2 w-full rounded" style={{ backgroundColor: themeOption.primaryColor }}></div>
+                            <div className="h-1.5 w-full rounded bg-white/20"></div>
+                            <div className="h-1.5 w-full rounded bg-white/20"></div>
+                          </div>
+                          {/* Mini Cards */}
+                          <div className="flex-1 grid grid-cols-2 gap-1.5">
+                            <div className="h-12 rounded-lg p-1.5 flex flex-col justify-between border"
+                              style={{
+                                backgroundColor: themeOption.palette[2],
+                                borderColor: `${themeOption.primaryColor}40`,
+                              }}
+                            >
+                              <div className="h-1.5 w-8 rounded" style={{ backgroundColor: themeOption.primaryColor }}></div>
+                              <div className="h-3 w-3 rounded-full ml-auto" style={{ backgroundColor: themeOption.accentColor }}></div>
+                            </div>
+                            <div className="h-12 rounded-lg p-1.5 flex flex-col justify-between border"
+                              style={{
+                                backgroundColor: themeOption.palette[2],
+                                borderColor: `${themeOption.primaryColor}40`,
+                              }}
+                            >
+                              <div className="h-1.5 w-6 rounded bg-slate-400"></div>
+                              <div className="h-2 w-full rounded" style={{ backgroundColor: themeOption.primaryColor }}></div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </button>
-                ))}
+
+                      {/* Theme Details */}
+                      <div className="mt-3 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-extrabold text-base text-foreground tracking-tight group-hover:text-primary transition-colors">
+                              {themeOption.name}
+                            </h3>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                              {themeOption.category === 'it' ? 'IT Pro' : themeOption.category === 'sales' ? 'Sales' : 'General'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                            {themeOption.tagline}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/80 mt-1 italic line-clamp-1">
+                            Best for: {themeOption.bestFor}
+                          </p>
+                        </div>
+
+                        {/* Color Palette Dots & Active Check */}
+                        <div className="mt-3.5 pt-3 border-t border-border flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            {themeOption.palette.map((color, idx) => (
+                              <div
+                                key={idx}
+                                className="h-4 w-4 rounded-full border border-black/10 shadow-sm"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                              />
+                            ))}
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            {isSelected ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-extrabold text-primary">
+                                <Check className="h-3.5 w-3.5" />
+                                Active
+                              </span>
+                            ) : (
+                              <span className="text-xs font-semibold text-muted-foreground group-hover:text-primary transition-colors">
+                                Apply Theme →
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Selected Checkmark Badge */}
+                      {isSelected && (
+                        <div className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg ring-2 ring-background">
+                          <Check className="h-4 w-4 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

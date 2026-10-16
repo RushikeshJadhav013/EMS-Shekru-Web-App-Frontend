@@ -265,31 +265,34 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       {/* Header */}
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 rounded-2xl bg-white border-2 border-[#000000] shadow-xl mt-1">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-blue-100/20 rounded-full blur-3xl -z-10" />
-
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-blue-100/50 flex items-center justify-center border border-blue-200/50 shadow-sm group transition-all duration-300 hover:scale-110">
-            <Award className="h-6 w-6 text-blue-600" />
+      <div className="relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 py-3.5 px-6 sm:px-8 rounded-2xl bg-white border border-black shadow-sm mt-1">
+        {/* Left Section: Welcome Info */}
+        <div className="flex items-center gap-4 flex-1 min-w-fit">
+          <div className="h-12 w-12 rounded-xl bg-blue-50/90 flex items-center justify-center border border-blue-100 shadow-sm flex-shrink-0">
+            <Award className="h-6 w-6 text-[#2563EB]" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
-              {t.common.welcome}, <span style={{ color: '#2563EB' }}>{user?.name}</span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-black">
+              {t.common.welcome}, <span className="text-[#2563EB]">{user?.name || 'Darshan Patil'}</span>
             </h1>
-            <p className="font-normal text-[14px] mt-0.5 flex items-center gap-1.5" style={{ color: '#000000' }}>
-              <CalendarDays className="h-3.5 w-3.5" style={{ color: '#000000' }} />
+            <p className="font-medium text-[13px] sm:text-[14px] mt-0.5 flex items-center gap-1.5 text-black">
+              <CalendarDays className="h-3.5 w-3.5 text-black flex-shrink-0" />
               {formatIST(nowIST(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
           </div>
         </div>
-        <Button
-          onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
-          className="h-12 px-8 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-xl shadow-blue-200 border-2 border-[#2563EB] transition-all duration-300 hover:-translate-y-1 text-sm font-bold uppercase tracking-widest gap-3"
-          style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
-        >
-          <UserPlus className="h-4 w-4" />
-          {t.employee.addEmployee}
-        </Button>
+
+        {/* Right Section: Add Employee Button */}
+        <div className="flex items-center justify-end">
+          <Button
+            onClick={() => navigate('/admin/employees/', { state: { highlight: true } })}
+            className="h-11 sm:h-12 px-6 sm:px-8 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white shadow-md shadow-blue-200 border border-[#2563EB] transition-all duration-300 hover:-translate-y-0.5 text-xs sm:text-sm font-bold uppercase tracking-wider gap-2.5 whitespace-nowrap"
+            style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
+          >
+            <UserPlus className="h-4 w-4" />
+            {t.employee.addEmployee}
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats Grid Wrapper */}

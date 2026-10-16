@@ -46,6 +46,7 @@ import AddIncrement from "@/pages/salary/AddIncrement";
 import { WFHProvider } from "@/contexts/WFHContext";
 import ProjectManagement from "@/pages/projects/ProjectManagement";
 import MeetingsPage from "@/pages/meetings/MeetingsPage";
+import ExpensesPage from "@/pages/expenses/ExpensesPage";
 import { Video } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -107,11 +108,23 @@ const App = () => {
                                     <Profile />
                                   </ProtectedRoute>
                                 } />
+                                <Route path="settings" element={
+                                  <ProtectedRoute>
+                                    <SettingsPage />
+                                  </ProtectedRoute>
+                                } />
 
                                 {/* Meetings Route - Universal */}
                                 <Route path="meetings" element={
                                   <ProtectedRoute allowedRoles={['admin', 'hr', 'employee', 'manager', 'team_lead']}>
                                     <MeetingsPage />
+                                  </ProtectedRoute>
+                                } />
+
+                                {/* Expenses Route - Admin Only */}
+                                <Route path="expenses" element={
+                                  <ProtectedRoute allowedRoles={['admin']}>
+                                    <ExpensesPage />
                                   </ProtectedRoute>
                                 } />
 

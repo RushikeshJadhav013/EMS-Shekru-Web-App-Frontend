@@ -1004,6 +1004,7 @@ const AttendancePage: React.FC = () => {
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
               <Clock className="h-7 w-7 text-white" />
             </div>
+            
             <div>
               <h2 className="text-2xl font-bold text-black">Attendance Management</h2>
               <p className="text-sm text-muted-foreground mt-1">Mark your daily attendance and apply for WFH</p>

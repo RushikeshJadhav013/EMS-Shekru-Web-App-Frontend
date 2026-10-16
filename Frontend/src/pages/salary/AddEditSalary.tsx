@@ -971,7 +971,7 @@ const AddEditSalary = () => {
                                 navigate(-1);
                             }
                         }}
-                        className="hover:scale-105 active:scale-95 transition-all border-2 border-[#000000] shadow-lg shadow-orange-500/20" style={{ backgroundColor: "#F97316", fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", color: "#FFFFFF" }}
+                        className="hover:scale-105 active:scale-95 transition-all border-2 border-[#000000] shadow-lg shadow-blue-500/20" style={{ backgroundColor: "#2563EB", fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "14px", color: "#FFFFFF" }}
                     >
                         <ArrowLeft className="h-4 w-4 mr-2" /> Back
                     </Button>
@@ -1059,7 +1059,7 @@ const AddEditSalary = () => {
                                             </TabsTrigger>
                                             <TabsTrigger
                                                 value="manual"
-                                                className="data-[state=active]:bg-orange-100 dark:data-[state=active]:bg-orange-900/30 data-[state=active]:text-orange-700 dark:data-[state=active]:text-orange-300"
+                                                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                                                 onClick={() => { setActiveTab("manual"); setPreviewData(null); }}
                                             >
                                                 <FileText className="h-4 w-4 mr-2" /> Manual Entry
@@ -1167,7 +1167,7 @@ const AddEditSalary = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="p-5 bg-amber-50/50 dark:bg-amber-950/20 rounded-lg space-y-5 border-2 border-[#000000]">
+                                                <div className="p-5 bg-white dark:bg-amber-950/20 rounded-lg space-y-5 border-2 border-[#000000]">
                                                     <div className="flex items-center gap-2 uppercase tracking-wider" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>
                                                         <TrendingUp className="h-3 w-3" />
                                                         Variable Pay Setup
@@ -1269,7 +1269,7 @@ const AddEditSalary = () => {
 
                                     <TabsContent value="manual">
                                         {/* Section 1: Core Compensation - MANUAL */}
-                                        <Card className="border-2 border-[#000000] shadow-lg bg-orange-50/30 dark:bg-orange-950/10">
+                                        <Card className="border-2 border-[#000000] shadow-lg bg-white-50/30 dark:bg-white-950/10">
                                             <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                                 <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
                                                     <FileText className="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -1326,7 +1326,7 @@ const AddEditSalary = () => {
                                                     </div>
 
 
-                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-green-50/50 dark:bg-green-950/20 rounded-lg border-2 border-[#000000]">
+                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-white-50/50 dark:bg-white-950/20 rounded-lg border-2 border-[#000000]">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Provident Fund (PF)</Label>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
@@ -1384,7 +1384,7 @@ const AddEditSalary = () => {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-lg border-2 border-[#000000]">
+                                                    <div className="space-y-2 lg:col-span-2 p-4 bg-white-50/50 dark:bg-white-950/20 rounded-lg border-2 border-[#000000]">
                                                         <Label className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Variable Pay / Performance Bonus</Label>
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                             <div className="space-y-2">
@@ -1458,7 +1458,7 @@ const AddEditSalary = () => {
                                 <Card className="border-2 border-[#000000] shadow-lg bg-slate-50/30 dark:bg-slate-900/10 mb-6">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <CardTitle className="flex items-center gap-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>
-                                            <DollarSign className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                                            <span className="h-5 w-5 text-slate-600 dark:text-slate-400 flex items-center justify-center text-xl"> ₹ </span>
                                             Bank &amp; Statutory Details
                                         </CardTitle>
                                         <CardDescription style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>Optional — employee bank account, PF registration, and payment mode.</CardDescription>
@@ -1512,7 +1512,7 @@ const AddEditSalary = () => {
 
 
                                 {/* Section 3: Live Calculation Breakdown */}
-                                <Card className="border-2 border-[#000000] shadow-lg bg-green-50/30 dark:bg-green-950/10">
+                                <Card className="border-2 border-[#000000] shadow-lg bg-white/60 dark:bg-slate-800/60">
                                     <CardHeader className="bg-white/60 dark:bg-slate-800/60">
                                         <CardTitle className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
@@ -1632,7 +1632,8 @@ const AddEditSalary = () => {
                                         </div>
                                         <div className="mb-4">
                                             <p className="text-sm text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                <DollarSign className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                                <span className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg"> ₹ </span>
+                                                     
                                                 <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Estimated In-Hand Pay</span>
                                             </p>
                                             <div className="flex items-baseline gap-2">
