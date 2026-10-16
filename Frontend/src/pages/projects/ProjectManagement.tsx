@@ -2895,7 +2895,7 @@ export default function ProjectManagement() {
           CREATE PROJECT DIALOG
          ══════════════════════════════════════ */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto p-0 gap-0 rounded-2xl border border-slate-1000 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
           {/* Dialog Top Header */}
           <div className="px-8 pt-7 pb-0 bg-white dark:bg-slate-900 relative rounded-t-2xl">
             <div className="flex items-center gap-4">
@@ -2936,7 +2936,7 @@ export default function ProjectManagement() {
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="h-14 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                    className="h-[40px] text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                   />
                 </div>
 
@@ -2953,7 +2953,7 @@ export default function ProjectManagement() {
                       onChange={(e) =>
                         setFormData({ ...formData, start_date: e.target.value })
                       }
-                      className="h-14 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                      className="h-[40px] text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -2967,25 +2967,25 @@ export default function ProjectManagement() {
                       onChange={(e) =>
                         setFormData({ ...formData, end_date: e.target.value })
                       }
-                      className="h-14 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                      className="h-[40px] text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                     />
                   </div>
                 </div>
 
                 {/* Description */}
-                <div className="space-y-1.5">
+                <div className="space-y--1.5">
                   <Label htmlFor="cp_desc" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Description <span className="text-slate-400 font-normal">(optional)</span>
                   </Label>
                   <Textarea
                     id="cp_desc"
                     placeholder="Describe project objectives, key milestones, and deliverables..."
-                    rows={4}
+                    rows={2}
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    className="text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl resize-none px-4 py-3 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                    className="text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl resize-none px-4 py-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
                   />
                 </div>
               </div>
@@ -3008,7 +3008,7 @@ export default function ProjectManagement() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2 font-medium"
+                    className="h-5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2 font-medium"
                     onClick={() => {
                       const allIds = filteredMemberOptions.map((m) => m.user_id);
                       const allSelected = allIds.every((id) => selectedMemberIds.includes(id));
@@ -3031,7 +3031,7 @@ export default function ProjectManagement() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                 <Input
                   placeholder="Search team members by name or role..."
-                  className="pl-11 pr-10 h-12 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl focus-visible:ring-0 focus-visible:ring-blue-500 focus-visible:border-blue-500"
+                  className="pl-11 pr-10 h-10 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl focus-visible:ring-0 focus-visible:ring-blue-500 focus-visible:border-blue-500"
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                 />

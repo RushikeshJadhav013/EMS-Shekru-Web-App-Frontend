@@ -17,7 +17,8 @@ import {
   FileSpreadsheet,
   XCircle,
   ChevronDown,
-  FileText
+  FileText,
+  ReceiptText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1008,9 +1009,25 @@ export default function ExpensesPage() {
       {/* ADD EXPENSE DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px] border-2 border-black rounded-[24px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-black dark:text-white">Add New Expense</DialogTitle>
-          </DialogHeader>
+          
+<DialogHeader>
+  <div className="flex items-center gap-3">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+      <ReceiptText className="h-6 w-6 text-blue-600" />
+    </div>
+
+    <div className="flex-1">
+      <DialogTitle className="text-xl font-bold text-black dark:text-white">
+        Add New Expense
+      </DialogTitle>
+
+      <p className="mt-1 text-xs font-medium text-slate-800 dark:text-slate-400">
+        Expense Management · Track your spending
+      </p>
+    </div>
+  </div>
+</DialogHeader>
+
           <form onSubmit={handleAddExpenseSubmit} className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label className="font-bold text-sm text-black">Employee Name</Label>
@@ -1054,7 +1071,7 @@ export default function ExpensesPage() {
               <div className="space-y-1.5">
                 <Label className="font-bold text-sm text-black">Date</Label>
                 <Input
-                  placeholder="e.g. 25 Sep 2026"
+                  type="date"
                   value={newExpense.date}
                   onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
                   className="border-2 border-black rounded-[12px] h-[44px]"
