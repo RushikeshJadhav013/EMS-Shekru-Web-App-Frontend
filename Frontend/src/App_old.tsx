@@ -36,7 +36,7 @@ import AccessControl from "@/pages/access/AccessControl";
 import Profile from "@/pages/profile/Profile";
 import SettingsPage from "@/pages/settings/SettingsPage";
 import ContactSupport from "@/pages/ContactSupport";
-import Chat from "@/pages/chat/Chat";
+import Chat from "@/pages/attendance/chat/Chat";
 import WFHRequests from "@/pages/wfh/WFHRequests";
 import RouteRestorer from "@/components/RouteRestorer";
 import SalaryDashboard from "@/pages/salary/SalaryDashboard";

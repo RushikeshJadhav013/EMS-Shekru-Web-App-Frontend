@@ -696,7 +696,7 @@ export default function Reports() {
                         variant="ghost"
 
                         onClick={expandAllDepartments}
-                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-900 "
+                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-200"
                         style={{ fontSize: "14px" }}
                       >
                         Expand All
@@ -705,7 +705,7 @@ export default function Reports() {
                         variant="ghost"
 
                         onClick={collapseAllDepartments}
-                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-500"
+                        className="h-7 uppercase tracking-wider bg-[#0510ee] text-[#ffffff] hover:bg-[#217ef8] hover:text-white transition-colors duration-200"
                         style={{ fontSize: "14px" }}
                       >
                         Collapse All
@@ -1018,7 +1018,7 @@ export default function Reports() {
                 </div>
                 <Button
                   onClick={() => openExportDialog()}
-                  className="h-9 px-4 text-xs font-semibold gap-1.5 bg-[#2563EB] hover:bg-[#1d4ed8] text-white border-2 border-black rounded-lg shadow-sm transition-colors"
+                  className="h-9 px-4 text-xs font-semibold gap-1.5 border border-black bg-[#2563EB] hover:bg-[#1d4ed8] text-white border-2 border-black rounded-lg shadow-sm transition-colors"
                 >
                   <Download className="h-4 w-4 text-white" />
                   <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#ffffff", fontSize: "14px", fontWeight: "bold" }}>Export</span>

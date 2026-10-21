@@ -124,6 +124,16 @@ const MainLayout: React.FC = () => {
         { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team' },
         { icon: FolderKanban, label: 'Projects', path: '/employee/projects' },
       ],
+      teamlead: [
+        ...commonItems,
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/team_lead/team' },
+        { icon: FolderKanban, label: 'Projects', path: '/team_lead/projects' },
+      ],
+      staff: [
+        ...commonItems,
+        { icon: Clock, label: t.navigation.shiftSchedule, path: '/employee/team' },
+        { icon: FolderKanban, label: 'Projects', path: '/employee/projects' },
+      ],
     };
 
     return roleSpecificItems[user.role];

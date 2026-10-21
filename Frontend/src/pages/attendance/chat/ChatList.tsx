@@ -11,8 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { formatChatTimestampIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
-import AddChatModal from '../../components/chat/AddChatModal';
-import ChatTypeSelectorModal from '../../components/chat/ChatTypeSelectorModal';
+import AddChatModal from '@/components/chat/AddChatModal';
+import ChatTypeSelectorModal from '@/components/chat/ChatTypeSelectorModal';
 
 const ChatList: React.FC = () => {
   const navigate = useNavigate();

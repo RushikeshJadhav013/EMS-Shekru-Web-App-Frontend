@@ -2062,31 +2062,25 @@ const AttendanceManager: React.FC = () => {
 
   const tabsContainer = (
     <div className="flex justify-center w-full">
-      <div className="flex flex-1 w-full overflow-hidden transition-all duration-500">
-        <TabsList className="grid w-full grid-cols-3 h-12 w-full bg-white dark:bg-slate-900 border-2 border-[#040404f0] dark:border-slate-700 rounded-2xl p-1 gap-2 shadow-sm">
+      <div className="flex flex-1 max-w-[830px] overflow-hidden transition-all duration-500">
+        <TabsList className="flex items-center gap-3 bg-white p-1 rounded-[22px] w-full max-w-[830px] border-2 border-black">
           <TabsTrigger
             value="attendance"
-            className="rounded-xl font-bold text-[12px] tracking-wide transition-all duration-300
-            data-[state=active]:bg-[#4343eb] data-[state=active]:text-white data-[state=active]:shadow-lg
-            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+            className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           >
             ATTENDANCE
           </TabsTrigger>
           <TabsTrigger
             value="office-hours"
-            className="rounded-xl font-bold text-[12px] tracking-wide transition-all duration-300
-            data-[state=active]:bg-[#4343eb] data-[state=active]:text-white data-[state=active]:shadow-lg
-            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+            className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           >
             OFFICE HOURS
           </TabsTrigger>
           <TabsTrigger
             value="wfh-requests"
-            className="rounded-xl font-bold text-[12px] tracking-wide transition-all duration-300 relative
-            data-[state=active]:bg-[#4343eb] data-[state=active]:text-white data-[state=active]:shadow-lg
-            data-[state=inactive]:text-slate-600 dark:data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:bg-slate-200 dark:data-[state=inactive]:hover:bg-slate-700"
+            className="flex-1 h-[30px] font-semibold px-5 rounded-[18px] text-[15px] text-[#000000] data-[state=active]:bg-[#4545E9] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
             style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}
           >
             WFH REQUESTS

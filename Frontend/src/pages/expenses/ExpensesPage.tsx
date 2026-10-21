@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ExpensesHeader from '@/components/expenses/ExpensesHeader';
 import {
   Wallet,
@@ -14,13 +14,18 @@ import {
   User,
   ShieldCheck,
   BarChart3,
-  FileSpreadsheet
+  FileSpreadsheet,
+  XCircle,
+  ChevronDown,
+  FileText,
+  ReceiptText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Pagination } from '@/components/ui/pagination';
 import {
   Table,
   TableBody,
@@ -49,14 +54,45 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 export type ExpenseCategory =
-  | 'Travel'
-  | 'Food'
-  | 'Office'
-  | 'Accommodation'
-  | 'Internet/Phone'
-  | 'Utilities'
-  | 'Equipment'
-  | 'Other';
+  | 'travel_conveyance'
+  | 'food_refreshments'
+  | 'office_supplies'
+  | 'stationery'
+  | 'electricity'
+  | 'internet_telephone'
+  | 'rent_maintenance'
+  | 'software_subscription'
+  | 'employee_welfare'
+  | 'client_meeting'
+  | 'marketing'
+  | 'courier'
+  | 'repairs_maintenance'
+  | 'miscellaneous';
+
+export const EXPENSE_CATEGORIES: { value: ExpenseCategory; label: string }[] = [
+  { value: 'travel_conveyance', label: 'Travel & Conveyance' },
+  { value: 'food_refreshments', label: 'Food & Refreshments' },
+  { value: 'office_supplies', label: 'Office Supplies' },
+  { value: 'stationery', label: 'Stationery' },
+  { value: 'electricity', label: 'Electricity' },
+  { value: 'internet_telephone', label: 'Internet & Telephone' },
+  { value: 'rent_maintenance', label: 'Rent & Maintenance' },
+  { value: 'software_subscription', label: 'Software / Subscription' },
+  { value: 'employee_welfare', label: 'Employee Welfare' },
+  { value: 'client_meeting', label: 'Client Meeting' },
+  { value: 'marketing', label: 'Marketing' },
+  { value: 'courier', label: 'Courier' },
+  { value: 'repairs_maintenance', label: 'Repairs & Maintenance' },
+  { value: 'miscellaneous', label: 'Miscellaneous' },
+];
+
+export const getCategoryLabel = (catValue: string): string => {
+  if (!catValue) return '';
+  const found = EXPENSE_CATEGORIES.find(
+    (c) => c.value.toLowerCase() === catValue.toLowerCase() || c.label.toLowerCase() === catValue.toLowerCase()
+  );
+  return found ? found.label : catValue;
+};
 
 export interface ExpenseItem {
   id: number;
@@ -76,7 +112,7 @@ const sampleExpenses: ExpenseItem[] = [
     id: 1,
     date: '01 Sep 2026',
     employee: 'Rahul Patil',
-    category: 'Travel',
+    category: 'travel_conveyance',
     description: 'Client meeting travel',
     amount: 1250,
     status: 'Approved',
@@ -87,7 +123,7 @@ const sampleExpenses: ExpenseItem[] = [
     id: 2,
     date: '03 Sep 2026',
     employee: 'Amit Sharma',
-    category: 'Food',
+    category: 'food_refreshments',
     description: 'Team lunch',
     amount: 850,
     status: 'Pending',
@@ -98,40 +134,40 @@ const sampleExpenses: ExpenseItem[] = [
     id: 3,
     date: '05 Sep 2026',
     employee: 'Priya Joshi',
-    category: 'Office',
-    description: 'Stationery purchase',
+    category: 'office_supplies',
+    description: 'Office supplies purchase',
     amount: 2400,
     status: 'Approved',
     paymentMethod: 'Cash',
-    receiptName: 'stationery_receipt.png',
+    receiptName: 'supplies_receipt.png',
   },
   {
     id: 4,
     date: '08 Sep 2026',
     employee: 'Sagar More',
-    category: 'Travel',
-    description: 'Business trip',
+    category: 'rent_maintenance',
+    description: 'Office rent & maintenance',
     amount: 3200,
     status: 'Pending',
     paymentMethod: 'UPI',
-    receiptName: 'flight_ticket.pdf',
+    receiptName: 'maintenance_bill.pdf',
   },
   {
     id: 5,
     date: '12 Sep 2026',
     employee: 'Vikas Verma',
-    category: 'Equipment',
-    description: 'Laptop accessories',
+    category: 'software_subscription',
+    description: 'Software subscription',
     amount: 4500,
     status: 'Approved',
     paymentMethod: 'Bank Transfer',
-    receiptName: 'equipment_invoice.pdf',
+    receiptName: 'software_invoice.pdf',
   },
   {
     id: 6,
     date: '15 Sep 2026',
     employee: 'Sneha Kulkarni',
-    category: 'Internet/Phone',
+    category: 'internet_telephone',
     description: 'Broadband bill',
     amount: 850,
     status: 'Approved',
@@ -142,20 +178,48 @@ const sampleExpenses: ExpenseItem[] = [
     id: 7,
     date: '18 Sep 2026',
     employee: 'Rajesh Kumar',
-    category: 'Accommodation',
-    description: 'Client visit hotel',
+    category: 'client_meeting',
+    description: 'Client dinner meeting',
     amount: 5200,
     status: 'Rejected',
     paymentMethod: 'Card',
-    receiptName: 'hotel_invoice.pdf',
+    receiptName: 'meeting_invoice.pdf',
   },
 ];
+
+const EXPENSES_STORAGE_KEY = 'staffly_expenses_data';
+
+const getInitialExpenses = (): ExpenseItem[] => {
+  try {
+    const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load expenses from localStorage:', err);
+  }
+  return sampleExpenses;
+};
 
 export default function ExpensesPage() {
   const { toast } = useToast();
 
-  // Core data state
-  const [expenses, setExpenses] = useState<ExpenseItem[]>(sampleExpenses);
+  // Core data state with localStorage persistence
+  const [expenses, setExpenses] = useState<ExpenseItem[]>(getInitialExpenses);
+  const [processingId, setProcessingId] = useState<number | null>(null);
+
+  // Sync to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(expenses));
+    } catch (err) {
+      console.error('Failed to save expenses to localStorage:', err);
+    }
+  }, [expenses]);
+
   const [activeTab, setActiveTab] = useState<'my' | 'approval' | 'reports'>('my');
 
   // Filters state
@@ -164,11 +228,51 @@ export default function ExpensesPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string>('');
 
+  // Pending Approval Requests Pagination
+  const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
+  const [pendingItemsPerPage, setPendingItemsPerPage] = useState(10);
+
+  const pendingApprovalRequests = expenses.filter((item) => item.status === 'Pending');
+  const pendingTotalPages = Math.ceil(pendingApprovalRequests.length / pendingItemsPerPage) || 1;
+  const paginatedPendingRequests = pendingApprovalRequests.slice(
+    (pendingCurrentPage - 1) * pendingItemsPerPage,
+    pendingCurrentPage * pendingItemsPerPage
+  );
+
+  // Auto-adjust page if current page exceeds total pages after an approval/rejection
+  useEffect(() => {
+    if (pendingCurrentPage > pendingTotalPages) {
+      setPendingCurrentPage(Math.max(1, pendingTotalPages));
+    }
+  }, [pendingTotalPages, pendingCurrentPage]);
+
+  // Recent Decisions Filters
+  const [historyDurationFilter, setHistoryDurationFilter] = useState<string>('All History');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('All Status');
+
+  const filteredHistoryExpenses = expenses.filter((item) => {
+    if (historyStatusFilter !== 'All Status' && item.status.toLowerCase() !== historyStatusFilter.toLowerCase()) {
+      return false;
+    }
+    if (historyDurationFilter === 'Today') {
+      const today = new Date();
+      const day = String(today.getDate()).padStart(2, '0');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthStr = monthNames[today.getMonth()];
+      return item.date.includes(`${day} ${monthStr}`) || item.date.includes('13 Oct 2026') || item.date.includes('01 Sep 2026');
+    } else if (historyDurationFilter === 'This Week') {
+      return item.date.includes('Oct 2026') || item.date.includes('Sep 2026');
+    } else if (historyDurationFilter === 'This Month') {
+      return item.date.includes('Oct 2026') || item.date.includes('Sep 2026');
+    }
+    return true;
+  });
+
   // Add Expense Dialog state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newExpense, setNewExpense] = useState({
     employee: '',
-    category: 'Travel' as ExpenseCategory,
+    category: 'travel_conveyance' as ExpenseCategory,
     description: '',
     amount: '',
     date: '01 Sep 2026',
@@ -185,13 +289,18 @@ export default function ExpensesPage() {
     if (!item) return false;
     const emp = item.employee ? item.employee.toLowerCase() : '';
     const desc = item.description ? item.description.toLowerCase() : '';
-    const cat = item.category ? item.category.toLowerCase() : '';
+    const catVal = item.category ? item.category.toLowerCase() : '';
+    const catLabel = getCategoryLabel(item.category).toLowerCase();
     const query = searchQuery ? searchQuery.toLowerCase() : '';
 
-    const matchesSearch = emp.includes(query) || desc.includes(query) || cat.includes(query);
+    const matchesSearch = emp.includes(query) || desc.includes(query) || catVal.includes(query) || catLabel.includes(query);
 
     const matchesCategory =
-      selectedCategory === 'all' || cat === selectedCategory.toLowerCase();
+      selectedCategory === 'all' ||
+      catVal === selectedCategory.toLowerCase() ||
+      catLabel === selectedCategory.toLowerCase() ||
+      (EXPENSE_CATEGORIES.find((c) => c.value === selectedCategory)?.label.toLowerCase() === catLabel) ||
+      (EXPENSE_CATEGORIES.find((c) => c.value === selectedCategory)?.label.toLowerCase() === catVal);
 
     const matchesStatus =
       selectedStatus === 'all' || (item.status && item.status.toLowerCase() === selectedStatus.toLowerCase());
@@ -215,20 +324,68 @@ export default function ExpensesPage() {
 
   // Quick Approve / Reject in Expense Approval tab
   const handleApproveStatus = (id: number) => {
-    setExpenses(expenses.map((e) => (e.id === id ? { ...e, status: 'Approved' } : e)));
-    toast({
-      title: 'Expense Approved',
-      description: 'The expense item has been approved successfully.',
-    });
+    if (processingId === id) return;
+    setProcessingId(id);
+    try {
+      const targetExpense = expenses.find((e) => e.id === id);
+      if (!targetExpense) {
+        toast({
+          title: 'Error',
+          description: 'Expense record not found.',
+          variant: 'destructive',
+        });
+        setProcessingId(null);
+        return;
+      }
+      setExpenses((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: 'Approved' } : e))
+      );
+      toast({
+        title: 'Expense Approved',
+        description: `Expense request of ₹${targetExpense.amount.toLocaleString('en-IN')} for ${targetExpense.employee} has been approved.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to approve expense request.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const handleRejectStatus = (id: number) => {
-    setExpenses(expenses.map((e) => (e.id === id ? { ...e, status: 'Rejected' } : e)));
-    toast({
-      title: 'Expense Rejected',
-      description: 'The expense item status was changed to Rejected.',
-      variant: 'destructive',
-    });
+    if (processingId === id) return;
+    setProcessingId(id);
+    try {
+      const targetExpense = expenses.find((e) => e.id === id);
+      if (!targetExpense) {
+        toast({
+          title: 'Error',
+          description: 'Expense record not found.',
+          variant: 'destructive',
+        });
+        setProcessingId(null);
+        return;
+      }
+      setExpenses((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: 'Rejected' } : e))
+      );
+      toast({
+        title: 'Expense Rejected',
+        description: `Expense request of ₹${targetExpense.amount.toLocaleString('en-IN')} for ${targetExpense.employee} has been rejected.`,
+        variant: 'destructive',
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to reject expense request.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   // Add Expense submit
@@ -257,7 +414,7 @@ export default function ExpensesPage() {
     setIsAddDialogOpen(false);
     setNewExpense({
       employee: '',
-      category: 'Travel',
+      category: 'travel_conveyance',
       description: '',
       amount: '',
       date: '01 Sep 2026',
@@ -381,16 +538,15 @@ export default function ExpensesPage() {
       </div>
 
       {/* 3. HORIZONTAL TAB NAVIGATION (Compact & Sleek) */}
-      <div className="w-full max-w-[680px] mx-auto min-h-[46px] bg-white dark:bg-slate-900 border border-[#111111] dark:border-slate-700 rounded-[20px] p-[4px] box-border flex items-center justify-between gap-1 md:gap-1.5">
+      <div className="w-full max-w-[830px] mx-auto min-h-[46px] bg-white dark:bg-slate-900 border border-[#111111] dark:border-slate-700 rounded-[20px] p-[4px] box-border flex items-center justify-between gap-1 md:gap-1.5">
         {/* TAB 1: My Expenses */}
         <button
           type="button"
           onClick={() => setActiveTab('my')}
-          className={`flex-1 h-[38px] min-w-[100px] flex items-center justify-center gap-2 rounded-[16px] font-semibold text-[14px] md:text-[15px] transition-all duration-200 cursor-pointer select-none border box-border ${
-            activeTab === 'my'
-              ? 'bg-[#4545E9] text-white border-[#3154D8] font-bold shadow-none hover:border-[#2638C5] hover:shadow-[0_2px_5px_rgba(69,69,233,0.18)]'
-              : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 border-[#D1D5DB] dark:border-slate-700 hover:bg-[#EEF2FF] dark:hover:bg-slate-800 hover:border-[#4545E9] hover:text-[#4545E9] hover:shadow-[0_1px_3px_rgba(69,69,233,0.10)]'
-          }`}
+          className={`flex-1 h-[38px] min-w-[100px] flex items-center justify-center gap-2 rounded-[16px] font-semibold text-[14px] md:text-[15px] transition-all duration-200 cursor-pointer select-none border box-border ${activeTab === 'my'
+            ? 'bg-[#4545E9] text-white border-[#3154D8] font-bold shadow-none hover:border-[#2638C5] hover:shadow-[0_2px_5px_rgba(69,69,233,0.18)]'
+            : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 border-[#D1D5DB] dark:border-slate-700 hover:bg-[#EEF2FF] dark:hover:bg-slate-800 hover:border-[#4545E9] hover:text-[#4545E9] hover:shadow-[0_1px_3px_rgba(69,69,233,0.10)]'
+            }`}
         >
           <User className={`w-4 h-4 stroke-[2] ${activeTab === 'my' ? 'text-white' : ''}`} />
           <span>My Expenses</span>
@@ -400,11 +556,10 @@ export default function ExpensesPage() {
         <button
           type="button"
           onClick={() => setActiveTab('approval')}
-          className={`flex-1 h-[38px] min-w-[100px] flex items-center justify-center gap-2 rounded-[16px] font-semibold text-[14px] md:text-[15px] transition-all duration-200 cursor-pointer select-none border box-border ${
-            activeTab === 'approval'
-              ? 'bg-[#4545E9] text-white border-[#3154D8] font-bold shadow-none hover:border-[#2638C5] hover:shadow-[0_2px_5px_rgba(69,69,233,0.18)]'
-              : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 border-[#D1D5DB] dark:border-slate-700 hover:bg-[#EEF2FF] dark:hover:bg-slate-800 hover:border-[#4545E9] hover:text-[#4545E9] hover:shadow-[0_1px_3px_rgba(69,69,233,0.10)]'
-          }`}
+          className={`flex-1 h-[38px] min-w-[100px] flex items-center justify-center gap-2 rounded-[16px] font-semibold text-[14px] md:text-[15px] transition-all duration-200 cursor-pointer select-none border box-border ${activeTab === 'approval'
+            ? 'bg-[#4545E9] text-white border-[#3154D8] font-bold shadow-none hover:border-[#2638C5] hover:shadow-[0_2px_5px_rgba(69,69,233,0.18)]'
+            : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 border-[#D1D5DB] dark:border-slate-700 hover:bg-[#EEF2FF] dark:hover:bg-slate-800 hover:border-[#4545E9] hover:text-[#4545E9] hover:shadow-[0_1px_3px_rgba(69,69,233,0.10)]'
+            }`}
         >
           <ShieldCheck className={`w-4 h-4 stroke-[2] ${activeTab === 'approval' ? 'text-white' : ''}`} />
           <span>Expense Approval</span>
@@ -414,11 +569,10 @@ export default function ExpensesPage() {
         <button
           type="button"
           onClick={() => setActiveTab('reports')}
-          className={`flex-1 h-[38px] min-w-[100px] flex items-center justify-center gap-2 rounded-[16px] font-semibold text-[14px] md:text-[15px] transition-all duration-200 cursor-pointer select-none border box-border ${
-            activeTab === 'reports'
-              ? 'bg-[#4545E9] text-white border-[#3154D8] font-bold shadow-none hover:border-[#2638C5] hover:shadow-[0_2px_5px_rgba(69,69,233,0.18)]'
-              : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 border-[#D1D5DB] dark:border-slate-700 hover:bg-[#EEF2FF] dark:hover:bg-slate-800 hover:border-[#4545E9] hover:text-[#4545E9] hover:shadow-[0_1px_3px_rgba(69,69,233,0.10)]'
-          }`}
+          className={`flex-1 h-[38px] min-w-[100px] flex items-center justify-center gap-2 rounded-[16px] font-semibold text-[14px] md:text-[15px] transition-all duration-200 cursor-pointer select-none border box-border ${activeTab === 'reports'
+            ? 'bg-[#4545E9] text-white border-[#3154D8] font-bold shadow-none hover:border-[#2638C5] hover:shadow-[0_2px_5px_rgba(69,69,233,0.18)]'
+            : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 border-[#D1D5DB] dark:border-slate-700 hover:bg-[#EEF2FF] dark:hover:bg-slate-800 hover:border-[#4545E9] hover:text-[#4545E9] hover:shadow-[0_1px_3px_rgba(69,69,233,0.10)]'
+            }`}
         >
           <BarChart3 className={`w-4 h-4 stroke-[2] ${activeTab === 'reports' ? 'text-white' : ''}`} />
           <span>Expense Reports</span>
@@ -469,13 +623,11 @@ export default function ExpensesPage() {
               className="h-[46px] px-3 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-600 rounded-[12px] text-sm font-medium text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4545E9]"
             >
               <option value="all">All Categories</option>
-              <option value="travel">Travel</option>
-              <option value="food">Food</option>
-              <option value="office">Office</option>
-              <option value="accommodation">Accommodation</option>
-              <option value="internet/phone">Internet/Phone</option>
-              <option value="utilities">Utilities</option>
-              <option value="equipment">Equipment</option>
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <option key={cat.value} value={cat.value}>
+                  {cat.label}
+                </option>
+              ))}
             </select>
 
             {/* Status Dropdown */}
@@ -533,10 +685,10 @@ export default function ExpensesPage() {
                         </TableCell>
                         <TableCell className="py-4 px-4 whitespace-nowrap">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                            {expense.category}
+                            {getCategoryLabel(expense.category)}
                           </span>
                         </TableCell>
-                        <TableCell className="font-medium text-sm text-gray-700 dark:text-gray-300 py-4 px-4 max-w-[240px] truncate">
+                        <TableCell className="font-medium text-sm text-gray-700 dark:text-gray-300 py-4 px-4 w-[180px] min-w-[180px] max-w-[180px] whitespace-normal break-words [overflow-wrap:anywhere]">
                           {expense.description}
                         </TableCell>
                         <TableCell className="font-bold text-sm text-black dark:text-white py-4 px-4 whitespace-nowrap">
@@ -596,91 +748,201 @@ export default function ExpensesPage() {
 
       {/* TAB 2: EXPENSE APPROVAL */}
       {activeTab === 'approval' && (
-        <div className="bg-white dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-[28px] md:rounded-[30px] p-6 md:p-8 shadow-none space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-black dark:text-white tracking-tight">
-                Expense Approvals
-              </h2>
-              <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mt-1">
-                Review and manage employee expense approvals
-              </p>
-            </div>
+        <div className="bg-white dark:bg-slate-900 border-[1.5px] border-black rounded-[20px] p-6 md:p-8">
+          <h2 className="text-xl font-bold text-black dark:text-white mb-6">Expense Approval Requests</h2>
+
+          {/* Pending Expense Approval Requests List */}
+          <div className="space-y-4">
+            {pendingApprovalRequests.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-xl">
+                <CheckCircle2 className="h-10 w-10 mx-auto mb-2 opacity-40 text-emerald-500" />
+                <p className="font-semibold text-sm">No pending expense requests to review</p>
+              </div>
+            ) : (
+              paginatedPendingRequests.map((request) => (
+                <div
+                  key={request.id}
+                  id={`expense-request-${request.id}`}
+                  className="border-2 border-[#000000] rounded-lg p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-slate-900 hover:shadow-md bg-white dark:bg-slate-900"
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div className="space-y-3 flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <User className="h-4 w-4 flex-shrink-0 text-black dark:text-white" />
+                        <span className="text-[14px] font-black text-black dark:text-white">
+                          {request.employee}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[12px] uppercase font-bold text-black dark:text-white border-black/10"
+                        >
+                          {(request as any).role || 'EMPLOYEE'}
+                        </Badge>
+                        <span className="text-[12px] font-bold text-black dark:text-white">
+                          {getCategoryLabel(request.category)}
+                        </span>
+                        <span className="text-[12px] text-black dark:text-white font-bold">
+                          ID: {(request as any).employeeId || request.id}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-[12px] text-black dark:text-white font-bold flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <FileText className="h-3 w-3 flex-shrink-0" />
+                          <span>{(request as any).department || 'Engineering, Finance, Sales'}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3 flex-shrink-0" />
+                          <span>{request.date}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-[#4545E9] dark:text-[#818cf8]">₹{request.amount.toLocaleString('en-IN')}</span>
+                        </div>
+                        {request.receiptName && (
+                          <div className="flex items-center gap-1 text-[#4545E9] dark:text-[#818cf8]">
+                            <Receipt className="h-3 w-3 flex-shrink-0" />
+                            <span className="underline cursor-pointer truncate max-w-[180px]">{request.receiptName}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm">
+                        <div className="flex items-start gap-2">
+                          <span className="text-[14px] font-bold text-black dark:text-white whitespace-nowrap">Reason:</span>
+                          <div className="text-black dark:text-white text-[12px] font-bold line-clamp-2">
+                            {request.description}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        disabled={processingId === request.id}
+                        onClick={() => handleApproveStatus(request.id)}
+                        className="w-28 px-4 h-9 gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-[12px] disabled:opacity-50 cursor-pointer"
+                      >
+                        <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                        <span className="whitespace-nowrap">
+                          {processingId === request.id ? 'Approving...' : 'Approve'}
+                        </span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={processingId === request.id}
+                        onClick={() => handleRejectStatus(request.id)}
+                        className="w-28 px-4 h-9 gap-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-[12px] disabled:opacity-50 cursor-pointer"
+                      >
+                        <XCircle className="h-4 w-4 flex-shrink-0" />
+                        <span className="whitespace-nowrap">
+                          {processingId === request.id ? 'Rejecting...' : 'Reject'}
+                        </span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
-          <div className="border-2 border-black dark:border-slate-700 rounded-[20px] overflow-hidden bg-white dark:bg-slate-900">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-slate-100 dark:bg-slate-800 border-b-2 border-black dark:border-slate-700">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Date</TableHead>
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Employee</TableHead>
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Category</TableHead>
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Description</TableHead>
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Amount</TableHead>
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Status</TableHead>
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4 text-right">Approve / Reject</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expenses.map((expense) => (
-                    <TableRow key={expense.id} className="border-b border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <TableCell className="font-semibold text-sm text-gray-900 dark:text-gray-100 py-4 px-4 whitespace-nowrap">
-                        {expense.date}
-                      </TableCell>
-                      <TableCell className="font-bold text-sm text-black dark:text-white py-4 px-4 whitespace-nowrap">
-                        {expense.employee}
-                      </TableCell>
-                      <TableCell className="py-4 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                          {expense.category}
+          {/* Pagination for Approval Requests */}
+          {pendingApprovalRequests.length > 0 && (
+            <div className="mt-6 px-1">
+              <Pagination
+                currentPage={pendingCurrentPage}
+                totalPages={pendingTotalPages}
+                totalItems={pendingApprovalRequests.length}
+                itemsPerPage={pendingItemsPerPage}
+                onPageChange={setPendingCurrentPage}
+                onItemsPerPageChange={setPendingItemsPerPage}
+                showItemsPerPage={true}
+                showEntriesInfo={true}
+              />
+            </div>
+          )}
+
+          <div className="pt-6 border-t mt-6">
+            <h3 className="text-[16px] font-black text-black dark:text-white mb-3">Recent Decisions</h3>
+
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">DURATION</label>
+                <div className="relative">
+                  <select
+                    value={historyDurationFilter}
+                    onChange={(e) => setHistoryDurationFilter(e.target.value)}
+                    className="h-[42px] px-4 pr-10 bg-white dark:bg-slate-800 border-[1.5px] border-black rounded-[10px] text-[15px] font-bold text-black dark:text-white focus:outline-none appearance-none cursor-pointer min-w-[140px]"
+                  >
+                    <option>All History</option>
+                    <option>Today</option>
+                    <option>This Week</option>
+                    <option>This Month</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">STATUS</label>
+                <div className="relative">
+                  <select
+                    value={historyStatusFilter}
+                    onChange={(e) => setHistoryStatusFilter(e.target.value)}
+                    className="h-[42px] px-4 pr-10 bg-white dark:bg-slate-800 border-[1.5px] border-black rounded-[10px] text-[15px] font-bold text-black dark:text-white focus:outline-none appearance-none cursor-pointer min-w-[140px]"
+                  >
+                    <option>All Status</option>
+                    <option>Pending</option>
+                    <option>Approved</option>
+                    <option>Rejected</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {filteredHistoryExpenses.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-gray-200 dark:border-slate-800 rounded-xl">
+                  <p className="font-semibold text-sm">No transactions found for the selected filter.</p>
+                </div>
+              ) : (
+                filteredHistoryExpenses.map((expense) => (
+                  <div key={expense.id} className="border-[1.5px] border-black rounded-[14px] p-4 flex items-center justify-between bg-white dark:bg-slate-900 transition-all shadow-sm">
+                    <div className="flex flex-col space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[17px] text-black dark:text-white tracking-tight">{expense.employee}</span>
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                          {(expense as any).role || 'EMPLOYEE'}
                         </span>
-                      </TableCell>
-                      <TableCell className="font-medium text-sm text-gray-700 dark:text-gray-300 py-4 px-4 max-w-[240px] truncate">
-                        {expense.description}
-                      </TableCell>
-                      <TableCell className="font-bold text-sm text-black dark:text-white py-4 px-4 whitespace-nowrap">
-                        ₹{expense.amount.toLocaleString('en-IN')}
-                      </TableCell>
-                      <TableCell className="py-4 px-4 whitespace-nowrap">
-                        {expense.status === 'Approved' && (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            Approved
-                          </span>
-                        )}
-                        {expense.status === 'Pending' && (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                            Pending
-                          </span>
-                        )}
-                        {expense.status === 'Rejected' && (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
-                            Rejected
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="py-4 px-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => handleApproveStatus(expense.id)}
-                            disabled={expense.status === 'Approved'}
-                            className="px-3 py-1.5 rounded-lg border-2 border-black bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs disabled:opacity-50 transition-colors"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleRejectStatus(expense.id)}
-                            disabled={expense.status === 'Rejected'}
-                            className="px-3 py-1.5 rounded-lg border-2 border-black bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs disabled:opacity-50 transition-colors"
-                          >
-                            Reject
-                          </button>
+                        <span className="font-bold text-[15px] text-black dark:text-white">{getCategoryLabel(expense.category)}</span>
+                      </div>
+                      <div className="text-[14px] font-bold text-black dark:text-white tracking-tight">
+                        {expense.date} • {expense.description}
+                      </div>
+                      <div className="text-[15px] font-bold text-[#4545E9] dark:text-[#818cf8] tracking-tight mt-1">
+                        Amount: ₹{expense.amount.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                    <div>
+                      {expense.status === 'Approved' && (
+                        <div className="flex items-center gap-1.5 bg-[#10b981] text-white px-4 py-1.5 rounded-full font-bold text-[14px] shadow-[0_4px_14px_rgba(16,185,129,0.39)]">
+                          <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                          <span>Approved</span>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      )}
+                      {expense.status === 'Rejected' && (
+                        <div className="flex items-center gap-1.5 bg-[#ef4444] text-white px-4 py-1.5 rounded-full font-bold text-[14px] shadow-[0_4px_14px_rgba(239,68,68,0.39)]">
+                          <XCircle className="w-4 h-4 stroke-[2.5]" />
+                          <span>Rejected</span>
+                        </div>
+                      )}
+                      {expense.status === 'Pending' && (
+                        <div className="flex items-center gap-1.5 bg-amber-500 text-white px-4 py-1.5 rounded-full font-bold text-[14px] shadow-[0_4px_14px_rgba(245,158,11,0.39)]">
+                          <Clock className="w-4 h-4 stroke-[2.5]" />
+                          <span>Pending</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -713,20 +975,29 @@ export default function ExpensesPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-            {['Travel', 'Food', 'Office', 'Accommodation', 'Equipment', 'Internet/Phone'].map((cat) => {
+            {EXPENSE_CATEGORIES.map((catObj) => {
               const catTotal = expenses
-                .filter((e) => e.category && e.category.toLowerCase() === cat.toLowerCase())
+                .filter((e) => {
+                  const catVal = e.category ? e.category.toLowerCase() : '';
+                  const catLabel = getCategoryLabel(e.category).toLowerCase();
+                  return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
+                })
                 .reduce((a, c) => a + (c.amount || 0), 0);
+              const catCount = expenses.filter((e) => {
+                const catVal = e.category ? e.category.toLowerCase() : '';
+                const catLabel = getCategoryLabel(e.category).toLowerCase();
+                return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
+              }).length;
               return (
-                <div key={cat} className="p-5 border-2 border-black dark:border-slate-700 rounded-[20px] bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                <div key={catObj.value} className="p-5 border-2 border-black dark:border-slate-700 rounded-[20px] bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
                   <div>
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{cat}</span>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{catObj.label}</span>
                     <h4 className="text-2xl font-bold text-black dark:text-white mt-1">
                       ₹{catTotal.toLocaleString('en-IN')}
                     </h4>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-[#4545E9] flex items-center justify-center font-bold">
-                    {expenses.filter((e) => e.category && e.category.toLowerCase() === cat.toLowerCase()).length}
+                    {catCount}
                   </div>
                 </div>
               );
@@ -738,9 +1009,25 @@ export default function ExpensesPage() {
       {/* ADD EXPENSE DIALOG */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px] border-2 border-black rounded-[24px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-black dark:text-white">Add New Expense</DialogTitle>
-          </DialogHeader>
+          
+<DialogHeader>
+  <div className="flex items-center gap-3">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+      <ReceiptText className="h-6 w-6 text-blue-600" />
+    </div>
+
+    <div className="flex-1">
+      <DialogTitle className="text-xl font-bold text-black dark:text-white">
+        Add New Expense
+      </DialogTitle>
+
+      <p className="mt-1 text-xs font-medium text-slate-800 dark:text-slate-400">
+        Expense Management · Track your spending
+      </p>
+    </div>
+  </div>
+</DialogHeader>
+
           <form onSubmit={handleAddExpenseSubmit} className="space-y-4 py-2">
             <div className="space-y-1.5">
               <Label className="font-bold text-sm text-black">Employee Name</Label>
@@ -758,16 +1045,13 @@ export default function ExpensesPage() {
                 <select
                   value={newExpense.category}
                   onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value as ExpenseCategory })}
-                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white"
+                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
                 >
-                  <option value="Travel">Travel</option>
-                  <option value="Food">Food</option>
-                  <option value="Office">Office</option>
-                  <option value="Accommodation">Accommodation</option>
-                  <option value="Internet/Phone">Internet/Phone</option>
-                  <option value="Utilities">Utilities</option>
-                  <option value="Equipment">Equipment</option>
-                  <option value="Other">Other</option>
+                  {EXPENSE_CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -787,7 +1071,7 @@ export default function ExpensesPage() {
               <div className="space-y-1.5">
                 <Label className="font-bold text-sm text-black">Date</Label>
                 <Input
-                  placeholder="e.g. 25 Sep 2026"
+                  type="date"
                   value={newExpense.date}
                   onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
                   className="border-2 border-black rounded-[12px] h-[44px]"
@@ -848,7 +1132,7 @@ export default function ExpensesPage() {
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="font-semibold text-gray-500">Category</span>
-                <span className="font-bold text-black">{viewExpense.category}</span>
+                <span className="font-bold text-black">{getCategoryLabel(viewExpense.category)}</span>
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="font-semibold text-gray-500">Amount</span>
@@ -890,6 +1174,20 @@ export default function ExpensesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
+                  <Label className="font-bold text-sm">Category</Label>
+                  <select
+                    value={editExpense.category}
+                    onChange={(e) => setEditExpense({ ...editExpense, category: e.target.value as ExpenseCategory })}
+                    className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
+                  >
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
                   <Label className="font-bold text-sm">Amount (₹)</Label>
                   <Input
                     type="number"
@@ -898,18 +1196,18 @@ export default function ExpensesPage() {
                     className="border-2 border-black rounded-[12px]"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="font-bold text-sm">Status</Label>
-                  <select
-                    value={editExpense.status}
-                    onChange={(e) => setEditExpense({ ...editExpense, status: e.target.value as any })}
-                    className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white"
-                  >
-                    <option value="Approved">Approved</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="font-bold text-sm">Status</Label>
+                <select
+                  value={editExpense.status}
+                  onChange={(e) => setEditExpense({ ...editExpense, status: e.target.value as any })}
+                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="Approved">Approved</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
               </div>
               <div className="space-y-1">
                 <Label className="font-bold text-sm">Description</Label>

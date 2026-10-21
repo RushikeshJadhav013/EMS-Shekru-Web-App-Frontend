@@ -248,7 +248,7 @@ const TaskFormSection = ({
               </div>
 
               {/* Assign to Employees */}
-              <div className="sm:col-span-12 space-y-1.5 pt-1">
+              <div className="sm:col-span-12 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-violet-500" /> Assign To Team Member(s) <span className="text-rose-500">*</span>
@@ -1276,7 +1276,9 @@ export default function ProjectManagement() {
           };
         }),
       );
-    } catch (_) { }
+    } catch (error) {
+      console.error("Failed to fetch project employees:", error);
+    }
   };
 
   useEffect(() => {
@@ -2190,7 +2192,7 @@ export default function ProjectManagement() {
       {/* ── Header Card ── */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border-2 border-[#000000]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
+          <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl bg-violet-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-violet-200 dark:shadow-violet-900">
               <FolderKanban className="h-6 w-6 text-white" />
             </div>
@@ -2245,7 +2247,7 @@ export default function ProjectManagement() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5 w-full">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 w-full">
         {[
           {
             label: "Total Projects",
@@ -2364,7 +2366,9 @@ export default function ProjectManagement() {
                 try {
                   const full = await loadFullProjectDetails(project.project_id);
                   setSelectedProject(full);
-                } catch (_) { }
+                } catch (error) {
+                  console.error("Failed to load project members:", error);
+                }
               }}
               onRemoveMembers={async () => {
                 setSelectedProject(project);
@@ -2373,7 +2377,9 @@ export default function ProjectManagement() {
                 try {
                   const full = await loadFullProjectDetails(project.project_id);
                   setSelectedProject(full);
-                } catch (_) { }
+                } catch (error) {
+                  console.error("Failed to load project members:", error);
+                }
               }}
               onRemoveMember={(userId) => {
                 setSelectedProject(project);

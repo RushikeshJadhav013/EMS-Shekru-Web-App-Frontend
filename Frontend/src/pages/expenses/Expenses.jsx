@@ -92,13 +92,40 @@ const ExpensesHeader = ({
   );
 };
 
+// 15 Standard Expense Categories
+export const EXPENSE_CATEGORIES = [
+  { value: 'travel_conveyance', label: 'Travel & Conveyance' },
+  { value: 'food_refreshments', label: 'Food & Refreshments' },
+  { value: 'office_supplies', label: 'Office Supplies' },
+  { value: 'stationery', label: 'Stationery' },
+  { value: 'electricity', label: 'Electricity' },
+  { value: 'internet_telephone', label: 'Internet & Telephone' },
+  { value: 'rent_maintenance', label: 'Rent & Maintenance' },
+  { value: 'software_subscription', label: 'Software / Subscription' },
+  { value: 'employee_welfare', label: 'Employee Welfare' },
+  { value: 'client_meeting', label: 'Client Meeting' },
+  { value: 'marketing', label: 'Marketing' },
+  { value: 'courier', label: 'Courier' },
+  { value: 'repairs_maintenance', label: 'Repairs & Maintenance' },
+  { value: 'miscellaneous', label: 'Miscellaneous' },
+  { value: 'other', label: 'Other' },
+];
+
+export const getCategoryLabel = (catValue) => {
+  if (!catValue) return '';
+  const found = EXPENSE_CATEGORIES.find(
+    (c) => c.value.toLowerCase() === catValue.toLowerCase() || c.label.toLowerCase() === catValue.toLowerCase()
+  );
+  return found ? found.label : catValue;
+};
+
 // Initial Sample Data
 const sampleExpenses = [
   {
     id: 1,
     date: '01 Sep 2026',
     employee: 'Rahul Patil',
-    category: 'Travel',
+    category: 'travel_conveyance',
     description: 'Client meeting travel',
     amount: 1250,
     status: 'Approved',
@@ -109,7 +136,7 @@ const sampleExpenses = [
     id: 2,
     date: '03 Sep 2026',
     employee: 'Amit Sharma',
-    category: 'Food',
+    category: 'food_refreshments',
     description: 'Team lunch',
     amount: 850,
     status: 'Pending',
@@ -120,40 +147,40 @@ const sampleExpenses = [
     id: 3,
     date: '05 Sep 2026',
     employee: 'Priya Joshi',
-    category: 'Office',
-    description: 'Stationery purchase',
+    category: 'office_supplies',
+    description: 'Office supplies purchase',
     amount: 2400,
     status: 'Approved',
     paymentMethod: 'Cash',
-    receiptName: 'stationery_receipt.png',
+    receiptName: 'supplies_receipt.png',
   },
   {
     id: 4,
     date: '08 Sep 2026',
     employee: 'Sagar More',
-    category: 'Travel',
-    description: 'Business trip',
+    category: 'rent_maintenance',
+    description: 'Office rent & maintenance',
     amount: 3200,
     status: 'Pending',
     paymentMethod: 'UPI',
-    receiptName: 'flight_ticket.pdf',
+    receiptName: 'maintenance_bill.pdf',
   },
   {
     id: 5,
     date: '12 Sep 2026',
     employee: 'Vikas Verma',
-    category: 'Equipment',
-    description: 'Laptop accessories',
+    category: 'software_subscription',
+    description: 'Software subscription',
     amount: 4500,
     status: 'Approved',
     paymentMethod: 'Bank Transfer',
-    receiptName: 'equipment_invoice.pdf',
+    receiptName: 'software_invoice.pdf',
   },
   {
     id: 6,
     date: '15 Sep 2026',
     employee: 'Sneha Kulkarni',
-    category: 'Internet/Phone',
+    category: 'internet_telephone',
     description: 'Broadband bill',
     amount: 850,
     status: 'Approved',
@@ -164,12 +191,12 @@ const sampleExpenses = [
     id: 7,
     date: '18 Sep 2026',
     employee: 'Rajesh Kumar',
-    category: 'Accommodation',
-    description: 'Client visit hotel',
+    category: 'client_meeting',
+    description: 'Client dinner meeting',
     amount: 5200,
     status: 'Rejected',
     paymentMethod: 'Card',
-    receiptName: 'hotel_invoice.pdf',
+    receiptName: 'meeting_invoice.pdf',
   },
 ];
 
@@ -190,7 +217,7 @@ export default function Expenses() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newExpense, setNewExpense] = useState({
     employee: '',
-    category: 'Travel',
+    category: 'travel_conveyance',
     description: '',
     amount: '',
     date: '01 Sep 2026',
@@ -207,13 +234,18 @@ export default function Expenses() {
     if (!item) return false;
     const emp = item.employee ? item.employee.toLowerCase() : '';
     const desc = item.description ? item.description.toLowerCase() : '';
-    const cat = item.category ? item.category.toLowerCase() : '';
+    const catVal = item.category ? item.category.toLowerCase() : '';
+    const catLabel = getCategoryLabel(item.category).toLowerCase();
     const query = searchQuery ? searchQuery.toLowerCase() : '';
 
-    const matchesSearch = emp.includes(query) || desc.includes(query) || cat.includes(query);
+    const matchesSearch = emp.includes(query) || desc.includes(query) || catVal.includes(query) || catLabel.includes(query);
 
     const matchesCategory =
-      selectedCategory === 'all' || cat === selectedCategory.toLowerCase();
+      selectedCategory === 'all' ||
+      catVal === selectedCategory.toLowerCase() ||
+      catLabel === selectedCategory.toLowerCase() ||
+      (EXPENSE_CATEGORIES.find((c) => c.value === selectedCategory)?.label.toLowerCase() === catLabel) ||
+      (EXPENSE_CATEGORIES.find((c) => c.value === selectedCategory)?.label.toLowerCase() === catVal);
 
     const matchesStatus =
       selectedStatus === 'all' || (item.status && item.status.toLowerCase() === selectedStatus.toLowerCase());
@@ -279,7 +311,7 @@ export default function Expenses() {
     setIsAddDialogOpen(false);
     setNewExpense({
       employee: '',
-      category: 'Travel',
+      category: 'travel_conveyance',
       description: '',
       amount: '',
       date: '01 Sep 2026',
@@ -465,9 +497,9 @@ export default function Expenses() {
             <button
               onClick={() => setIsAddDialogOpen(true)}
               type="button"
-              className="w-full sm:w-auto px-5 h-[48px] bg-[#4545E9] hover:bg-[#3737D4] active:scale-[0.98] text-white font-bold text-[15px] rounded-[14px] border-2 border-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm select-none"
+              className="w-auto px-3 h-[36px] bg-[#4545E9] hover:bg-[#3737D4] active:scale-[0.98] text-white font-semibold text-[13px] rounded-[9px] border-2 border-black flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm select-none"
             >
-              <Plus className="w-5 h-5 stroke-[2.5]" />
+              <Plus className="w-4 h-5 stroke-[2.5]" />
               <span>Add Expense</span>
             </button>
           </div>
@@ -493,13 +525,11 @@ export default function Expenses() {
               className="h-[46px] px-3 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-600 rounded-[12px] text-sm font-medium text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4545E9]"
             >
               <option value="all">All Categories</option>
-              <option value="travel">Travel</option>
-              <option value="food">Food</option>
-              <option value="office">Office</option>
-              <option value="accommodation">Accommodation</option>
-              <option value="internet/phone">Internet/Phone</option>
-              <option value="utilities">Utilities</option>
-              <option value="equipment">Equipment</option>
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <option key={cat.value} value={cat.value}>
+                  {cat.label}
+                </option>
+              ))}
             </select>
 
             {/* Status Dropdown */}
@@ -557,7 +587,7 @@ export default function Expenses() {
                         </TableCell>
                         <TableCell className="py-4 px-4 whitespace-nowrap">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                            {expense.category}
+                            {getCategoryLabel(expense.category)}
                           </span>
                         </TableCell>
                         <TableCell className="font-medium text-sm text-gray-700 dark:text-gray-300 py-4 px-4 max-w-[240px] truncate">
@@ -657,7 +687,7 @@ export default function Expenses() {
                       </TableCell>
                       <TableCell className="py-4 px-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                          {expense.category}
+                          {getCategoryLabel(expense.category)}
                         </span>
                       </TableCell>
                       <TableCell className="font-medium text-sm text-gray-700 dark:text-gray-300 py-4 px-4 max-w-[240px] truncate">
@@ -737,20 +767,29 @@ export default function Expenses() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-            {['Travel', 'Food', 'Office', 'Accommodation', 'Equipment', 'Internet/Phone'].map((cat) => {
+            {EXPENSE_CATEGORIES.map((catObj) => {
               const catTotal = expenses
-                .filter((e) => e.category && e.category.toLowerCase() === cat.toLowerCase())
+                .filter((e) => {
+                  const catVal = e.category ? e.category.toLowerCase() : '';
+                  const catLabel = getCategoryLabel(e.category).toLowerCase();
+                  return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
+                })
                 .reduce((a, c) => a + (c.amount || 0), 0);
+              const catCount = expenses.filter((e) => {
+                const catVal = e.category ? e.category.toLowerCase() : '';
+                const catLabel = getCategoryLabel(e.category).toLowerCase();
+                return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
+              }).length;
               return (
-                <div key={cat} className="p-5 border-2 border-black dark:border-slate-700 rounded-[20px] bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                <div key={catObj.value} className="p-5 border-2 border-black dark:border-slate-700 rounded-[20px] bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
                   <div>
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{cat}</span>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{catObj.label}</span>
                     <h4 className="text-2xl font-bold text-black dark:text-white mt-1">
                       ₹{catTotal.toLocaleString('en-IN')}
                     </h4>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-[#4545E9] flex items-center justify-center font-bold">
-                    {expenses.filter((e) => e.category && e.category.toLowerCase() === cat.toLowerCase()).length}
+                    {catCount}
                   </div>
                 </div>
               );
@@ -782,16 +821,13 @@ export default function Expenses() {
                 <select
                   value={newExpense.category}
                   onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
-                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white"
+                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
                 >
-                  <option value="Travel">Travel</option>
-                  <option value="Food">Food</option>
-                  <option value="Office">Office</option>
-                  <option value="Accommodation">Accommodation</option>
-                  <option value="Internet/Phone">Internet/Phone</option>
-                  <option value="Utilities">Utilities</option>
-                  <option value="Equipment">Equipment</option>
-                  <option value="Other">Other</option>
+                  {EXPENSE_CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -872,7 +908,7 @@ export default function Expenses() {
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="font-semibold text-gray-500">Category</span>
-                <span className="font-bold text-black">{viewExpense.category}</span>
+                <span className="font-bold text-black">{getCategoryLabel(viewExpense.category)}</span>
               </div>
               <div className="flex justify-between border-b pb-2">
                 <span className="font-semibold text-gray-500">Amount</span>
@@ -914,6 +950,20 @@ export default function Expenses() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
+                  <Label className="font-bold text-sm">Category</Label>
+                  <select
+                    value={editExpense.category}
+                    onChange={(e) => setEditExpense({ ...editExpense, category: e.target.value })}
+                    className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
+                  >
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
                   <Label className="font-bold text-sm">Amount (₹)</Label>
                   <Input
                     type="number"
@@ -922,18 +972,18 @@ export default function Expenses() {
                     className="border-2 border-black rounded-[12px]"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="font-bold text-sm">Status</Label>
-                  <select
-                    value={editExpense.status}
-                    onChange={(e) => setEditExpense({ ...editExpense, status: e.target.value })}
-                    className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white"
-                  >
-                    <option value="Approved">Approved</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="font-bold text-sm">Status</Label>
+                <select
+                  value={editExpense.status}
+                  onChange={(e) => setEditExpense({ ...editExpense, status: e.target.value })}
+                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
+                >
+                  <option value="Approved">Approved</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
               </div>
               <div className="space-y-1">
                 <Label className="font-bold text-sm">Description</Label>

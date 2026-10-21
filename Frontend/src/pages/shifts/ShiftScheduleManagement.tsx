@@ -465,6 +465,7 @@ export default function ShiftScheduleManagement() {
         shift_id: 0,
         assignment_date: selectedDate,
         notes: '',
+        department: '',
       });
       loadSchedule();
     } catch (error: any) {
@@ -1530,4 +1531,3 @@ export default function ShiftScheduleManagement() {
     </div>
   );
 }
-

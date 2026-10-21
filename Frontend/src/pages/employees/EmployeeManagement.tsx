@@ -816,7 +816,7 @@ export default function EmployeeManagement() {
     }
 
     // Check for invalid characters
-    const invalidChars = /[*!#$%^&()+=\[\]{}|\\;:'",<>?/]/;
+    const invalidChars = /[*!#$%^&()+=\x5B\]{}|\\;:'",<>?/]/;
     if (invalidChars.test(email)) {
       setEmailError('Email contains invalid characters (*, !, #, etc.)');
       return false;
@@ -2062,9 +2062,10 @@ export default function EmployeeManagement() {
                 setIsExportDialogOpen(true);
               }}
               variant="outline"
-              className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-lg transition-all"
+              className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 hover:text-white shadow-sm hover:shadow-lg transition-all"
             >
-              <Download className="h-4 w-4 transition-colors group-hover:text-white" />
+              
+            <Download className="h-4 w-4 transition-colors group-hover:text-white" />
               Export
             </Button>
             <Dialog
@@ -2079,7 +2080,7 @@ export default function EmployeeManagement() {
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-lg transition-all"
+                  className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 hover:text-white shadow-sm hover:shadow-lg transition-all"
                 >
                   <Upload className="h-4 w-4 transition-colors group-hover:text-white" />
                   Bulk Upload

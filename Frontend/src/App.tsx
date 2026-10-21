@@ -14,7 +14,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import MainLayout from "@/components/layout/MainLayout";
 import LandingPage from "@/pages/LandingPage";
 import Login from "@/pages/Login";
-import Chat from "@/pages/chat/Chat";
+import Chat from "@/pages/attendance/chat/Chat";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import HRDashboard from "@/pages/hr/HRDashboard";
 import ManagerDashboard from "@/pages/manager/ManagerDashboard";

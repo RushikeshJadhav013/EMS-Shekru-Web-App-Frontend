@@ -141,7 +141,13 @@ export const getTokenRemainingTime = (token: string): number | null => {
 /**
  * Extracts user information from JWT token payload
  */
-export const getUserFromToken = (token: string): { userId?: string; email?: string; role?: string } | null => {
+export const getUserFromToken = (token: string): {
+  userId?: string;
+  email?: string;
+  role?: string;
+  branchId?: string | number;
+  companyId?: string | number;
+} | null => {
   const payload = decodeJWT(token);
   if (!payload) {
     return null;

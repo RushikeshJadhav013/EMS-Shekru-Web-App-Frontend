@@ -36,7 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDateIST } from '@/utils/timezone';
 import { cn } from '@/lib/utils';
 
-import MessageBubble, { ImageLightbox } from '../../components/chat/MessageBubble';
+import MessageBubble, { ImageLightbox } from '@/components/chat/MessageBubble';
 import {
   AlertDialog,
   AlertDialogAction,

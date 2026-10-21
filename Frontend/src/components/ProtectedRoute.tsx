@@ -74,6 +74,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
       manager: '/manager',
       team_lead: '/team_lead',
       employee: '/employee',
+      teamlead: '/team_lead',
+      staff: '/employee',
     };
     const redirectPath = roleRoutes[user.role] || '/login';
     return <Navigate to={redirectPath} replace />;
