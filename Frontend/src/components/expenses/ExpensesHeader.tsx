@@ -1,10 +1,11 @@
 import React from 'react';
-import { Wallet, Receipt, Download } from 'lucide-react';
+import { Wallet, Receipt, Download, Plus } from 'lucide-react';
 
 export interface ExpensesHeaderProps {
   title?: string;
   subtitle?: string;
   onExport?: () => void;
+  onAddExpense?: () => void;
   className?: string;
 }
 
@@ -12,6 +13,7 @@ export const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
   title = 'Expenses Management',
   subtitle = 'Track your expenses and manage financial reports',
   onExport,
+  onAddExpense,
   className = '',
 }) => {
   return (
@@ -37,16 +39,27 @@ export const ExpensesHeader: React.FC<ExpensesHeaderProps> = ({
         </div>
       </div>
 
-      {/* RIGHT SECTION - Export Button */}
+      {/* RIGHT SECTION - Action Button (Add Expense or Export) */}
       <div className="w-full sm:w-auto flex items-center justify-end shrink-0">
-        <button
-          onClick={onExport}
-          type="button"
-          className="w-full sm:w-[130px] md:w-[120px] h-[48px] md:h-[45px] bg-[#4545E9] hover:bg-[#3737D4] active:scale-[0.98] rounded-[14px] border-2 border-black text-white font-bold text-[14px] md:text-[15px] flex items-center justify-center gap-2 transition-all cursor-pointer select-none"
-        >
-          <Download className="w-4 h-4 md:w-5 md:h-5 text-white stroke-[2.2]" />
-          <span>Export</span>
-        </button>
+        {onAddExpense ? (
+          <button
+            onClick={onAddExpense}
+            type="button"
+            className="w-full sm:w-[160px] md:w-[155px] h-[48px] md:h-[45px] bg-[#4545E9] hover:bg-[#3737D4] active:scale-[0.98] rounded-[14px] border-2 border-black text-white font-bold text-[14px] md:text-[15px] flex items-center justify-center gap-2 transition-all cursor-pointer select-none shadow-sm"
+          >
+            <Plus className="w-5 h-5 text-white stroke-[2.5]" />
+            <span>Add Expenses</span>
+          </button>
+        ) : onExport ? (
+          <button
+            onClick={onExport}
+            type="button"
+            className="w-full sm:w-[130px] md:w-[120px] h-[48px] md:h-[45px] bg-[#4545E9] hover:bg-[#3737D4] active:scale-[0.98] rounded-[14px] border-2 border-black text-white font-bold text-[14px] md:text-[15px] flex items-center justify-center gap-2 transition-all cursor-pointer select-none"
+          >
+            <Download className="w-4 h-4 md:w-5 md:h-5 text-white stroke-[2.2]" />
+            <span>Export</span>
+          </button>
+        ) : null}
       </div>
     </div>
   );

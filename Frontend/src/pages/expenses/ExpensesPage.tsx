@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import ExpensesHeader from '@/components/expenses/ExpensesHeader';
 import {
   Wallet,
@@ -18,7 +19,8 @@ import {
   XCircle,
   ChevronDown,
   FileText,
-  ReceiptText
+  ReceiptText,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -205,7 +207,12 @@ const getInitialExpenses = (): ExpenseItem[] => {
 };
 
 export default function ExpensesPage() {
+  const { user } = useAuth();
   const { toast } = useToast();
+
+  const userRole = (user?.role || '').toLowerCase();
+  const isEmployeeRoleHidden = ['hr', 'manager', 'tl', 'team_lead', 'teamlead', 'employee', 'staff'].includes(userRole);
+  const showEmployeeColumn = !isEmployeeRoleHidden;
 
   // Core data state with localStorage persistence
   const [expenses, setExpenses] = useState<ExpenseItem[]>(getInitialExpenses);
@@ -219,6 +226,30 @@ export default function ExpensesPage() {
       console.error('Failed to save expenses to localStorage:', err);
     }
   }, [expenses]);
+
+  // Listen for storage changes from other tabs or components
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      try {
+        const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setExpenses(parsed);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to reload expenses on storage event:', err);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('staffly_expenses_updated', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('staffly_expenses_updated', handleStorageUpdate);
+    };
+  }, []);
 
   const [activeTab, setActiveTab] = useState<'my' | 'approval' | 'reports'>('my');
 
@@ -539,7 +570,7 @@ export default function ExpensesPage() {
 
       {/* 3. HORIZONTAL TAB NAVIGATION (Compact & Sleek) */}
       <div className="w-full max-w-[830px] mx-auto min-h-[46px] bg-white dark:bg-slate-900 border border-[#111111] dark:border-slate-700 rounded-[20px] p-[4px] box-border flex items-center justify-between gap-1 md:gap-1.5">
-        {/* TAB 1: My Expenses */}
+        {/* TAB 1: Company Expenses */}
         <button
           type="button"
           onClick={() => setActiveTab('my')}
@@ -548,8 +579,8 @@ export default function ExpensesPage() {
             : 'bg-white dark:bg-slate-900 text-gray-800 dark:text-gray-200 border-[#D1D5DB] dark:border-slate-700 hover:bg-[#EEF2FF] dark:hover:bg-slate-800 hover:border-[#4545E9] hover:text-[#4545E9] hover:shadow-[0_1px_3px_rgba(69,69,233,0.10)]'
             }`}
         >
-          <User className={`w-4 h-4 stroke-[2] ${activeTab === 'my' ? 'text-white' : ''}`} />
-          <span>My Expenses</span>
+          <Building2 className={`w-4 h-4 stroke-[2] ${activeTab === 'my' ? 'text-white' : ''}`} />
+          <span>Company Expenses</span>
         </button>
 
         {/* TAB 2: Expense Approval */}
@@ -659,7 +690,9 @@ export default function ExpensesPage() {
                 <TableHeader className="bg-slate-100 dark:bg-slate-800 border-b-2 border-black dark:border-slate-700">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Date</TableHead>
-                    <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Employee</TableHead>
+                    {showEmployeeColumn && (
+                      <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Employee</TableHead>
+                    )}
                     <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Category</TableHead>
                     <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Description</TableHead>
                     <TableHead className="font-bold text-black dark:text-white text-sm py-3.5 px-4">Amount</TableHead>
@@ -670,7 +703,7 @@ export default function ExpensesPage() {
                 <TableBody>
                   {filteredExpenses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-10 text-gray-500 font-semibold">
+                      <TableCell colSpan={showEmployeeColumn ? 7 : 6} className="text-center py-10 text-gray-500 font-semibold">
                         No expense records found matching your filters.
                       </TableCell>
                     </TableRow>
@@ -680,9 +713,11 @@ export default function ExpensesPage() {
                         <TableCell className="font-semibold text-sm text-gray-900 dark:text-gray-100 py-4 px-4 whitespace-nowrap">
                           {expense.date}
                         </TableCell>
-                        <TableCell className="font-bold text-sm text-black dark:text-white py-4 px-4 whitespace-nowrap">
-                          {expense.employee}
-                        </TableCell>
+                        {showEmployeeColumn && (
+                          <TableCell className="font-bold text-sm text-black dark:text-white py-4 px-4 whitespace-nowrap">
+                            {expense.employee}
+                          </TableCell>
+                        )}
                         <TableCell className="py-4 px-4 whitespace-nowrap">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
                             {getCategoryLabel(expense.category)}
@@ -1074,7 +1109,7 @@ export default function ExpensesPage() {
                   type="date"
                   value={newExpense.date}
                   onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
-                  className="border-2 border-black rounded-[12px] h-[44px]"
+                  className="border-2 border-black rounded-[12px] h-[40px]"
                 />
               </div>
 
@@ -1083,7 +1118,7 @@ export default function ExpensesPage() {
                 <select
                   value={newExpense.status}
                   onChange={(e) => setNewExpense({ ...newExpense, status: e.target.value as 'Approved' | 'Pending' | 'Rejected' })}
-                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white"
+                  className="w-full h-[40px] px-3 border-2 border-black rounded-[12px] text-sm bg-white"
                 >
                   <option value="Pending">Pending</option>
                   <option value="Approved">Approved</option>
@@ -1098,7 +1133,7 @@ export default function ExpensesPage() {
                 placeholder="Brief details about the expense"
                 value={newExpense.description}
                 onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
-                className="border-2 border-black rounded-[12px] min-h-[80px]"
+                className="border-2 border-black rounded-[10px] min-h-[75px]"
               />
             </div>
 

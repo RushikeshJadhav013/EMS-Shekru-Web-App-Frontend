@@ -47,6 +47,8 @@ import { WFHProvider } from "@/contexts/WFHContext";
 import ProjectManagement from "@/pages/projects/ProjectManagement";
 import MeetingsPage from "@/pages/meetings/MeetingsPage";
 import ExpensesPage from "@/pages/expenses/ExpensesPage";
+import AddExpensePage from "@/pages/expenses/AddExpensePage";
+import EmployeeExpensesPage from "@/pages/expenses/EmployeeExpensesPage";
 import { Video } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -121,10 +123,35 @@ const App = () => {
                                   </ProtectedRoute>
                                 } />
 
-                                {/* Expenses Route - Admin Only */}
+                                {/* Expenses Routes */}
                                 <Route path="expenses" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <ExpensesPage />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="expenses/new" element={
+                                  <ProtectedRoute allowedRoles={['admin', 'hr', 'manager', 'team_lead', 'teamlead', 'employee', 'staff']}>
+                                    <AddExpensePage />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="hr/expenses" element={
+                                  <ProtectedRoute allowedRoles={['hr']}>
+                                    <EmployeeExpensesPage />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="manager/expenses" element={
+                                  <ProtectedRoute allowedRoles={['manager']}>
+                                    <EmployeeExpensesPage />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="team_lead/expenses" element={
+                                  <ProtectedRoute allowedRoles={['team_lead', 'teamlead']}>
+                                    <EmployeeExpensesPage />
+                                  </ProtectedRoute>
+                                } />
+                                <Route path="employee/expenses" element={
+                                  <ProtectedRoute allowedRoles={['employee', 'staff']}>
+                                    <EmployeeExpensesPage />
                                   </ProtectedRoute>
                                 } />
 
