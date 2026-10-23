@@ -3404,7 +3404,7 @@ export default function HiringManagement() {
       < Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen} >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
           <DialogHeader>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 pr-10">
               <div className="min-w-0 pr-4">
                 <DialogTitle className="truncate" title={`${selectedInterview?.candidate_name} • ${selectedInterview?.vacancy_title}`}>
                   Interview Details
@@ -3414,7 +3414,7 @@ export default function HiringManagement() {
                 </DialogDescription>
               </div>
               <Badge className={cn(
-                "capitalize px-3 py-1",
+                "capitalize px-3 py-1 shrink-0",
                 selectedInterview?.status === 'scheduled' && "bg-blue-500 hover:bg-blue-600",
                 selectedInterview?.status === 'completed' && "bg-emerald-500 hover:bg-emerald-600",
                 selectedInterview?.status === 'cancelled' && "bg-red-500 hover:bg-red-600",

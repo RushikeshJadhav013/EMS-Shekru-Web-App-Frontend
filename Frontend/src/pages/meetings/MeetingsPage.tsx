@@ -605,10 +605,10 @@ const MeetingsPage: React.FC = () => {
                 <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) resetForm(); }}>
                     <DialogContent className="sm:max-w-[650px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
                         <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 text-white">
-                            <DialogTitle className="text-xl font-black uppercase tracking-tighter">
+                            <DialogTitle className="text-xl font-black uppercase tracking-tighter !text-white">
                                 {selectedMeeting ? 'Edit Meeting' : 'Schedule Meeting'}
                             </DialogTitle>
-                            <DialogDescription className="text-blue-100 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">
+                            <DialogDescription className="!text-blue-100 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">
                                 {selectedMeeting ? 'Update meeting details.' : 'Create a new meeting.'}
                             </DialogDescription>
                         </div>
@@ -1020,10 +1020,10 @@ const MeetingsPage: React.FC = () => {
             {/* View Meeting Dialog */}
             <Dialog open={!!viewMeeting} onOpenChange={(open) => { if (!open) setViewMeeting(null); }}>
                 <DialogContent className="sm:max-w-[520px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
-                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-5 text-white">
-                        <DialogTitle className="text-xl font-black uppercase tracking-tighter">Meeting Details</DialogTitle>
-                        <DialogDescription className="text-slate-300 font-medium opacity-80 uppercase text-[10px] tracking-widest mt-1">Full meeting information</DialogDescription>
-                    </div>
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tighter !text-slate-900">Meeting Details</DialogTitle>
+                        <DialogDescription className="!text-slate-700 font-semibold opacity-90 uppercase text-[10px] tracking-widest mt-1">Full meeting information</DialogDescription>
+                    </DialogHeader>
                     {viewMeeting && (
                         <div className="p-6 space-y-4">
                             <div className="flex items-center gap-3">

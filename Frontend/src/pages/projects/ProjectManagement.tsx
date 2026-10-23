@@ -248,7 +248,7 @@ const TaskFormSection = ({
               </div>
 
               {/* Assign to Employees */}
-              <div className="sm:col-span-12 space-y-1.5 pt-1">
+              <div className="sm:col-span-12 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                     <Users className="h-3.5 w-3.5 text-violet-500" /> Assign To Team Member(s) <span className="text-rose-500">*</span>
@@ -1276,7 +1276,9 @@ export default function ProjectManagement() {
           };
         }),
       );
-    } catch (_) { }
+    } catch (error) {
+      console.error("Failed to fetch project employees:", error);
+    }
   };
 
   useEffect(() => {
@@ -2190,7 +2192,7 @@ export default function ProjectManagement() {
       {/* ── Header Card ── */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-md border-2 border-[#000000]">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
+          <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-2xl bg-violet-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-violet-200 dark:shadow-violet-900">
               <FolderKanban className="h-6 w-6 text-white" />
             </div>
@@ -2245,7 +2247,7 @@ export default function ProjectManagement() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-5 w-full">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 w-full">
         {[
           {
             label: "Total Projects",
@@ -2364,7 +2366,9 @@ export default function ProjectManagement() {
                 try {
                   const full = await loadFullProjectDetails(project.project_id);
                   setSelectedProject(full);
-                } catch (_) { }
+                } catch (error) {
+                  console.error("Failed to load project members:", error);
+                }
               }}
               onRemoveMembers={async () => {
                 setSelectedProject(project);
@@ -2373,7 +2377,9 @@ export default function ProjectManagement() {
                 try {
                   const full = await loadFullProjectDetails(project.project_id);
                   setSelectedProject(full);
-                } catch (_) { }
+                } catch (error) {
+                  console.error("Failed to load project members:", error);
+                }
               }}
               onRemoveMember={(userId) => {
                 setSelectedProject(project);
@@ -2895,11 +2901,11 @@ export default function ProjectManagement() {
           CREATE PROJECT DIALOG
          ══════════════════════════════════════ */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto p-0 gap-0 rounded-2xl border border-slate-1000 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950">
           {/* Dialog Top Header */}
-          <div className="px-8 pt-7 pb-0 bg-white dark:bg-slate-900 relative rounded-t-2xl">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg text-white flex-shrink-0">
+          <div className="p-6 pb-0 bg-white dark:bg-slate-900 relative rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg text-white flex-shrink-0">
                 <FolderKanban className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -2915,11 +2921,11 @@ export default function ProjectManagement() {
             <div className="mt-[28px] mx-1 h-[1.5px] bg-[#7a7a7a] dark:bg-[#7a7a7a]" />
           </div>
 
-          <div className="p-8 space-y-7 bg-slate-50 dark:bg-slate-950">
+          <div className="p-6 space-y-6">
             {/* ── Project Details ── */}
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-7 bg-white dark:bg-slate-900 shadow-sm space-y-6">
-              <div className="flex items-center gap-3 text-lg font-bold text-slate-800 dark:text-slate-200">
-                <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 shadow-sm"></div>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-5 bg-slate-50/50 dark:bg-slate-900/30 space-y-4">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+                <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
                 Project Details
               </div>
 
@@ -2936,12 +2942,12 @@ export default function ProjectManagement() {
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    className="h-[40px] text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                    className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500"
                   />
                 </div>
 
                 {/* Dates */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="cp_start" className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                       <CalendarDays className="h-3.5 w-3.5 text-violet-500" /> Start Date
@@ -2953,7 +2959,7 @@ export default function ProjectManagement() {
                       onChange={(e) =>
                         setFormData({ ...formData, start_date: e.target.value })
                       }
-                      className="h-[40px] text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                      className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -2967,32 +2973,32 @@ export default function ProjectManagement() {
                       onChange={(e) =>
                         setFormData({ ...formData, end_date: e.target.value })
                       }
-                      className="h-[40px] text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                      className="h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-violet-500"
                     />
                   </div>
                 </div>
 
                 {/* Description */}
-                <div className="space-y--1.5">
+                <div className="space-y-1.5">
                   <Label htmlFor="cp_desc" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Description <span className="text-slate-400 font-normal">(optional)</span>
                   </Label>
                   <Textarea
                     id="cp_desc"
                     placeholder="Describe project objectives, key milestones, and deliverables..."
-                    rows={2}
+                    rows={3}
                     value={formData.description}
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    className="text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl resize-none px-4 py-4 focus-visible:ring-0 focus-visible:ring-violet-500 focus-visible:border-violet-500"
+                    className="text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg resize-none focus-visible:ring-violet-500"
                   />
                 </div>
               </div>
             </div>
 
             {/* ── Build Your Team ── */}
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-7 bg-white dark:bg-slate-900 shadow-sm space-y-5">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-5 bg-slate-50/50 dark:bg-slate-900/30 space-y-3.5">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
                   <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
@@ -3008,7 +3014,7 @@ export default function ProjectManagement() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-5 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2 font-medium"
+                    className="h-7 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-2 font-medium"
                     onClick={() => {
                       const allIds = filteredMemberOptions.map((m) => m.user_id);
                       const allSelected = allIds.every((id) => selectedMemberIds.includes(id));
@@ -3028,10 +3034,10 @@ export default function ProjectManagement() {
 
               {/* Search Bar */}
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   placeholder="Search team members by name or role..."
-                  className="pl-11 pr-10 h-10 text-base bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl focus-visible:ring-0 focus-visible:ring-blue-500 focus-visible:border-blue-500"
+                  className="pl-9 pr-8 h-9 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-lg focus-visible:ring-blue-500"
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                 />
@@ -3076,7 +3082,7 @@ export default function ProjectManagement() {
               )}
 
               {/* Scrollable Employee Grid List */}
-              <div className="max-h-56 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 p-2 shadow-sm">
+              <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 p-1.5 shadow-inner">
                 {filteredMemberOptions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-6 text-slate-400 gap-1.5">
                     <Users className="h-6 w-6 opacity-30" />
@@ -3121,10 +3127,10 @@ export default function ProjectManagement() {
             </div>
 
             {/* ── Assign Initial Tasks ── */}
-            <div className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 px-6 py-5 dark:border-slate-800 dark:from-slate-900 dark:via-indigo-950/40 dark:to-purple-950/40">
-                <div className="flex items-center gap-3 text-lg font-bold text-slate-800 dark:text-slate-200">
-                  <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 shadow-sm"></div>
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-5 bg-slate-50/50 dark:bg-slate-900/30 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-200">
+                  <div className="h-2 w-2 rounded-full bg-gradient-to-r from-violet-500 to-purple-600"></div>
                   Assign Initial Tasks{" "}
                   <span className="text-slate-400 font-normal text-xs">
                     (Optional)
@@ -3153,12 +3159,12 @@ export default function ProjectManagement() {
           </div>
 
           {/* Dialog Footer */}
-          <DialogFooter className="px-8 py-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 rounded-b-2xl">
+          <DialogFooter className="p-4 sm:px-6 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3 rounded-b-2xl">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsCreateDialogOpen(false)}
-              className="rounded-xl px-6 h-11 text-sm font-semibold border-slate-300 hover:bg-slate-100"
+              className="rounded-xl px-5 h-10 text-sm font-medium"
             >
               Cancel
             </Button>
@@ -3166,7 +3172,7 @@ export default function ProjectManagement() {
               type="button"
               onClick={handleCreate}
               disabled={isCreating}
-              className="rounded-xl px-7 h-11 text-sm font-semibold bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/20 transition-all"
+              className="rounded-xl px-6 h-10 text-sm font-medium bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/20"
             >
               {isCreating ? (
                 <>

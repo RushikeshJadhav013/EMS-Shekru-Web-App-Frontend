@@ -2223,19 +2223,19 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
             {
                 showIncrementForm && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-[#FFFFFF] rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
-                            <div className="p-6 border-b-2 border-black bg-[#FFFFFF]">
+                        <div className="bg-[#F4F5F6] rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
+                            <div className="p-6 border-b-2 border-black bg-[#EEF3FF]">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                       <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600 text-white">
-                                       <TrendingUp className="w-5 h-5" />
-                                    </div>
+    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600 text-white">
+        <TrendingUp className="w-5 h-5" />
+    </div>
 
-                                       <div className="flex flex-col">
-                                       <h2>Process Salary Increment</h2>
-                                         <p className="text-sm text-gray-700 mt-1">Recognize performance, reward dedication, and support career growth.</p>
-                                 </div> 
-                             </div>
+    <div className="flex flex-col">
+  <h2>Process Salary Increment</h2>
+  <p className="text-sm text-gray-700 mt-1">Recognize performance, reward dedication, and support career growth.</p>
+</div> 
+</div>
                                     <Button variant="ghost" size="sm" onClick={() => setShowIncrementForm(false)}>
                                         ×
                                     </Button>

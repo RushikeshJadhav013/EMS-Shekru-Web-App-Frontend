@@ -369,6 +369,7 @@ export default function EmployeeManagement() {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedJoinMonth, setSelectedJoinMonth] = useState('all');
   const [overallStats, setOverallStats] = useState({
     total: 0,
     active: 0,
@@ -577,7 +578,8 @@ export default function EmployeeManagement() {
       const exCount = filteredEx.length;
       const totalCount = activeCount + inactiveCount + exCount;
 
-      const newJoinersCount = [...filteredAll, ...filteredEx].filter((e: any) => {
+      const newJoinersCount = filteredAll.filter((e: any) => {
+        if (e.status === 'ex-employee' || (e.status !== 'active' && e.status !== 'inactive')) return false;
         if (!e.joiningDate) return false;
         try {
           const joinDate = new Date(e.joiningDate);
@@ -600,6 +602,40 @@ export default function EmployeeManagement() {
     }
   };
 
+  const monthlyCategories = useMemo(() => {
+    const joineeMap = new Map<string, { key: string; label: string; count: number; dateObj: Date }>();
+    let totalWithJoiningDate = 0;
+
+    employees.forEach(emp => {
+      if (emp.role === 'admin') return;
+      if (emp.status === 'ex-employee' || (emp.status !== 'active' && emp.status !== 'inactive')) return;
+      if (!emp.joiningDate) return;
+      try {
+        const d = new Date(emp.joiningDate);
+        if (isNaN(d.getTime())) return;
+
+        const key = format(d, 'yyyy-MM');
+        const label = format(d, 'MMMM yyyy');
+
+        totalWithJoiningDate++;
+        if (joineeMap.has(key)) {
+          joineeMap.get(key)!.count++;
+        } else {
+          joineeMap.set(key, { key, label, count: 1, dateObj: d });
+        }
+      } catch {
+        // ignore invalid date
+      }
+    });
+
+    const sortedMonths = Array.from(joineeMap.values()).sort((a, b) => b.key.localeCompare(a.key));
+
+    return {
+      total: totalWithJoiningDate,
+      months: sortedMonths
+    };
+  }, [employees]);
+
   const fetchEmployees = async (
     search = debouncedSearchQuery,
     status = selectedStatus,
@@ -608,15 +644,27 @@ export default function EmployeeManagement() {
   ) => {
     setIsLoading(true);
     try {
-      const is_active_val = status === 'all' ? 'all' : (status === 'active' ? 'true' : (status === 'inactive' ? 'false' : 'ex-employee'));
-      const data = await apiService.getEmployees({
-        is_active: is_active_val,
-        search: search || undefined,
-        department: dept !== 'all' ? dept : undefined,
-        role: role !== 'all' ? role : undefined,
-      });
-      const mappedData = Array.isArray(data) ? data.map(mapEmployeeData) : [];
-      setEmployees(mappedData);
+      if (status === 'new-joinee') {
+        const allData = await apiService.getEmployees({
+          is_active: 'all',
+          search: search || undefined,
+          department: dept !== 'all' ? dept : undefined,
+          role: role !== 'all' ? role : undefined,
+        });
+        const mappedAll = Array.isArray(allData) ? allData.map(mapEmployeeData) : [];
+        const activeAndInactive = mappedAll.filter(emp => emp && emp.status !== 'ex-employee' && (emp.status === 'active' || emp.status === 'inactive'));
+        setEmployees(activeAndInactive);
+      } else {
+        const is_active_val = status === 'all' ? 'all' : (status === 'active' ? 'true' : (status === 'inactive' ? 'false' : 'ex-employee'));
+        const data = await apiService.getEmployees({
+          is_active: is_active_val,
+          search: search || undefined,
+          department: dept !== 'all' ? dept : undefined,
+          role: role !== 'all' ? role : undefined,
+        });
+        const mappedData = Array.isArray(data) ? data.map(mapEmployeeData) : [];
+        setEmployees(mappedData);
+      }
     } catch (error: any) {
       console.error('Failed to fetch employees:', error);
       const errorMessage = error.message || '';
@@ -685,11 +733,39 @@ export default function EmployeeManagement() {
       );
       const matchesRole = selectedRole === 'all' ||
         (emp.role && emp.role.toLowerCase().replace(/[\s_]+/g, '') === selectedRole.toLowerCase().replace(/[\s_]+/g, ''));
-      const matchesStatus = selectedStatus === 'all' ||
-        (emp.status && emp.status.toLowerCase() === selectedStatus.toLowerCase());
+
+      let matchesStatus = false;
+      if (selectedStatus === 'all') {
+        matchesStatus = true;
+      } else if (selectedStatus === 'new-joinee') {
+        if (emp.status === 'ex-employee' || (emp.status !== 'active' && emp.status !== 'inactive')) {
+          matchesStatus = false;
+        } else if (!emp.joiningDate) {
+          matchesStatus = false;
+        } else {
+          try {
+            const d = new Date(emp.joiningDate);
+            if (isNaN(d.getTime())) {
+              matchesStatus = false;
+            } else {
+              if (selectedJoinMonth === 'all') {
+                matchesStatus = true;
+              } else {
+                const monthKey = format(d, 'yyyy-MM');
+                matchesStatus = monthKey === selectedJoinMonth;
+              }
+            }
+          } catch {
+            matchesStatus = false;
+          }
+        }
+      } else {
+        matchesStatus = emp.status && emp.status.toLowerCase() === selectedStatus.toLowerCase();
+      }
+
       return matchesSearch && matchesDepartment && matchesRole && matchesStatus;
     });
-  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus]);
+  }, [employees, searchQuery, selectedDepartment, selectedRole, selectedStatus, selectedJoinMonth]);
 
   // Paginated employees
   const paginatedEmployees = useMemo(() => {
@@ -740,7 +816,7 @@ export default function EmployeeManagement() {
     }
 
     // Check for invalid characters
-    const invalidChars = /[*!#$%^&()+=\[\]{}|\\;:'",<>?/]/;
+    const invalidChars = /[*!#$%^&()+=\x5B\]{}|\\;:'",<>?/]/;
     if (invalidChars.test(email)) {
       setEmailError('Email contains invalid characters (*, !, #, etc.)');
       return false;
@@ -1988,7 +2064,8 @@ export default function EmployeeManagement() {
               variant="outline"
               className="group gap-2 border-transparent text-white bg-blue-600 hover:bg-blue-700 hover:text-white shadow-sm hover:shadow-lg transition-all"
             >
-              <Download className="h-4 w-4 transition-colors group-hover:text-white" />
+              
+            <Download className="h-4 w-4 transition-colors group-hover:text-white" />
               Export
             </Button>
             <Dialog
@@ -2065,28 +2142,28 @@ export default function EmployeeManagement() {
                       <Label htmlFor="bulk-file" className="font-semibold text-gray-900">Upload CSV File</Label>
                     </div>
                     <div className="relative border-2 border-dashed border-gray-300 hover:border-purple-400 rounded-xl p-3 transition-colors bg-gray-50 hover:bg-purple-50 flex items-center justify-center">
-  <label
-    htmlFor="bulk-file"
-    className="cursor-pointer flex items-center justify-between w-full"
-  >
-    <span className="bg-white border border-gray-400 rounded-md px-5 py-1.5 text-sm">
-      Choose File
-    </span>
+                      <label
+                        htmlFor="bulk-file"
+                        className="cursor-pointer flex items-center justify-between w-full"
+                      >
+                        <span className="bg-white border border-gray-400 rounded-md px-5 py-1.5 text-sm">
+                          Choose File
+                        </span>
 
-    <span className="ml-2 text-sm text-gray-700">
-      {bulkFileName || "No file chosen"}
-    </span>
-  </label>
+                        <span className="ml-2 text-sm text-gray-700">
+                          {bulkFileName || "No file chosen"}
+                        </span>
+                      </label>
 
-  <Input
-    id="bulk-file"
-    type="file"
-    accept=".csv"
-    onChange={handleBulkFileChange}
-    ref={bulkFileInputRef}
-    className="hidden"
-  />
-</div>
+                      <Input
+                        id="bulk-file"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleBulkFileChange}
+                        ref={bulkFileInputRef}
+                        className="hidden"
+                      />
+                    </div>
                     {bulkFileName && (
                       <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs">✓</div>
@@ -2258,7 +2335,8 @@ export default function EmployeeManagement() {
           iconColor="text-pink-600"
           iconBg="bg-pink-50"
           onClick={() => {
-            setSelectedStatus('all');
+            setSelectedStatus('new-joinee');
+            setSelectedJoinMonth('all');
             setSearchQuery('');
           }}
         />
@@ -2872,7 +2950,7 @@ export default function EmployeeManagement() {
                       </Select>
                     </div>
                   </div>
-                  <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-900 flex items-center justify-between flex-shrink-0 -m-6 mt-0 p-6 rounded-b-lg">
+                  <DialogFooter className="dialog-footer flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-3 !px-6 !pb-6 pt-2">
                     <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium">
                       Cancel
                     </Button>
@@ -2989,7 +3067,7 @@ export default function EmployeeManagement() {
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="w-full h-11 bg-white dark:bg-gray-950 border-2 border-[#000000] hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 hover:shadow-md flex-shrink-0">
                   <UserIcon className="h-4 w-4 mr-2 text-purple-600" />
-                  <SelectValue placeholder="Role" />
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent className="border-2 shadow-2xl">
                   <SelectItem value="all" className="cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors font-medium">
@@ -3001,13 +3079,100 @@ export default function EmployeeManagement() {
                   <SelectItem value="inactive" className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
                     Inactive
                   </SelectItem>
-                  <SelectItem value="ex-employee" className="cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors">
-                    Ex-Employee
+                  <SelectItem value="new-joinee" className="cursor-pointer hover:bg-pink-50 dark:hover:bg-pink-950 transition-colors">
+                    New Joinee
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {selectedStatus === 'new-joinee' && (
+            <div className="mb-4 bg-gradient-to-r from-pink-50 via-purple-50 to-indigo-50 dark:from-pink-950/40 dark:via-purple-950/40 dark:to-indigo-950/40 border-2 border-pink-200 dark:border-pink-800/50 rounded-xl p-4 shadow-sm space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-pink-500 text-white rounded-lg shadow-md">
+                    <UserPlus className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base flex items-center gap-2">
+                      New Joinees Directory
+                      <Badge variant="outline" className="bg-pink-100 dark:bg-pink-900/60 text-pink-700 dark:text-pink-300 border-pink-300 font-semibold">
+                        {monthlyCategories.total} Total Joinees
+                      </Badge>
+                    </h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      View new joiners by monthly categories. Select a month category below to see joining numbers.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                    Select Month:
+                  </Label>
+                  <Select value={selectedJoinMonth} onValueChange={setSelectedJoinMonth}>
+                    <SelectTrigger className="w-48 h-9 bg-white dark:bg-gray-900 border border-pink-300 dark:border-pink-700 font-medium text-xs">
+                      <SelectValue placeholder="Select Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">
+                        All Months ({monthlyCategories.total})
+                      </SelectItem>
+                      {monthlyCategories.months.map(m => (
+                        <SelectItem key={m.key} value={m.key}>
+                          {m.label} ({m.count} {m.count === 1 ? 'employee' : 'employees'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {monthlyCategories.months.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-pink-200/60 dark:border-pink-800/40">
+                  <span className="text-xs font-bold text-pink-700 dark:text-pink-300 mr-1 flex items-center gap-1">
+                    <Filter className="h-3.5 w-3.5" /> Monthly Categories:
+                  </span>
+                  <button
+                    onClick={() => setSelectedJoinMonth('all')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 shadow-sm",
+                      selectedJoinMonth === 'all'
+                        ? "bg-pink-600 text-white shadow-pink-200 dark:shadow-none scale-105"
+                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-pink-100 dark:hover:bg-pink-900/30 border border-gray-200 dark:border-gray-700"
+                    )}
+                  >
+                    <span>All Months</span>
+                    <Badge className={cn("ml-1 px-1.5 py-0.2 text-[10px]", selectedJoinMonth === 'all' ? "bg-white text-pink-600" : "bg-pink-100 text-pink-700")}>
+                      {monthlyCategories.total}
+                    </Badge>
+                  </button>
+
+                  {monthlyCategories.months.map(m => {
+                    const isSelected = selectedJoinMonth === m.key;
+                    return (
+                      <button
+                        key={m.key}
+                        onClick={() => setSelectedJoinMonth(m.key)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 shadow-sm",
+                          isSelected
+                            ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-purple-200 dark:shadow-none scale-105"
+                            : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-pink-100 dark:hover:bg-pink-900/30 border border-gray-200 dark:border-gray-700"
+                        )}
+                      >
+                        <span>{m.label}</span>
+                        <Badge className={cn("ml-1 px-1.5 py-0.2 text-[10px]", isSelected ? "bg-white text-purple-700" : "bg-purple-100 text-purple-700")}>
+                          {m.count}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rounded-xl border-2 border-[#000000] overflow-hidden shadow-lg">
             <Table>
@@ -3080,7 +3245,16 @@ export default function EmployeeManagement() {
                         </Avatar>
                       </TableCell>
                       <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.employeeId}</TableCell>
-                      <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.name}</TableCell>
+                      <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                        <button
+                          onClick={() => openViewDialog(employee)}
+                          className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline text-left font-medium flex items-center gap-1.5 group"
+                          title="Click to view employee details"
+                        >
+                          <span>{employee.name}</span>
+                          <Eye className="h-3.5 w-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      </TableCell>
                       <TableCell className="hidden sm:table-cell" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{employee.email}</TableCell>
                       <TableCell>
                         <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>

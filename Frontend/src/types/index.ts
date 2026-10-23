@@ -14,7 +14,7 @@ export interface User {
   department?: string;
   managerId?: string;
   teamLeadId?: string;
-  status: "active" | "inactive" | "ex-employee";
+  status: "active" | "inactive" | "ex-employee" | "new-joinee";
   company?: string;
   branches?: string;
   branch_id?: string | number;

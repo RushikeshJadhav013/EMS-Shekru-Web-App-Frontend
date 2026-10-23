@@ -3374,7 +3374,7 @@ const TaskManagement: React.FC = () => {
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 gap-0 rounded-2xl border-2 shadow-2xl bg-white dark:bg-slate-950">
                   {/* Dialog Top Header */}
-                  <div className="p-6 pb-0 bg-[#eee6fc] relative rounded-t-2xl">
+                  <div className="p-6 pb-0 bg-[#F8F4FF] dark:bg-slate-900 relative rounded-t-2xl">
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg text-white flex-shrink-0">
                         <Plus className="h-6 w-6 text-white" />
@@ -3389,10 +3389,10 @@ const TaskManagement: React.FC = () => {
                       </div>
                     </div>
                     {/* Horizontal Divider Line */}
-                    <div className="mt-[18px] mx-0 h-[1px] bg-[#7a7a7a]" />
+                    <div className="mt-[28px] mx-1 h-[1.5px] bg-[#7a7a7a] dark:bg-[#7a7a7a]" />
                   </div>
 
-                  <div className="p-6 space-y-6 bg-white">
+                  <div className="p-6 space-y-5 bg-white dark:bg-slate-950">
                     {/* Task Title */}
                     <div className="space-y-2">
                       <Label
@@ -3534,7 +3534,6 @@ const TaskManagement: React.FC = () => {
                           className="h-11 border-2 rounded-xl focus:ring-2 focus:ring-violet-500 transition-all bg-white dark:bg-gray-950"
                         />
                       </div>
-
                       {(() => {
                         const visibleProjects =
                           normalizedUserRole === "employee"
@@ -3744,8 +3743,8 @@ const TaskManagement: React.FC = () => {
                       {/* Employees List Container */}
                       <div className="border-2 rounded-xl max-h-[280px] overflow-y-auto bg-white dark:bg-gray-950 shadow-inner custom-scrollbar border-violet-50 relative">
                         {/* Select All Option Header */}
-                        <div className="flex items-center space-x-3 pb-3 mb-2 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-gray-950 z-20 px-4 pt-3 shadow-sm">
-                          <div className="flex items-center space-x-3 flex-1">
+                        <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-gray-950">
+                          <div className="flex min-w-0 flex-1 items-center gap-3">
                             <Checkbox
                               id="select-all-employees"
                               checked={
@@ -3786,7 +3785,7 @@ const TaskManagement: React.FC = () => {
                               Select All Visible
                             </Label>
                           </div>
-                          <span className="text-[10px] bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-300 px-2 py-0.5 rounded-full font-bold">
+                          <span className="shrink-0 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600 dark:bg-violet-900 dark:text-violet-300">
                             {newTask.assignedTo.length} Selected
                           </span>
                         </div>
@@ -6994,4 +6993,3 @@ const TaskManagement: React.FC = () => {
 };
 
 export default TaskManagement;
-
