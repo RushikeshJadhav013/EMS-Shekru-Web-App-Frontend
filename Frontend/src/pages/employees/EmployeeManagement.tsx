@@ -2950,7 +2950,7 @@ export default function EmployeeManagement() {
                       </Select>
                     </div>
                   </div>
-                  <DialogFooter className="px-6 py-4 border-t border-gray-100 bg-gray-50 dark:bg-gray-900 flex items-center justify-between flex-shrink-0 -m-6 mt-0 p-6 rounded-b-lg">
+                  <DialogFooter className="dialog-footer flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-3 !px-6 !pb-6 pt-2">
                     <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 font-medium">
                       Cancel
                     </Button>
