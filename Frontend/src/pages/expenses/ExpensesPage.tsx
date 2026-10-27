@@ -211,6 +211,7 @@ export default function ExpensesPage() {
   const { toast } = useToast();
 
   const userRole = (user?.role || '').toLowerCase();
+  const isAdmin = userRole === 'admin';
   const isEmployeeRoleHidden = ['hr', 'manager', 'tl', 'team_lead', 'teamlead', 'employee', 'staff'].includes(userRole);
   const showEmployeeColumn = !isEmployeeRoleHidden;
 
@@ -623,14 +624,16 @@ export default function ExpensesPage() {
                 View and manage all expense records
               </p>
             </div>
-            <button
-              onClick={() => setIsAddDialogOpen(true)}
-              type="button"
-              className="w-full sm:w-auto px-3 h-[40px] bg-[#4545E9] hover:bg-[#3737D4] active:scale-[0.98] text-white font-bold text-[15px] rounded-[14px] border-2 border-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm select-none"
-            >
-              <Plus className="w-5 h-5 stroke-[2.5]" />
-              <span>Add Expense</span>
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => setIsAddDialogOpen(true)}
+                type="button"
+                className="w-full sm:w-auto px-3 h-[40px] bg-[#4545E9] hover:bg-[#3737D4] active:scale-[0.98] text-white font-bold text-[15px] rounded-[14px] border-2 border-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm select-none"
+              >
+                <Plus className="w-5 h-5 stroke-[2.5]" />
+                <span>Add Expense</span>
+              </button>
+            )}
           </div>
 
           {/* SEARCH AND FILTER AREA */}
@@ -1042,7 +1045,8 @@ export default function ExpensesPage() {
       )}
 
       {/* ADD EXPENSE DIALOG */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      {!isAdmin && (
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px] border-2 border-black rounded-[24px]">
           
 <DialogHeader>
@@ -1147,7 +1151,8 @@ export default function ExpensesPage() {
             </DialogFooter>
           </form>
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      )}
 
       {/* VIEW EXPENSE DIALOG */}
       {viewExpense && (
