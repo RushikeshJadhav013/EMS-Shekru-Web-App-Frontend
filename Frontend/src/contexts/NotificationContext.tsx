@@ -299,22 +299,34 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
-  const mapBackendLeaveNotification = useCallback((notification: BackendLeaveNotification, userRole?: string, currentUserId?: string): Notification | null => {
-    const notificationUserId = String(notification.user_id);
-    if (currentUserId && notificationUserId !== currentUserId) return null;
+  const mapBackendLeaveNotification = useCallback((notification: any, userRole?: string, currentUserId?: string): Notification | null => {
+    if (!notification) return null;
+    const normRole = (userRole || '').toLowerCase();
+    const isApprover = normRole === 'admin' || normRole === 'superadmin' || normRole === 'hr' || normRole === 'manager' || normRole === 'team_lead' || normRole.includes('admin') || normRole.includes('hr') || normRole.includes('manager') || normRole.includes('lead');
+    const notificationUserId = String(notification.user_id ?? '');
+
+    // Note: Do not drop notifications returned by the user's scoped API endpoint,
+    // especially for Admin/HR/Manager approvers where notification.user_id may refer to the requester.
+    if (!isApprover && currentUserId && notification.user_id && notificationUserId !== currentUserId) {
+      return null;
+    }
+
+    const id = notification.notification_id ?? notification.id ?? Math.floor(Math.random() * 1000000);
+    const leaveId = notification.leave_id ?? notification.leaveId;
+    const isRead = Boolean(notification.is_read ?? notification.read ?? false);
 
     return {
-      id: `backend-leave-${notification.notification_id}`,
-      backendId: notification.notification_id,
-      userId: notificationUserId,
-      title: notification.title,
-      message: notification.message,
+      id: `backend-leave-${id}`,
+      backendId: typeof id === 'number' ? id : parseInt(String(id), 10) || undefined,
+      userId: notificationUserId || (currentUserId || ''),
+      title: notification.title || 'Leave Request',
+      message: notification.message || '',
       type: 'leave',
-      read: notification.is_read,
-      createdAt: notification.created_at,
-      actionUrl: userRole ? `/${userRole}/leaves` : '/leaves',
+      read: isRead,
+      createdAt: notification.created_at || notification.createdAt || new Date().toISOString(),
+      actionUrl: normRole ? `/${normRole}/leaves` : '/leaves',
       metadata: {
-        leaveId: String(notification.leave_id),
+        leaveId: leaveId ? String(leaveId) : undefined,
       },
     };
   }, []);
@@ -341,22 +353,32 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
-  const mapBackendWFHNotification = useCallback((notification: BackendWFHNotification, userRole?: string, currentUserId?: string): Notification | null => {
-    const notificationUserId = String(notification.user_id);
-    if (currentUserId && notificationUserId !== currentUserId) return null;
+  const mapBackendWFHNotification = useCallback((notification: any, userRole?: string, currentUserId?: string): Notification | null => {
+    if (!notification) return null;
+    const normRole = (userRole || '').toLowerCase();
+    const isApprover = normRole === 'admin' || normRole === 'superadmin' || normRole === 'hr' || normRole === 'manager' || normRole === 'team_lead' || normRole.includes('admin') || normRole.includes('hr') || normRole.includes('manager') || normRole.includes('lead');
+    const notificationUserId = String(notification.user_id ?? '');
+
+    if (!isApprover && currentUserId && notification.user_id && notificationUserId !== currentUserId) {
+      return null;
+    }
+
+    const id = notification.notification_id ?? notification.id ?? Math.floor(Math.random() * 1000000);
+    const wfhId = notification.wfh_id ?? notification.wfhId;
+    const isRead = Boolean(notification.is_read ?? notification.read ?? false);
 
     return {
-      id: `backend-wfh-${notification.notification_id}`,
-      backendId: notification.notification_id,
-      userId: notificationUserId,
-      title: notification.title,
-      message: notification.message,
+      id: `backend-wfh-${id}`,
+      backendId: typeof id === 'number' ? id : parseInt(String(id), 10) || undefined,
+      userId: notificationUserId || (currentUserId || ''),
+      title: notification.title || 'Work From Home Request',
+      message: notification.message || '',
       type: 'wfh',
-      read: notification.is_read,
-      createdAt: notification.created_at,
-      actionUrl: userRole ? `/${userRole}/wfh` : '/wfh',
+      read: isRead,
+      createdAt: notification.created_at || notification.createdAt || new Date().toISOString(),
+      actionUrl: normRole ? `/${normRole}/wfh` : '/wfh',
       metadata: {
-        wfhId: String(notification.wfh_id),
+        wfhId: wfhId ? String(wfhId) : undefined,
       },
     };
   }, []);
@@ -508,9 +530,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (result.status === 'fulfilled' && result.value) {
           const val = result.value;
           if (Array.isArray(val)) return val;
-          if (val.notifications && Array.isArray(val.notifications)) return val.notifications;
-          if (val.data && Array.isArray(val.data)) return val.data;
-          if (val.results && Array.isArray(val.results)) return val.results;
+          if (typeof val === 'object' && val !== null) {
+            if (Array.isArray(val.notifications)) return val.notifications;
+            if (Array.isArray(val.data)) return val.data;
+            if (Array.isArray(val.results)) return val.results;
+            if (Array.isArray(val.items)) return val.items;
+            for (const key of Object.keys(val)) {
+              if (Array.isArray(val[key])) return val[key];
+            }
+          }
         }
         return [];
       };
@@ -525,8 +553,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const allFetchedChats: BackendChatNotification[] = [];
       const allFetchedAttendance: BackendAttendanceNotification[] = [];
       const allFetchedHiring: BackendHiringNotification[] = [];
-
-      let hasAuthError = false;
 
       // ✅ FIX: Do NOT pass slug to apiService methods.
       // apiService.request() already auto-injects company_slug from localStorage.
@@ -546,30 +572,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         apiService.getHiringNotifications(),
       ]);
 
-      if (results.some(r => r.status === 'rejected' && (r.reason?.status === 401 || r.reason?.status === 403))) {
-        hasAuthError = true;
-      }
+      // Unpack every fulfilled result independently so a 403 on shifts or salary never blocks leaves or WFH!
+      if (results[0].status === 'fulfilled') allFetchedTasks.push(...unwrap<BackendTaskNotification>(results[0]));
+      if (results[1].status === 'fulfilled') allFetchedLeaves.push(...unwrap<BackendLeaveNotification>(results[1]));
+      if (results[2].status === 'fulfilled') allFetchedShifts.push(...unwrap<BackendShiftNotification>(results[2]));
+      if (results[3].status === 'fulfilled') allFetchedWFH.push(...unwrap<BackendWFHNotification>(results[3]));
+      if (results[4].status === 'fulfilled') allFetchedMeetings.push(...unwrap<BackendMeetingNotification>(results[4]));
+      if (results[5].status === 'fulfilled') allFetchedSalary.push(...unwrap<BackendSalaryNotification>(results[5]));
+      if (results[6].status === 'fulfilled') allFetchedProjects.push(...unwrap<BackendProjectNotification>(results[6]));
+      if (results[7].status === 'fulfilled') allFetchedChats.push(...unwrap<BackendChatNotification>(results[7]));
+      if (results[8].status === 'fulfilled') allFetchedAttendance.push(...unwrap<BackendAttendanceNotification>(results[8]));
+      if (results[9].status === 'fulfilled') allFetchedHiring.push(...unwrap<BackendHiringNotification>(results[9]));
 
-      if (!hasAuthError) {
-        allFetchedTasks.push(...unwrap<BackendTaskNotification>(results[0]));
-        allFetchedLeaves.push(...unwrap<BackendLeaveNotification>(results[1]));
-        allFetchedShifts.push(...unwrap<BackendShiftNotification>(results[2]));
-        allFetchedWFH.push(...unwrap<BackendWFHNotification>(results[3]));
-        allFetchedMeetings.push(...unwrap<BackendMeetingNotification>(results[4]));
-        allFetchedSalary.push(...unwrap<BackendSalaryNotification>(results[5]));
-        allFetchedProjects.push(...unwrap<BackendProjectNotification>(results[6]));
-        allFetchedChats.push(...unwrap<BackendChatNotification>(results[7]));
-        allFetchedAttendance.push(...unwrap<BackendAttendanceNotification>(results[8]));
-        allFetchedHiring.push(...unwrap<BackendHiringNotification>(results[9]));
-      }
-
-      if (hasAuthError) {
+      // Only stop polling if all endpoints failed with 401 (session is expired)
+      const allRejected401 = results.every(r => r.status === 'rejected' && r.reason?.status === 401);
+      if (allRejected401) {
         stopPolling();
         return;
       }
 
       const currentUserId = String(user.id);
-      const userRole = user.role;
+      const userRole = (user.role || '').toLowerCase();
 
       const backendNotifications: Notification[] = [
         ...allFetchedTasks.map(n => mapBackendTaskNotification(n, userRole, currentUserId)),

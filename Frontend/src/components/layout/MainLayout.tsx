@@ -84,6 +84,12 @@ const MainLayout: React.FC = () => {
   const isLightboxOpen = chatContext?.isLightboxOpen || false;
 
   useEffect(() => {
+    if (companySlug && localStorage.getItem('company_slug') !== companySlug) {
+      localStorage.setItem('company_slug', companySlug);
+    }
+  }, [companySlug]);
+
+  useEffect(() => {
     const handleScopeConflict = () => {
       setShowScopeDialog(true);
     };
