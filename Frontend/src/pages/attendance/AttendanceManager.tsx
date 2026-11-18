@@ -1978,14 +1978,17 @@ const AttendanceManager: React.FC = () => {
 
   // Handle WFH request approval/rejection for Admin
   const handleAdminWfhRequestAction = async (
-    requestId: string,
+    requestId: string | number,
     action: "approve" | "reject",
     reason?: string,
   ) => {
     setIsProcessingWfhRequest(true);
     try {
       // Call API to approve/reject WFH request
-      const wfhId = parseInt(requestId);
+      const wfhId = typeof requestId === "number" ? requestId : parseInt(String(requestId), 10);
+      if (isNaN(wfhId)) {
+        throw new Error("Invalid WFH request ID");
+      }
       const approved = action === "approve";
 
       await apiService.approveWFHRequest(wfhId, approved, reason);
@@ -1994,7 +1997,7 @@ const AttendanceManager: React.FC = () => {
       const currentTime = new Date();
       setAllWfhRequests((prev) =>
         prev.map((req) =>
-          req.id === requestId
+          String(req.id) === String(requestId)
             ? {
               ...req,
               status: action === "approve" ? "approved" : "rejected",
@@ -3921,6 +3924,146 @@ const AttendanceManager: React.FC = () => {
           {attendanceContent}
         </div>
       )}
+
+      {/* WFH Request Rejection Dialog for Admin */}
+      <Dialog
+        open={showWfhRequestDialog}
+        onOpenChange={(open) => {
+          setShowWfhRequestDialog(open);
+          if (!open) {
+            setSelectedWfhRequest(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <X className="h-5 w-5 text-red-600" />
+              Reject WFH Request
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this work from home request.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedWfhRequest && (
+            <div className="space-y-4 py-4">
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium">
+                      {selectedWfhRequest.submittedBy}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${
+                        selectedWfhRequest.role === "hr"
+                          ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
+                          : selectedWfhRequest.role === "manager"
+                          ? "border-purple-500 text-purple-700 bg-purple-50 dark:bg-purple-950"
+                          : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
+                      }`}
+                    >
+                      {formatRoleDisplay(selectedWfhRequest.role)}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-green-600" />
+                    <span className="text-sm">
+                      {formatDateIST(
+                        selectedWfhRequest.startDate,
+                        "dd MMM yyyy",
+                      )}{" "}
+                      -{" "}
+                      {formatDateIST(selectedWfhRequest.endDate, "dd MMM yyyy")}
+                    </span>
+                    <Badge variant="secondary" className="text-[10px] ml-1">
+                      {selectedWfhRequest.type === "full_day"
+                        ? "Full Day"
+                        : "Half Day"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                    {selectedWfhRequest.reason}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="admin-rejection-reason">
+                  Rejection Reason <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="admin-rejection-reason"
+                  placeholder="Please provide a clear reason for rejecting this request."
+                  value={selectedWfhRequest?.rejectionReason || ""}
+                  rows={3}
+                  className="resize-none"
+                  onChange={(e) => {
+                    setSelectedWfhRequest((prev: any) =>
+                      prev
+                        ? {
+                            ...prev,
+                            rejectionReason: e.target.value,
+                          }
+                        : null,
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowWfhRequestDialog(false);
+                setSelectedWfhRequest(null);
+              }}
+              disabled={isProcessingWfhRequest}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (selectedWfhRequest?.rejectionReason?.trim()) {
+                  handleAdminWfhRequestAction(
+                    selectedWfhRequest.id,
+                    "reject",
+                    selectedWfhRequest.rejectionReason,
+                  );
+                } else {
+                  toast({
+                    title: "Rejection Reason Required",
+                    description:
+                      "Please provide a reason for rejecting this request.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={
+                isProcessingWfhRequest ||
+                !selectedWfhRequest?.rejectionReason?.trim()
+              }
+            >
+              {isProcessingWfhRequest ? (
+                <>
+                  <Timer className="h-4 w-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4 mr-2" />
+                  Reject Request
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

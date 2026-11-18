@@ -584,18 +584,18 @@ const MainLayout: React.FC = () => {
         {/* Main Content */}
         <main
           className={`flex-1 min-w-0 w-full overflow-x-hidden transition-all duration-500 ${location.pathname.includes('/chat')
-            ? 'overflow-hidden'
+            ? 'overflow-hidden flex flex-col h-full'
             : 'overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent'
             }`}
         >
           <div
             className={
               location.pathname.includes('/chat')
-                ? 'h-full w-full flex flex-col'
+                ? 'h-full w-full flex flex-col flex-1 min-w-0 overflow-hidden'
                 : 'w-full animate-fade-in px-4 sm:px-6 py-6 flex flex-col items-center bg-background text-foreground min-h-full transition-colors duration-200'
             }
           >
-            <div className="w-full max-w-7xl">
+            <div className={location.pathname.includes('/chat') ? 'w-full h-full flex flex-col flex-1 min-w-0 overflow-hidden' : 'w-full max-w-7xl'}>
               <Outlet />
             </div>
 

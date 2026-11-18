@@ -110,6 +110,11 @@ const ChatBox: React.FC = () => {
   const [isUpdatingGroup, setIsUpdatingGroup] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
+  const [isRemovingMembers, setIsRemovingMembers] = useState(false);
+  const [selectedRemoveUsers, setSelectedRemoveUsers] = useState<string[]>([]);
+  const [removeSearchTerm, setRemoveSearchTerm] = useState('');
+  const [isConfirmRemoveOpen, setIsConfirmRemoveOpen] = useState(false);
+  const [isProcessingRemoval, setIsProcessingRemoval] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -117,7 +122,7 @@ const ChatBox: React.FC = () => {
 
   const typingPulseRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const isScrolledToBottom = useRef(true);
 
   useEffect(() => {
@@ -171,7 +176,7 @@ const ChatBox: React.FC = () => {
   }, [activeChat, chats, chatId]);
 
   const isCreator = useMemo(() => {
-    return displayedChat?.createdBy?.toString() === user?.id?.toString();
+    return displayedChat?.createdBy?.toString() === user?.id?.toString() || user?.role === 'admin';
   }, [displayedChat, user]);
 
   useEffect(() => {
@@ -200,7 +205,7 @@ const ChatBox: React.FC = () => {
     }, 2000);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setMessageText(e.target.value);
     handleTyping();
   };
@@ -378,6 +383,30 @@ const ChatBox: React.FC = () => {
     }
   };
 
+  const handleConfirmRemoveMembers = async () => {
+    if (!activeChat || selectedRemoveUsers.length === 0) return;
+    setIsProcessingRemoval(true);
+    try {
+      await removeParticipants(activeChat.id, selectedRemoveUsers);
+      toast({
+        title: "Members Removed",
+        description: `Successfully removed ${selectedRemoveUsers.length} member${selectedRemoveUsers.length > 1 ? 's' : ''} from the group.`
+      });
+      setSelectedRemoveUsers([]);
+      setIsConfirmRemoveOpen(false);
+      setIsRemovingMembers(false);
+    } catch (error: any) {
+      console.error('Failed to remove members:', error);
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || error?.message || "Failed to remove members. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingRemoval(false);
+    }
+  };
+
   const handleFileClick = (type: 'image' | 'file') => {
     if (fileInputRef.current) {
       fileInputRef.current.accept = type === 'image' ? 'image/*' : '*/*';
@@ -446,13 +475,13 @@ const ChatBox: React.FC = () => {
   const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const themeClasses = {
-    background: isDark ? 'bg-[#0a1628]' : 'bg-white',
-    headerBg: isDark ? 'bg-[#0f172a]' : 'bg-gray-50/50',
-    inputBg: isDark ? 'bg-[#0f172a]' : 'bg-gray-50/50',
-    inputFieldBg: isDark ? 'bg-[#1e293b]' : 'bg-white',
+    background: isDark ? 'bg-[#0b141a]' : 'bg-[#efeae2]/50',
+    headerBg: isDark ? 'bg-[#202c33]' : 'bg-[#f0f2f5]',
+    inputBg: isDark ? 'bg-[#202c33]' : 'bg-[#f0f2f5]',
+    inputFieldBg: isDark ? 'bg-[#2a3942]' : 'bg-white',
     text: isDark ? 'text-slate-100' : 'text-slate-900',
     textSecondary: isDark ? 'text-slate-400' : 'text-slate-500',
-    border: isDark ? 'border-slate-800' : 'border-slate-100',
+    border: isDark ? 'border-slate-800' : 'border-slate-200',
   };
 
   if (isLoading && !displayedChat) {
@@ -505,11 +534,11 @@ const ChatBox: React.FC = () => {
 
       {/* Modern Header */}
       <div className={cn(
-        "flex-shrink-0 flex items-center justify-between p-3.5 px-6 relative z-10 border-b transition-colors",
+        "flex-shrink-0 flex items-center justify-between p-3 sm:p-3.5 px-4 sm:px-6 relative z-10 border-b transition-colors",
         themeClasses.headerBg,
         themeClasses.border
       )}>
-        <div className="flex items-center space-x-3.5">
+        <div className="flex items-center space-x-3 min-w-0 flex-1 mr-3">
           <Button
             variant="ghost"
             size="icon"
@@ -518,33 +547,49 @@ const ChatBox: React.FC = () => {
               const chatBase = slug && user?.role === 'admin' ? `/${slug}/${user?.role}/chat` : `/${user?.role}/chat`;
               navigate(chatBase);
             }}
-            className="sm:hidden p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50"
+            className="sm:hidden p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 flex-shrink-0"
           >
             <ArrowLeft className={cn("h-5 w-5", themeClasses.text)} />
           </Button>
 
-          <div className="relative group">
-            <Avatar className="h-10 w-10 border shadow-lg shadow-green-500/5 group-hover:scale-105 transition-transform">
+          <div className="relative group flex-shrink-0">
+            <Avatar className="h-10 w-10 border shadow-sm transition-transform">
               <AvatarImage src={chatAvatar} />
-              <AvatarFallback className="bg-gradient-to-br from-green-500 to-green-600 text-white font-black text-xs">{chatName.charAt(0).toUpperCase()}</AvatarFallback>
+              <AvatarFallback className="bg-gradient-to-br from-green-500 to-green-600 text-white font-bold text-xs">{chatName.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
-            <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 border-2 border-white dark:border-[#0f172a] rounded-full shadow-sm" />
+            <div className={cn(
+              "absolute -bottom-0.5 -right-0.5 h-3 w-3 border-2 rounded-full shadow-sm",
+              isDark ? "border-[#202c33]" : "border-white",
+              displayedChat?.type === 'group' ? "bg-indigo-500" : (displayedChat?.isOnline ? "bg-green-500" : "bg-slate-300 dark:bg-slate-600")
+            )} />
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate tracking-tight leading-none">{chatName}</h2>
-            {displayedChat?.type === 'group' && (
-              <p className="text-[11px] text-slate-500 truncate mt-1">
+            <h2 className={cn("text-sm font-bold tracking-tight truncate leading-tight", isDark ? "text-slate-100" : "text-slate-900")}>
+              {chatName}
+            </h2>
+            {displayedChat?.type === 'group' ? (
+              <p
+                className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5"
+                title={displayedChat.participants?.map((p: any) => {
+                  const userDetails = availableUsers?.find((u: any) => u.id?.toString() === p.userId?.toString());
+                  return userDetails?.name || p.userName || 'Member';
+                }).join(', ')}
+              >
                 {displayedChat.participants?.map((p: any) => {
                   const userDetails = availableUsers?.find((u: any) => u.id?.toString() === p.userId?.toString());
                   return userDetails?.name || p.userName || 'Member';
                 }).join(', ')}
               </p>
+            ) : (
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                {displayedChat?.isOnline ? 'Online' : 'Offline'}
+              </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-colors">
@@ -574,12 +619,24 @@ const ChatBox: React.FC = () => {
                       <DropdownMenuItem
                         onClick={() => {
                           setSelectedNewUsers([]);
+                          setMemberSearchTerm('');
                           setIsAddingMembers(true);
                         }}
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                       >
                         <UserPlus className="h-4 w-4 text-slate-500" />
                         <span style={{ color: "#000000", fontSize: "14px" }}>Add Members</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setSelectedRemoveUsers([]);
+                          setRemoveSearchTerm('');
+                          setIsRemovingMembers(true);
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                      >
+                        <UserMinus className="h-4 w-4 text-red-500" />
+                        <span style={{ color: "#EF4444", fontSize: "14px" }}>Remove Members</span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -636,7 +693,7 @@ const ChatBox: React.FC = () => {
 
       {/* Messages Scroll Area */}
       <div
-        className="flex-1 min-h-0 overflow-y-auto px-6 py-6 relative z-10 custom-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 py-4 relative z-10 custom-scrollbar"
         onScroll={handleScroll}
       >
         {enrichedMessages.length === 0 ? (
@@ -650,18 +707,14 @@ const ChatBox: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4 pb-4">
+          <div className="space-y-2.5 pb-2 w-full min-w-0">
             {enrichedMessages.map((message, index) => {
               const showDateSeparator = index === 0 || formatDateIST(message.timestamp, 'yyyy-MM-dd') !== formatDateIST(enrichedMessages[index - 1].timestamp, 'yyyy-MM-dd');
               return (
-                <div key={message.id} className="animate-in slide-in-from-bottom-2 fade-in duration-300">
+                <div key={message.id} className="animate-in slide-in-from-bottom-2 fade-in duration-200">
                   {showDateSeparator && (
-                    <div className="flex justify-center my-8 relative">
-                      <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                        <div className="w-full border-t border-slate-100 dark:border-slate-800/50"></div>
-                      </div>
-                      <span className="relative px-4 py-1.5 rounded-full border shadow-sm backdrop-blur-md bg-white border-slate-100 uppercase tracking-widest"
-                        style={{ color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
+                    <div className="flex justify-center my-3.5 sticky top-2 z-20 pointer-events-none">
+                      <span className="px-3 py-1 rounded-lg text-[11px] font-semibold tracking-wide shadow-sm border bg-white/95 dark:bg-[#182229]/95 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60 pointer-events-auto">
                         {formatDateIST(message.timestamp, 'MMMM d, yyyy')}
                       </span>
                     </div>
@@ -677,7 +730,6 @@ const ChatBox: React.FC = () => {
                       setLightboxName(name);
                     }}
                     replyMessage={message.replyTo ? enrichedMessages.find(m => m.id === message.replyTo) : undefined}
-
                   />
                 </div>
               );
@@ -689,20 +741,20 @@ const ChatBox: React.FC = () => {
 
       {/* Input Section */}
       {!lightboxUrl && (
-        <div className={cn("p-4 px-6 relative z-20 transition-all", themeClasses.inputBg)}>
+        <div className={cn("p-2.5 sm:p-3 px-3 sm:px-6 relative z-20 border-t transition-colors", themeClasses.inputBg, themeClasses.border)}>
           {replyingTo && (
             <div className={cn(
-              "flex items-center justify-between p-3.5 border-l-[3.5px] border-lime-500 mb-4 rounded-r-2xl animate-in slide-in-from-bottom-4 fade-in duration-300 shadow-sm transition-all",
-              isDark ? "bg-[#1a1b1e]/80" : "bg-slate-50/80"
+              "flex items-center justify-between p-2.5 px-3 border-l-[3.5px] border-emerald-500 mb-2.5 rounded-r-xl shadow-sm transition-all",
+              isDark ? "bg-[#182229]" : "bg-white"
             )}>
-              <div className="min-w-0 pr-6">
-                <div className="flex items-center gap-2 mb-1">
-                  <Reply className="h-3 w-3 text-lime-500" />
-                  <p className="text-[10px] text-lime-600 dark:text-lime-500 font-black uppercase tracking-widest">
+              <div className="min-w-0 pr-4">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Reply className="h-3 w-3 text-emerald-500" />
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">
                     Replying to {enrichedMessages.find(m => m.id === replyingTo)?.senderName || 'Message'}
                   </p>
                 </div>
-                <p className={cn("text-[13px] truncate opacity-80 font-medium italic", themeClasses.text)}>
+                <p className={cn("text-xs truncate font-medium", themeClasses.text)}>
                   {(() => {
                     const replyMsg = enrichedMessages.find(m => m.id === replyingTo);
                     if (!replyMsg) return '';
@@ -716,73 +768,83 @@ const ChatBox: React.FC = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90"
+                className="h-7 w-7 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-all flex-shrink-0"
                 onClick={() => setReplyingTo(null)}
               >
-                <X className="h-4.5 w-4.5" />
+                <X className="h-4 w-4" />
               </Button>
             </div>
           )}
 
-          <div className="flex items-end space-x-3 mt-auto relative z-10">
+          <div className="flex items-end gap-2 relative z-10 w-full min-w-0">
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+
+            <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0 pb-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isUploading}
+                onClick={() => triggerFileSelect("image/*")}
+                className="h-9 w-9 rounded-full text-slate-500 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                title="Send Image"
+              >
+                <ImageIcon className="h-5 w-5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={isUploading}
+                onClick={() => triggerFileSelect(".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar")}
+                className="h-9 w-9 rounded-full text-slate-500 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                title="Send Document"
+              >
+                <Paperclip className="h-5 w-5" />
+              </Button>
+            </div>
+
             <div className={cn(
-              "flex-1 relative rounded-[28px] px-4 py-1.5 flex items-center transition-all shadow-lg ring-1 ring-slate-200 dark:ring-slate-800 focus-within:ring-green-500/50",
-              themeClasses.inputFieldBg
+              "flex-1 relative rounded-2xl px-3.5 py-1 flex items-center transition-all border shadow-sm focus-within:ring-1 focus-within:ring-emerald-500/50 min-w-0",
+              themeClasses.inputFieldBg,
+              themeClasses.border
             )}>
-
-              {/* Hidden File Input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-
-              <div className="flex items-center gap-1.5 mr-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={isUploading}
-                  onClick={() => triggerFileSelect("image/*")}
-                  className="h-9 w-9 rounded-full text-slate-400 hover:text-green-500 hover:bg-green-500/10 transition-all active:scale-95"
-                >
-                  <ImageIcon className="h-4.5 w-4.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={isUploading}
-                  onClick={() => triggerFileSelect(".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar")}
-                  className="h-9 w-9 rounded-full text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all active:scale-95"
-                >
-                  <Paperclip className="h-4.5 w-4.5" />
-                </Button>
-              </div>
-
-              <Input
+              <textarea
                 ref={inputRef}
+                rows={1}
                 value={messageText}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 disabled={isUploading}
-                placeholder={isUploading ? "Uploading file..." : "Type your message..."}
-                className="border-0 bg-transparent focus-visible:ring-0 shadow-none h-11 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+                placeholder={isUploading ? "Uploading file..." : "Type a message..."}
+                className={cn(
+                  "w-full bg-transparent border-0 resize-none outline-none focus:outline-none focus:ring-0 text-sm py-2 px-1 placeholder:text-slate-400 dark:placeholder:text-slate-500 max-h-32 min-h-[38px] leading-relaxed custom-scrollbar",
+                  themeClasses.text
+                )}
               />
             </div>
 
             <Button
+              type="button"
               onClick={handleSendMessage}
               disabled={!messageText.trim() || isUploading}
               className={cn(
-                "rounded-full h-[52px] w-[52px] shadow-xl transition-all hover:scale-105 active:scale-95 p-0",
-                messageText.trim() ? "bg-green-500 hover:bg-green-600 shadow-green-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                "rounded-full h-10 w-10 sm:h-11 sm:w-11 shadow-md transition-all flex-shrink-0 p-0 mb-0.5",
+                messageText.trim() && !isUploading
+                  ? "bg-[#00a884] hover:bg-[#008f6f] text-white shadow-emerald-500/20 hover:scale-105 active:scale-95"
+                  : "bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed opacity-60"
               )}
             >
               {isUploading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <Send className={cn("h-5 w-5 transition-transform", messageText.trim() && "translate-x-0.5 -translate-y-0.5 rotate-[-15deg]")} />
+                <Send className="h-4.5 w-4.5 ml-0.5 text-white" />
               )}
             </Button>
           </div>
@@ -1083,6 +1145,264 @@ const ChatBox: React.FC = () => {
               className="bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-11"
             >
               Yes, Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove Members Dialog */}
+      <Dialog
+        open={isRemovingMembers}
+        onOpenChange={(open) => {
+          setIsRemovingMembers(open);
+          if (!open) {
+            setSelectedRemoveUsers([]);
+            setRemoveSearchTerm('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px] border-2 shadow-2xl p-0 overflow-hidden rounded-[28px]">
+          <DialogHeader className="p-6 pb-0">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-red-500 shadow-lg shadow-red-500/20 flex items-center justify-center text-white">
+                <UserMinus className="h-6 w-6" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black tracking-tight">Remove Members</DialogTitle>
+                <DialogDescription className="font-medium">
+                  Select members to remove from "{displayedChat?.name}"
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-6 space-y-4">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Search member by name, role or department..."
+                value={removeSearchTerm}
+                onChange={(e) => setRemoveSearchTerm(e.target.value)}
+                className="pl-10 rounded-xl border-2 font-medium"
+              />
+            </div>
+
+            {/* List Controls: Count and Select/Deselect All */}
+            {(() => {
+              const currentParticipants = displayedChat?.participants || [];
+              const filteredParticipants = currentParticipants.filter((p: any) => {
+                const memberDetails = availableUsers?.find(u => String(u.id) === String(p.userId));
+                const name = memberDetails?.name || p.userName || '';
+                const dept = memberDetails?.department || '';
+                const role = memberDetails?.role || p.userRole || '';
+                const q = removeSearchTerm.toLowerCase();
+                return name.toLowerCase().includes(q) || dept.toLowerCase().includes(q) || role.toLowerCase().includes(q);
+              });
+
+              const removableFilteredIds = filteredParticipants
+                .filter((p: any) => {
+                  const isSelf = String(p.userId) === String(user?.id);
+                  const isGroupCreator = String(p.userId) === String(displayedChat?.createdBy);
+                  const memberDetails = availableUsers?.find(u => String(u.id) === String(p.userId));
+                  const isMemberAdmin = p.userRole === 'admin' || memberDetails?.role === 'admin';
+                  return !isSelf && !isGroupCreator && (user?.role === 'admin' || !isMemberAdmin);
+                })
+                .map((p: any) => String(p.userId));
+
+              const allRemovableSelected =
+                removableFilteredIds.length > 0 &&
+                removableFilteredIds.every(id => selectedRemoveUsers.includes(id));
+
+              return (
+                <>
+                  <div className="flex items-center justify-between px-1 text-xs">
+                    <span className="font-semibold text-slate-500">
+                      {removableFilteredIds.length} removable member{removableFilteredIds.length === 1 ? '' : 's'}
+                      {selectedRemoveUsers.length > 0 && ` (${selectedRemoveUsers.length} selected)`}
+                    </span>
+                    {removableFilteredIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (allRemovableSelected) {
+                            setSelectedRemoveUsers(prev => prev.filter(id => !removableFilteredIds.includes(id)));
+                          } else {
+                            setSelectedRemoveUsers(prev => Array.from(new Set([...prev, ...removableFilteredIds])));
+                          }
+                        }}
+                        className="h-7 px-2 text-[11px] font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg"
+                      >
+                        {allRemovableSelected ? 'Deselect All' : 'Select All'}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Scrollable Members List */}
+                  <ScrollArea className="h-[280px] rounded-2xl border-2 p-2">
+                    <div className="space-y-1">
+                      {filteredParticipants.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-slate-500">
+                          No members found matching "{removeSearchTerm}"
+                        </div>
+                      ) : (
+                        filteredParticipants.map((p: any) => {
+                          const pIdStr = String(p.userId);
+                          const memberDetails = availableUsers?.find(u => String(u.id) === pIdStr);
+                          const isSelf = pIdStr === String(user?.id);
+                          const isGroupCreator = pIdStr === String(displayedChat?.createdBy);
+                          const isMemberAdmin = p.userRole === 'admin' || memberDetails?.role === 'admin';
+                          const isRemovable = !isSelf && !isGroupCreator && (user?.role === 'admin' || !isMemberAdmin);
+                          const isSelected = selectedRemoveUsers.includes(pIdStr);
+
+                          return (
+                            <div
+                              key={pIdStr}
+                              className={cn(
+                                "flex items-center justify-between p-2.5 rounded-xl transition-all",
+                                isRemovable ? "cursor-pointer select-none" : "opacity-60 cursor-not-allowed",
+                                isSelected
+                                  ? "bg-red-500/10 border border-red-200 dark:border-red-900/50"
+                                  : isRemovable
+                                    ? "hover:bg-slate-50 dark:hover:bg-slate-800"
+                                    : ""
+                              )}
+                              onClick={() => {
+                                if (!isRemovable) return;
+                                setSelectedRemoveUsers(prev =>
+                                  prev.includes(pIdStr) ? prev.filter(id => id !== pIdStr) : [...prev, pIdStr]
+                                );
+                              }}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Avatar className="h-9 w-9 flex-shrink-0">
+                                  <AvatarImage src={memberDetails?.profilePhoto} />
+                                  <AvatarFallback className="bg-slate-100 dark:bg-slate-800 font-bold text-xs">
+                                    {(memberDetails?.name || p.userName || 'U').charAt(0).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-sm font-bold leading-tight truncate">
+                                      {memberDetails?.name || p.userName}
+                                    </p>
+                                    {isSelf && (
+                                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400">
+                                        You
+                                      </span>
+                                    )}
+                                    {isGroupCreator && (
+                                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">
+                                        Creator
+                                      </span>
+                                    )}
+                                    {!isGroupCreator && isMemberAdmin && (
+                                      <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
+                                        Admin
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] font-medium text-slate-500 uppercase tracking-tight truncate mt-0.5">
+                                    {memberDetails?.department || 'Member'} • {memberDetails?.designation || p.userRole || 'Member'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center pl-2 flex-shrink-0">
+                                {isRemovable ? (
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => {
+                                      setSelectedRemoveUsers(prev =>
+                                        prev.includes(pIdStr) ? prev.filter(id => id !== pIdStr) : [...prev, pIdStr]
+                                      );
+                                    }}
+                                    className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                                  />
+                                ) : (
+                                  <span className="text-[10px] text-slate-400 italic">
+                                    {isGroupCreator ? 'Creator' : isSelf ? 'Cannot remove self' : 'Protected'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </>
+              );
+            })()}
+          </div>
+
+          <div className="p-6 flex gap-3 border-t bg-slate-50/50 dark:bg-slate-900/50">
+            <Button
+              variant="outline"
+              className="flex-1 rounded-xl font-bold border-2"
+              onClick={() => {
+                setIsRemovingMembers(false);
+                setSelectedRemoveUsers([]);
+                setRemoveSearchTerm('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1 rounded-xl font-black bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20"
+              onClick={() => setIsConfirmRemoveOpen(true)}
+              disabled={selectedRemoveUsers.length === 0}
+            >
+              Remove {selectedRemoveUsers.length > 0 ? `(${selectedRemoveUsers.length})` : ''} Members
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Members Confirmation Dialog */}
+      <AlertDialog open={isConfirmRemoveOpen} onOpenChange={setIsConfirmRemoveOpen}>
+        <AlertDialogContent className="border-2 shadow-2xl rounded-[28px] max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-4 mb-2">
+              <div className="h-12 w-12 rounded-2xl bg-red-100 dark:bg-red-950/50 flex items-center justify-center text-red-600 flex-shrink-0">
+                <UserMinus className="h-6 w-6" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-xl font-black tracking-tight text-red-600">
+                  Remove {selectedRemoveUsers.length} Member{selectedRemoveUsers.length > 1 ? 's' : ''}?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">
+                  Are you sure you want to remove {selectedRemoveUsers.length === 1 ? 'this member' : `these ${selectedRemoveUsers.length} members`} from <span className="font-bold text-slate-900 dark:text-slate-100">"{displayedChat?.name}"</span>? They will no longer have access to this conversation.
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-3 mt-4">
+            <AlertDialogCancel
+              disabled={isProcessingRemoval}
+              className="font-bold border-2 rounded-xl h-11"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmRemoveMembers();
+              }}
+              disabled={isProcessingRemoval}
+              className="bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-11 flex items-center justify-center gap-2"
+            >
+              {isProcessingRemoval ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                'Yes, Remove Members'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

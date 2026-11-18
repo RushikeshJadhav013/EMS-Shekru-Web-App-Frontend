@@ -195,16 +195,16 @@ const ChatList: React.FC = () => {
       <div className={cn("p-4 lg:p-5 border-b", themeClasses.headerBg, themeClasses.border)}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-green-500 shadow-lg shadow-green-500/20">
+            <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-emerald-500 shadow-md shadow-emerald-500/20">
               <MessageCircle className="h-4.5 w-4.5 text-white" />
             </div>
-            <h1 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>Messages</h1>
+            <h1 className={cn("text-base font-bold tracking-tight", themeClasses.text)}>Messages</h1>
           </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowTypeSelector(true)}
-            className="h-9 w-9 rounded-full hover:bg-green-500/10 hover:text-green-500 transition-colors"
+            className="h-9 w-9 rounded-full hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
           >
             <Plus className="h-4.5 w-4.5" />
           </Button>
@@ -212,20 +212,20 @@ const ChatList: React.FC = () => {
 
         <div className="relative group">
           <Search className={cn("absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 transition-colors",
-            searchTerm ? "text-green-500" : themeClasses.textSecondary)} />
+            searchTerm ? "text-emerald-500" : themeClasses.textSecondary)} />
           <Input
-            placeholder="Search team..." style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}
+            placeholder="Search team or messages..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className={cn(
-              "pl-9 pr-3 py-4.5 rounded-xl border-0 shadow-inner text-xs font-semibold focus-visible:ring-1 focus-visible:ring-green-500/30 transition-all",
+              "pl-9 pr-3 py-2 h-9 rounded-xl border-0 shadow-inner text-xs font-medium focus-visible:ring-1 focus-visible:ring-emerald-500/30 transition-all",
               themeClasses.inputBg,
               themeClasses.text
             )}
           />
         </div>
 
-        <div className="flex gap-2 mt-4 overflow-x-auto pb-1 custom-scrollbar-hide no-scrollbar">
+        <div className="flex gap-2 mt-3.5 overflow-x-auto pb-1 custom-scrollbar-hide no-scrollbar">
           {[
             { id: 'all', label: 'All', icon: MessageCircle, count: chatCounts.all },
             { id: 'individual', label: 'Direct', icon: MessageCircle, count: chatCounts.individual },
@@ -238,21 +238,20 @@ const ChatList: React.FC = () => {
                 key={type.id}
                 onClick={() => setFilter(type.id as any)}
                 className={cn(
-                  "flex items-center gap-2 px-3.5 py-2 rounded-xl uppercase tracking-wider transition-all duration-300 border flex-shrink-0 animate-in fade-in slide-in-from-left-2",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 border flex-shrink-0 animate-in fade-in slide-in-from-left-2",
                   isSelected
-                    ? "bg-green-500 border-green-500 text-white shadow-lg shadow-green-500/20"
+                    ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/20"
                     : isDark
                       ? "bg-slate-800/40 border-slate-700/50 text-slate-400 hover:border-slate-600 hover:bg-slate-800/60"
-                      : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-gray-50"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-gray-50"
                 )}
-                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: isSelected ? "#FFFFFF" : "#000000", fontSize: "14px", fontWeight: "bold" }}
               >
-                <Icon className={cn("h-3 w-3", isSelected ? "text-white" : "text-green-500")} />
+                <Icon className={cn("h-3 w-3", isSelected ? "text-white" : "text-emerald-500")} />
                 <span>{type.label}</span>
                 {type.count > 0 && (
                   <span className={cn(
                     "ml-1 px-1.5 py-0.5 rounded-md text-[9px] font-black",
-                    isSelected ? "bg-white/20 text-white" : "bg-green-500/10 text-green-500"
+                    isSelected ? "bg-white/20 text-white" : "bg-emerald-500/10 text-emerald-500"
                   )}>
                     {type.count}
                   </span>
@@ -319,19 +318,19 @@ const ChatList: React.FC = () => {
 
                 <div className="flex-1 ml-3 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <h3 style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: isActive ? "#22C55E" : "#000000", fontSize: "14px", fontWeight: "bold" }} className="truncate tracking-tight transition-colors">
+                    <h3 className={cn("truncate tracking-tight transition-colors text-sm font-semibold", isActive ? "text-emerald-600 dark:text-emerald-400 font-bold" : themeClasses.text)}>
                       {getChatName(chat)}
                     </h3>
                     {chat.lastMessage ? (
-                      <span className={cn("text-[10px] font-medium", themeClasses.textSecondary)}>
+                      <span className={cn("text-[10px] font-medium flex-shrink-0 ml-1.5", themeClasses.textSecondary)}>
                         {formatChatTimestampIST(chat.lastMessage.timestamp)}
                       </span>
                     ) : (
-                      <span className="text-[10px] opacity-0">Hidden</span>
+                      <span className="text-[10px] opacity-0 flex-shrink-0">Hidden</span>
                     )}
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className={cn("truncate text-xs font-medium max-w-[200px] lg:max-w-[280px]", themeClasses.textSecondary)}>
+                    <p className={cn("truncate text-xs font-normal flex-1 min-w-0 mr-2", themeClasses.textSecondary)}>
                       {chat.type === 'group'
                         ? (chat.participants?.map((p: any) => {
                           const userDetails = availableUsers?.find((u: any) => u.id?.toString() === p.userId?.toString());
@@ -340,7 +339,7 @@ const ChatList: React.FC = () => {
                         : getLastMessagePreview(chat)}
                     </p>
                     {chat.unreadCount > 0 && (
-                      <Badge className="h-4 min-w-[16px] px-1 bg-green-500 hover:bg-green-600 text-[9px] font-black pointer-events-none">
+                      <Badge className="h-4 min-w-[18px] px-1.5 bg-[#25d366] hover:bg-[#25d366] text-white text-[10px] font-bold rounded-full pointer-events-none flex-shrink-0 flex items-center justify-center">
                         {chat.unreadCount}
                       </Badge>
                     )}
