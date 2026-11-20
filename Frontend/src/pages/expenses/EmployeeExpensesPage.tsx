@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ExpensesHeader from '@/components/expenses/ExpensesHeader';
+import { expensesService, ExpenseOut } from '@/services/expensesService';
 import { AddExpenseModal } from '@/components/expenses/AddExpenseModal';
 import {
   Wallet,
@@ -50,6 +51,7 @@ import {
   getCategoryLabel,
   ExpenseCategory,
   ExpenseItem,
+  isExpenseOnOrAfter19Nov2026,
 } from '@/pages/expenses/ExpensesPage';
 
 const EXPENSES_STORAGE_KEY = 'staffly_expenses_data';
@@ -170,6 +172,52 @@ export default function EmployeeExpensesPage() {
     }
   }, [allExpenses]);
 
+  // Fetch expenses from Backend API on mount
+  useEffect(() => {
+    const fetchApiExpenses = async () => {
+      try {
+        const res = await expensesService.getExpenses({ limit: 100 });
+        if (res && Array.isArray(res.expenses) && res.expenses.length > 0) {
+          const mapped: ExpenseItem[] = res.expenses.map((e: ExpenseOut) => {
+            const d = new Date(e.expense_date);
+            const formattedDate = !isNaN(d.getTime())
+              ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : e.expense_date;
+            let statusCapitalized: 'Approved' | 'Pending' | 'Rejected' = 'Pending';
+            const st = (e.status || '').toLowerCase();
+            if (st === 'approved') statusCapitalized = 'Approved';
+            else if (st === 'rejected') statusCapitalized = 'Rejected';
+
+            return {
+              id: e.expense_id,
+              employee: e.employee_name || e.user_name || (user?.name || 'Staff Member'),
+              category: (e.category || 'miscellaneous') as any,
+              description: e.description || '',
+              amount: typeof e.amount === 'string' ? parseFloat(e.amount) || 0 : (e.amount || 0),
+              date: formattedDate,
+              status: statusCapitalized,
+              paymentMethod: e.payment_mode || 'UPI',
+              receiptName: e.invoice_number ? `invoice_${e.invoice_number}.pdf` : undefined,
+              subCategory: e.sub_category,
+              vendorName: e.client_name || undefined,
+              costCenter: e.cost_center || undefined,
+              projectClient: e.project_name || undefined,
+              submittedBy: {
+                id: e.user_id,
+                name: e.employee_name || e.user_name || user?.name,
+                email: user?.email,
+              }
+            };
+          });
+          setAllExpenses(mapped);
+        }
+      } catch (err) {
+        console.debug('EmployeeExpensesPage API fetch info:', err);
+      }
+    };
+    fetchApiExpenses();
+  }, [user]);
+
   // Logged in user identifiers
   const currentUserName = user?.name?.trim() || '';
   const currentUserEmail = user?.email?.trim() || '';
@@ -204,6 +252,35 @@ export default function EmployeeExpensesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [categoriesList, setCategoriesList] = useState<{ value: string; label: string }[]>(EXPENSE_CATEGORIES);
+
+  // Fetch dynamic categories from GET /{company_slug}/expenses/categories
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCategories = async () => {
+      try {
+        const fetched = await expensesService.getExpenseCategories();
+        if (isMounted && Array.isArray(fetched) && fetched.length > 0) {
+          const mapped = fetched.map((catName: string) => {
+            const existing = EXPENSE_CATEGORIES.find(
+              (c) => c.label.toLowerCase() === catName.toLowerCase() || c.value.toLowerCase() === catName.toLowerCase()
+            );
+            return {
+              value: existing ? existing.value : catName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+              label: catName,
+            };
+          });
+          setCategoriesList(mapped);
+        }
+      } catch (err) {
+        console.warn('EmployeeExpensesPage categories fetch warning:', err);
+      }
+    };
+    fetchCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Add Expense Dialog state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -221,6 +298,47 @@ export default function EmployeeExpensesPage() {
   const [editExpense, setEditExpense] = useState<ExpenseItem | null>(null);
   const [deleteExpenseId, setDeleteExpenseId] = useState<number | null>(null);
 
+  // Open Expense Details dialog and fetch full record from GET /{company_slug}/expenses/{expense_id}
+  const handleOpenViewExpense = async (expense: ExpenseItem) => {
+    setViewExpense(expense);
+    if (!expense?.id || expense.id > 1_000_000_000_000) return; // Skip local timestamp IDs
+
+    try {
+      const detailed = await expensesService.getExpenseById(expense.id);
+      if (detailed && detailed.expense_id) {
+        const d = new Date(detailed.expense_date);
+        const formattedDate = !isNaN(d.getTime())
+          ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : detailed.expense_date;
+        let statusCapitalized: 'Approved' | 'Pending' | 'Rejected' = 'Pending';
+        const st = (detailed.status || '').toLowerCase();
+        if (st === 'approved') statusCapitalized = 'Approved';
+        else if (st === 'rejected') statusCapitalized = 'Rejected';
+
+        setViewExpense((prev) => ({
+          ...(prev || expense),
+          id: detailed.expense_id,
+          employee: detailed.employee_name || detailed.user_name || prev?.employee || expense.employee,
+          category: (detailed.category || prev?.category || expense.category) as any,
+          description: detailed.description || prev?.description || expense.description,
+          amount: typeof detailed.amount === 'string' ? parseFloat(detailed.amount) || 0 : (detailed.amount ?? expense.amount),
+          date: formattedDate,
+          status: statusCapitalized,
+          paymentMethod: detailed.payment_mode || prev?.paymentMethod || expense.paymentMethod || 'UPI',
+          receiptName: detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName),
+          subCategory: detailed.sub_category || prev?.subCategory || expense.subCategory,
+          vendorName: detailed.client_name || prev?.vendorName || expense.vendorName,
+          costCenter: detailed.cost_center || prev?.costCenter || expense.costCenter,
+          projectClient: detailed.project_name || prev?.projectClient || expense.projectClient,
+          createdAt: detailed.created_at || prev?.createdAt || expense.createdAt,
+          expenseDate: detailed.expense_date || prev?.expenseDate || expense.expenseDate,
+        }));
+      }
+    } catch (err) {
+      console.warn('EmployeeExpensesPage GET /expenses/{expense_id} warning:', err);
+    }
+  };
+
   // Keep employee name updated if user profile loads after mount
   useEffect(() => {
     if (currentUserName) {
@@ -234,6 +352,8 @@ export default function EmployeeExpensesPage() {
   // Safe Filter Logic for My Expenses
   const filteredUserExpenses = userExpenses.filter((item) => {
     if (!item) return false;
+    // Hide all expense transaction records dated before 19 November 2026
+    if (!isExpenseOnOrAfter19Nov2026(item)) return false;
     const emp = item.employee ? item.employee.toLowerCase() : '';
     const desc = item.description ? item.description.toLowerCase() : '';
     const catVal = item.category ? item.category.toLowerCase() : '';
@@ -318,29 +438,164 @@ export default function EmployeeExpensesPage() {
   };
 
   // Edit Expense submit
-  const handleUpdateExpenseSubmit = (e: React.FormEvent) => {
+  const handleUpdateExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editExpense) return;
 
-    setAllExpenses(allExpenses.map((item) => (item.id === editExpense.id ? editExpense : item)));
+    let updatedRecord: ExpenseItem = { ...editExpense };
+
+    if (editExpense.id && editExpense.id <= 1_000_000_000_000) {
+      try {
+        const catLabel = getCategoryLabel(editExpense.category);
+        const res = await expensesService.updateExpense(Number(editExpense.id), {
+          category: catLabel,
+          sub_category: editExpense.subCategory || 'General',
+          amount: editExpense.amount,
+          description: editExpense.description,
+        });
+
+        if (res && res.expense_id) {
+          const d = new Date(res.expense_date);
+          const formattedDate = !isNaN(d.getTime())
+            ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+            : res.expense_date;
+          let statusCapitalized: 'Approved' | 'Pending' | 'Rejected' = 'Pending';
+          const st = (res.status || '').toLowerCase();
+          if (st === 'approved') statusCapitalized = 'Approved';
+          else if (st === 'rejected') statusCapitalized = 'Rejected';
+
+          updatedRecord = {
+            ...editExpense,
+            category: res.category || editExpense.category,
+            description: res.description || editExpense.description,
+            amount: typeof res.amount === 'string' ? parseFloat(res.amount) || 0 : (res.amount ?? editExpense.amount),
+            date: formattedDate || editExpense.date,
+            status: statusCapitalized || editExpense.status,
+            subCategory: res.sub_category || editExpense.subCategory,
+            costCenter: res.cost_center || editExpense.costCenter,
+            invoiceNumber: res.invoice_number || (editExpense as any).invoiceNumber,
+          };
+
+          setAllExpenses(allExpenses.map((item) => (item.id === editExpense.id ? updatedRecord : item)));
+          try {
+            const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) {
+                const updatedStorage = parsed.map((item: any) => (item.id === editExpense.id ? updatedRecord : item));
+                localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedStorage));
+              }
+            }
+          } catch {
+            // ignore
+          }
+          window.dispatchEvent(new CustomEvent('staffly_expenses_updated', { detail: { expense: updatedRecord } }));
+          setEditExpense(null);
+
+          toast({
+            title: 'Expense Updated',
+            description: 'The expense transaction has been updated successfully.',
+          });
+          return;
+        }
+      } catch (apiErr: any) {
+        console.warn('EmployeeExpensesPage updateExpense error:', apiErr);
+        const errMsg = apiErr?.message || (typeof apiErr === 'string' ? apiErr : '');
+        toast({
+          title: 'Update Failed',
+          description: errMsg || 'Failed to update expense record on server.',
+          variant: 'destructive',
+        });
+        return; // Stop execution: do not update local state or show false success toast if API fails
+      }
+    }
+
+    setAllExpenses(allExpenses.map((item) => (item.id === editExpense.id ? updatedRecord : item)));
     setEditExpense(null);
 
     toast({
       title: 'Expense Updated',
-      description: 'The expense transaction has been updated.',
+      description: 'The expense transaction has been updated successfully.',
     });
   };
 
   // Delete Expense confirm
-  const handleConfirmDelete = () => {
-    if (deleteExpenseId !== null) {
-      setAllExpenses(allExpenses.filter((item) => item.id !== deleteExpenseId));
+  const handleConfirmDelete = async () => {
+    if (deleteExpenseId === null) return;
+    const target = allExpenses.find((e) => e.id === deleteExpenseId);
+    if (target && target.status && target.status.toLowerCase() !== 'pending') {
+      toast({
+        title: 'Action Not Allowed',
+        description: 'Only expense requests with Pending status can be deleted.',
+        variant: 'destructive',
+      });
       setDeleteExpenseId(null);
+      return;
+    }
+    const idToDelete = Number(deleteExpenseId);
+    setDeleteExpenseId(null);
 
+    const removeLocally = () => {
+      setAllExpenses((prev) => prev.filter((item) => Number(item.id) !== idToDelete));
+      try {
+        const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const updated = parsed.filter((item: any) => Number(item.id) !== idToDelete);
+            localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updated));
+          }
+        }
+      } catch {
+        // ignore
+      }
+      window.dispatchEvent(new Event('staffly_expenses_updated'));
+    };
+
+    // If local-only temporary timestamp ID (> 1,000,000,000,000)
+    if (idToDelete > 1_000_000_000_000) {
+      removeLocally();
       toast({
         title: 'Expense Deleted',
         description: 'The expense record has been removed.',
       });
+      return;
+    }
+
+    try {
+      // Call DELETE /{company_slug}/expenses/{expense_id}
+      const res = await expensesService.deleteExpense(idToDelete);
+      removeLocally();
+
+      toast({
+        title: 'Expense Deleted',
+        description: res?.message || 'Expense deleted successfully.',
+      });
+    } catch (apiErr: any) {
+      console.error('EmployeeExpensesPage deleteExpense error:', apiErr);
+      const errMsg = apiErr?.message || (typeof apiErr === 'string' ? apiErr : '');
+      const isNotFound = apiErr?.status === 404 || errMsg.includes('404') || errMsg.toLowerCase().includes('not found');
+      const isConflict = apiErr?.status === 409 || errMsg.includes('409') || errMsg.toLowerCase().includes('conflict');
+
+      if (isNotFound) {
+        removeLocally();
+        toast({
+          title: 'Expense Deleted',
+          description: 'The expense record has been removed.',
+        });
+      } else if (isConflict) {
+        toast({
+          title: 'Deletion Failed',
+          description: errMsg || 'Only Pending expenses can be deleted.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Deletion Failed',
+          description: errMsg || 'Failed to delete expense record.',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -386,7 +641,7 @@ export default function EmployeeExpensesPage() {
             className="h-[46px] px-3 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-600 rounded-[12px] text-sm font-medium text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4545E9]"
           >
             <option value="all">All Categories</option>
-            {EXPENSE_CATEGORIES.map((cat) => (
+            {categoriesList.map((cat) => (
               <option key={cat.value} value={cat.value}>
                 {cat.label}
               </option>
@@ -495,26 +750,30 @@ export default function EmployeeExpensesPage() {
                       <TableCell className="align-middle py-4 px-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-1.5 flex-nowrap">
                           <button
-                            onClick={() => setViewExpense(expense)}
+                            onClick={() => handleOpenViewExpense(expense)}
                             className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                             title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => setEditExpense(expense)}
-                            className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors shrink-0"
-                            title="Edit Expense"
-                          >
-                            <SquarePen className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setDeleteExpenseId(expense.id)}
-                            className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors shrink-0"
-                            title="Delete Expense"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {expense.status && expense.status.toLowerCase() === 'pending' ? (
+                            <button
+                              onClick={() => setEditExpense(expense)}
+                              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors shrink-0"
+                              title="Edit Expense"
+                            >
+                              <SquarePen className="w-4 h-4" />
+                            </button>
+                          ) : null}
+                          {expense.status && expense.status.toLowerCase() === 'pending' ? (
+                            <button
+                              onClick={() => setDeleteExpenseId(expense.id)}
+                              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors shrink-0"
+                              title="Delete Expense"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -526,12 +785,21 @@ export default function EmployeeExpensesPage() {
         </div>
       </div>
 
-      {/* PROFESSIONAL ADD EXPENSE MODAL */}
+      {/* REUSED PROFESSIONAL ADD & EDIT EXPENSE MODAL */}
       <AddExpenseModal
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
+        isOpen={isAddDialogOpen || !!editExpense}
+        editExpense={editExpense}
+        onClose={() => {
+          setIsAddDialogOpen(false);
+          setEditExpense(null);
+        }}
         onExpenseCreated={(newExp) => {
           setAllExpenses([newExp, ...allExpenses]);
+        }}
+        onExpenseUpdated={(updatedExp) => {
+          setAllExpenses((prev) =>
+            prev.map((item) => (item.id === updatedExp.id ? { ...item, ...updatedExp } : item))
+          );
         }}
       />
 
@@ -577,79 +845,7 @@ export default function EmployeeExpensesPage() {
         </Dialog>
       )}
 
-      {/* EDIT EXPENSE DIALOG */}
-      {editExpense && (
-        <Dialog open={!!editExpense} onOpenChange={() => setEditExpense(null)}>
-          <DialogContent className="sm:max-w-[480px] border-2 border-black rounded-[24px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-black">Edit Expense Record</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleUpdateExpenseSubmit} className="space-y-3 py-2">
-              <div className="space-y-1">
-                <Label className="font-bold text-sm">Employee Name</Label>
-                <Input
-                  value={editExpense.employee}
-                  onChange={(e) => setEditExpense({ ...editExpense, employee: e.target.value })}
-                  className="border-2 border-black rounded-[12px]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="font-bold text-sm">Category</Label>
-                  <select
-                    value={editExpense.category}
-                    onChange={(e) => setEditExpense({ ...editExpense, category: e.target.value as ExpenseCategory })}
-                    className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
-                  >
-                    {EXPENSE_CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="font-bold text-sm">Amount (₹)</Label>
-                  <Input
-                    type="number"
-                    value={editExpense.amount}
-                    onChange={(e) => setEditExpense({ ...editExpense, amount: Number(e.target.value) })}
-                    className="border-2 border-black rounded-[12px]"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="font-bold text-sm">Status</Label>
-                <select
-                  value={editExpense.status}
-                  onChange={(e) => setEditExpense({ ...editExpense, status: e.target.value as any })}
-                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="Approved">Approved</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label className="font-bold text-sm">Description</Label>
-                <Textarea
-                  value={editExpense.description}
-                  onChange={(e) => setEditExpense({ ...editExpense, description: e.target.value })}
-                  className="border-2 border-black rounded-[12px]"
-                />
-              </div>
-              <DialogFooter className="pt-2">
-                <Button type="button" variant="outline" onClick={() => setEditExpense(null)} className="rounded-[12px] border-2 border-black">
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-[#4545E9] hover:bg-[#3737D4] text-white font-bold rounded-[12px] border-2 border-black">
-                  Save Changes
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
+
 
       {/* DELETE CONFIRMATION ALERT DIALOG */}
       <AlertDialog open={deleteExpenseId !== null} onOpenChange={() => setDeleteExpenseId(null)}>

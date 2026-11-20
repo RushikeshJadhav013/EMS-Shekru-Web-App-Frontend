@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { apiService } from '@/lib/api';
 import ExpensesHeader from '@/components/expenses/ExpensesHeader';
+import { AddExpenseModal } from '@/components/expenses/AddExpenseModal';
+import { expensesService, ExpenseOut, ExpenseDashboardCategory } from '@/services/expensesService';
 import {
   Wallet,
   Calendar,
@@ -107,7 +111,105 @@ export interface ExpenseItem {
   title?: string;
   paymentMethod?: string;
   receiptName?: string;
+  createdAt?: string;
+  expenseDate?: string;
+  subCategory?: string | null;
+  vendorId?: number | null;
+  vendorName?: string | null;
+  invoiceNumber?: string | null;
+  invoiceDate?: string | null;
+  gstNumber?: string | null;
+  gstAmount?: number | string | null;
+  costCenter?: string | null;
+  projectClient?: string | null;
+  role?: string;
+  department?: string;
+  employeeId?: string;
 }
+
+const HIDDEN_PLACEHOLDER_EXPENSE_KEYS = new Set([
+  '10 oct 2026|employee #4|marketing|team lead expenses|2000|pending',
+  '10 oct 2026|employee #6|electricity|employee expenses|3000|pending',
+  '31 oct 2026|employee #1|internet & telephone|string|1000|rejected',
+  '20 oct 2026|employee #1|travel & conveyance|travell|1000|pending',
+  '20 oct 2026|employee #1|travel & conveyance|travell|1000|rejected',
+  '26 oct 2026|employee #1|travel & conveyance|company outin|1000|rejected',
+]);
+
+/**
+ * Helper to determine if an expense transaction date is on or after 19 November 2026.
+ * All transactions before 19 November 2026 must be hidden from the Transactions list.
+ */
+export const isExpenseOnOrAfter19Nov2026 = (item: { expenseDate?: string; date?: string; createdAt?: string }): boolean => {
+  if (!item) return false;
+
+  // 1. Try actual API expense date / ISO date field
+  const candidateDates = [item.expenseDate, item.date, item.createdAt];
+  for (const rawDate of candidateDates) {
+    if (!rawDate || typeof rawDate !== 'string') continue;
+    const trimmed = rawDate.trim();
+    if (!trimmed) continue;
+
+    // Direct check for YYYY-MM-DD
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10);
+      const day = parseInt(isoMatch[3], 10);
+      if (year > 2026) return true;
+      if (year < 2026) return false;
+      if (month > 11) return true;
+      if (month < 11) return false;
+      return day >= 19;
+    }
+
+    // Direct check for "DD Mon YYYY" e.g., "19 Nov 2026", "18 Nov 2026", "09 Nov 2026"
+    const textMatch = trimmed.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})/);
+    if (textMatch) {
+      const day = parseInt(textMatch[1], 10);
+      const monthStr = textMatch[2].substring(0, 3).toLowerCase();
+      const year = parseInt(textMatch[3], 10);
+      const monthMap: Record<string, number> = {
+        jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+        jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12
+      };
+      const month = monthMap[monthStr] || 0;
+      if (year > 2026) return true;
+      if (year < 2026) return false;
+      if (month > 11) return true;
+      if (month < 11) return false;
+      return day >= 19;
+    }
+
+    // General Date parsing fallback
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      const year = parsed.getFullYear();
+      const month = parsed.getMonth() + 1; // 1-12
+      const day = parsed.getDate();
+      if (year > 2026) return true;
+      if (year < 2026) return false;
+      if (month > 11) return true;
+      if (month < 11) return false;
+      return day >= 19;
+    }
+  }
+
+  return true;
+};
+
+const isHiddenPlaceholderExpense = (item: ExpenseItem): boolean => {
+  const key = [
+    String(item.date || '').trim().toLowerCase(),
+    String(item.employee || '').trim().toLowerCase(),
+    getCategoryLabel(item.category).trim().toLowerCase(),
+    String(item.description || '').trim().toLowerCase(),
+    Number(item.amount),
+    String(item.status || '').toLowerCase(),
+  ].join('|');
+
+  return HIDDEN_PLACEHOLDER_EXPENSE_KEYS.has(key);
+};
 
 const sampleExpenses: ExpenseItem[] = [
   {
@@ -190,6 +292,32 @@ const sampleExpenses: ExpenseItem[] = [
 ];
 
 const EXPENSES_STORAGE_KEY = 'staffly_expenses_data';
+const DELETED_EXPENSES_KEY = 'staffly_deleted_expenses_ids';
+
+const getDeletedExpenseIds = (): Set<number> => {
+  try {
+    const raw = localStorage.getItem(DELETED_EXPENSES_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        return new Set(arr.map(Number));
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return new Set();
+};
+
+const recordDeletedExpenseId = (id: number) => {
+  try {
+    const existing = getDeletedExpenseIds();
+    existing.add(Number(id));
+    localStorage.setItem(DELETED_EXPENSES_KEY, JSON.stringify(Array.from(existing)));
+  } catch {
+    // ignore
+  }
+};
 
 const getInitialExpenses = (): ExpenseItem[] => {
   try {
@@ -197,18 +325,21 @@ const getInitialExpenses = (): ExpenseItem[] => {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const deletedIds = getDeletedExpenseIds();
+        return parsed.filter((item) => item && !deletedIds.has(Number(item.id)));
       }
     }
   } catch (err) {
     console.error('Failed to load expenses from localStorage:', err);
   }
-  return sampleExpenses;
+  return [];
 };
 
 export default function ExpensesPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
+  const [employeesMap, setEmployeesMap] = useState<Record<string, { name: string; role?: string; department?: string }>>({});
 
   const userRole = (user?.role || '').toLowerCase();
   const isAdmin = userRole === 'admin';
@@ -219,24 +350,342 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseItem[]>(getInitialExpenses);
   const [processingId, setProcessingId] = useState<number | null>(null);
 
-  // Sync to localStorage
+  // Fetch all company employees (all active & inactive across all departments and branches)
   useEffect(() => {
-    try {
-      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(expenses));
-    } catch (err) {
-      console.error('Failed to save expenses to localStorage:', err);
-    }
-  }, [expenses]);
+    let isMounted = true;
+    const fetchEmployeesDirectory = async () => {
+      try {
+        let raw = await apiService.getEmployees({ is_active: 'all' });
+        let data = Array.isArray(raw) ? raw : (raw as any)?.employees || (raw as any)?.data || [];
 
-  // Listen for storage changes from other tabs or components
+        // Fallback: If { is_active: 'all' } returned empty or failed, fetch default getEmployees()
+        if (!Array.isArray(data) || data.length === 0) {
+          raw = await apiService.getEmployees();
+          data = Array.isArray(raw) ? raw : (raw as any)?.employees || (raw as any)?.data || [];
+        }
+
+        if (Array.isArray(data) && isMounted) {
+          const map: Record<string, { name: string; role?: string; department?: string; employeeCode?: string }> = {};
+          data.forEach((emp: any) => {
+            if (!emp) return;
+            const name =
+              emp.name ||
+              `${emp.first_name || ''} ${emp.last_name || ''}`.trim() ||
+              emp.full_name ||
+              emp.username ||
+              '';
+            const role = emp.role || '';
+            const department = emp.department || emp.designation || '';
+            const employeeCode = emp.employee_id || emp.employeeId || '';
+
+            const candidateKeys: (string | number | undefined)[] = [
+              emp.user_id,
+              emp.userId,
+              emp.id,
+              emp.employee_id,
+              emp.employeeId,
+              emp.email ? String(emp.email).toLowerCase().trim() : undefined,
+            ];
+
+            candidateKeys.forEach((k) => {
+              if (k !== undefined && k !== null && k !== '') {
+                map[String(k).trim()] = { name, role, department, employeeCode };
+              }
+            });
+          });
+          setEmployeesMap((prev) => ({ ...prev, ...map }));
+        }
+      } catch (err) {
+        console.debug('Directory fetch info:', err);
+      }
+    };
+    fetchEmployeesDirectory();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Helper function to resolve the actual employee name, role, and department from multiple signals
+  const resolveRequesterDetails = (
+    apiItem?: Partial<ExpenseOut>,
+    localItem?: Partial<ExpenseItem> & { submittedBy?: any; employee?: string; title?: string }
+  ): { name: string; role?: string; department?: string; code?: string } => {
+    // 1. Direct API response fields check (fastest, avoids lookup if backend provides employee name)
+    const directApiName =
+      apiItem?.employee_name ||
+      apiItem?.user_name ||
+      (apiItem as any)?.name ||
+      (apiItem as any)?.full_name ||
+      (apiItem as any)?.created_by_name ||
+      (apiItem as any)?.submitted_by_name;
+
+    if (
+      directApiName &&
+      typeof directApiName === 'string' &&
+      directApiName.trim() &&
+      !directApiName.startsWith('Employee #') &&
+      directApiName !== 'Staff Member'
+    ) {
+      const candidateKey = String(apiItem?.user_id || (apiItem as any)?.userId || '').trim();
+      const match = candidateKey ? employeesMap[candidateKey] : undefined;
+      return {
+        name: directApiName.trim(),
+        role: match?.role || (apiItem as any)?.role,
+        department: match?.department || (apiItem as any)?.department,
+        code: match?.employeeCode,
+      };
+    }
+
+    // 2. Check local submitter name if available and not a placeholder
+    const localName = localItem?.submittedBy?.name || localItem?.employee;
+    if (localName && typeof localName === 'string' && !localName.startsWith('Employee #') && localName !== 'Staff Member') {
+      return {
+        name: localName.trim(),
+        role: (localItem as any)?.role || localItem?.submittedBy?.role,
+        department: (localItem as any)?.department,
+      };
+    }
+
+    // 3. Check candidate keys against employeesMap
+    const keysToTry: (string | number | undefined)[] = [
+      apiItem?.user_id,
+      (apiItem as any)?.userId,
+      (apiItem as any)?.employee_id,
+      (apiItem as any)?.created_by,
+      localItem?.submittedBy?.id,
+      localItem?.submittedBy?.userId,
+      localItem?.submittedBy?.user_id,
+      (localItem as any)?.employeeId,
+      localItem?.submittedBy?.email ? String(localItem.submittedBy.email).toLowerCase().trim() : undefined,
+    ];
+
+    for (const key of keysToTry) {
+      if (key !== undefined && key !== null && key !== '') {
+        const match = employeesMap[String(key).trim()];
+        if (match && match.name && !match.name.startsWith('Employee #') && match.name !== 'Staff Member') {
+          return {
+            name: match.name,
+            role: match.role,
+            department: match.department,
+            code: match.employeeCode,
+          };
+        }
+      }
+    }
+
+    // 4. Return existing local name if available
+    if (localName && typeof localName === 'string' && localName.trim()) {
+      return { name: localName.trim(), role: (localItem as any)?.role };
+    }
+
+    // 5. User ID placeholder fallback
+    const fallbackId = apiItem?.user_id || (localItem as any)?.employeeId || localItem?.submittedBy?.id;
+    return {
+      name: fallbackId ? `Employee #${fallbackId}` : 'Staff Member',
+    };
+  };
+
+  // Helper to extract timestamp for reliable descending sorting by created/submitted date
+  const getExpenseTimestamp = (item: any): number => {
+    if (item.createdAt) {
+      const t = new Date(item.createdAt).getTime();
+      if (!isNaN(t)) return t;
+    }
+    if (item.expenseDate) {
+      const t = new Date(item.expenseDate).getTime();
+      if (!isNaN(t)) return t;
+    }
+    if (item.date) {
+      const t = new Date(item.date).getTime();
+      if (!isNaN(t)) return t;
+    }
+    return typeof item.id === 'number' ? item.id : 0;
+  };
+  // Helper function to merge API and local expense records without losing requester names
+  const mergeExpenseRecords = (apiRecords: ExpenseItem[], localRecords: ExpenseItem[]): ExpenseItem[] => {
+    const mergedMap = new Map<number, ExpenseItem>();
+    const deletedIds = getDeletedExpenseIds();
+
+    // Add all API records directly (server source of truth), skipping permanently deleted records
+    apiRecords.forEach((item) => {
+      if (item && item.id && !deletedIds.has(Number(item.id))) {
+        mergedMap.set(item.id, item);
+      }
+    });
+    // Only include local records if they have not been explicitly deleted
+    localRecords.forEach((localItem) => {
+      if (!localItem || !localItem.id || deletedIds.has(Number(localItem.id))) return;
+      if (mergedMap.has(localItem.id)) {
+        const existing = mergedMap.get(localItem.id)!;
+        const resolved = resolveRequesterDetails(undefined, localItem);
+        mergedMap.set(localItem.id, {
+          ...existing,
+          employee: resolved.name || existing.employee,
+          role: (resolved.role || (existing as any).role || (localItem as any).role)?.toUpperCase(),
+          department: resolved.department || (existing as any).department || (localItem as any).department,
+          receiptName: existing.receiptName || localItem.receiptName,
+          title: existing.title || localItem.title,
+          createdAt: existing.createdAt || localItem.createdAt || (localItem as any).createdAt || existing.expenseDate || localItem.date,
+          expenseDate: existing.expenseDate || (localItem as any).expenseDate || localItem.date,
+        });
+      } else {
+        // When local record was created or pending sync and not in API records
+        const resolved = resolveRequesterDetails(undefined, localItem);
+        mergedMap.set(localItem.id, {
+          ...localItem,
+          employee: resolved.name || localItem.employee,
+          role: (resolved.role || (localItem as any).role)?.toUpperCase(),
+          department: resolved.department || (localItem as any).department,
+          createdAt: (localItem as any).createdAt || localItem.date,
+          expenseDate: (localItem as any).expenseDate || localItem.date,
+        });
+      }
+    });
+    const allMerged = Array.from(mergedMap.values());
+    return allMerged.sort((a, b) => getExpenseTimestamp(b) - getExpenseTimestamp(a));
+  };
+
+  // Fetch expenses from Backend API & merge with localStorage
   useEffect(() => {
-    const handleStorageUpdate = () => {
+    const fetchApiExpenses = async () => {
+      try {
+        const res = await expensesService.getExpenses({ limit: 100 });
+        if (res && Array.isArray(res.expenses)) {
+          const mapped: ExpenseItem[] = res.expenses.map((e: ExpenseOut) => {
+            const d = new Date(e.expense_date);
+            const formattedDate = !isNaN(d.getTime())
+              ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+              : e.expense_date;
+            let statusCapitalized: 'Approved' | 'Pending' | 'Rejected' = 'Pending';
+            const st = (e.status || '').toLowerCase();
+            if (st === 'approved') statusCapitalized = 'Approved';
+            else if (st === 'rejected') statusCapitalized = 'Rejected';
+
+            const resolved = resolveRequesterDetails(e, undefined);
+
+            return {
+              id: e.expense_id,
+              employee: resolved.name,
+              category: (e.category || 'miscellaneous') as any,
+              description: e.description || '',
+              amount: typeof e.amount === 'string' ? parseFloat(e.amount) || 0 : (e.amount || 0),
+              date: formattedDate,
+              status: statusCapitalized,
+              paymentMethod: e.payment_mode || 'UPI',
+              receiptName: e.invoice_number ? `invoice_${e.invoice_number}.pdf` : undefined,
+              subCategory: e.sub_category,
+              vendorId: e.vendor_id || undefined,
+              vendorName: e.client_name || undefined,
+              invoiceNumber: e.invoice_number || undefined,
+              invoiceDate: e.invoice_date || undefined,
+              gstNumber: e.gst_number || undefined,
+              gstAmount: e.gst_amount || undefined,
+              costCenter: e.cost_center || undefined,
+              projectClient: e.project_name || undefined,
+              role: resolved.role ? resolved.role.toUpperCase() : undefined,
+              department: resolved.department || undefined,
+              employeeId: resolved.code || (e.user_id ? String(e.user_id) : undefined),
+              createdAt: e.created_at || e.expense_date,
+              expenseDate: e.expense_date,
+            } as any;
+          });
+
+          let storedExpenses: ExpenseItem[] = [];
+          try {
+            const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) storedExpenses = parsed;
+            }
+          } catch (e) {
+            // ignore
+          }
+
+          const merged = mergeExpenseRecords(mapped, storedExpenses);
+          setExpenses(merged);
+          try {
+            localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(merged));
+          } catch (err) {
+            // ignore
+          }
+
+          // Fetch any individual missing employee profiles asynchronously to eliminate any "Employee #ID"
+          const missingUserIds = new Set<string>();
+          mapped.forEach((item) => {
+            const rawEmp = item.employee;
+            if (rawEmp && rawEmp.startsWith('Employee #')) {
+              const extractedId = rawEmp.replace('Employee #', '').trim();
+              if (extractedId && !employeesMap[extractedId]) {
+                missingUserIds.add(extractedId);
+              }
+            }
+          });
+
+          if (missingUserIds.size > 0) {
+            Promise.allSettled(
+              Array.from(missingUserIds).map(async (uId) => {
+                try {
+                  const empData = await apiService.getEmployeeById(uId);
+                  if (empData && empData.name) {
+                    return {
+                      id: uId,
+                      name: empData.name,
+                      role: empData.role,
+                      department: empData.department,
+                      employeeCode: empData.employee_id,
+                    };
+                  }
+                } catch {
+                  // Ignore individual employee lookup failures
+                }
+                return null;
+              })
+            ).then((results) => {
+              const updates: Record<string, { name: string; role?: string; department?: string; employeeCode?: string }> = {};
+              results.forEach((r) => {
+                if (r.status === 'fulfilled' && r.value) {
+                  const val = r.value;
+                  updates[val.id] = val;
+                  if (val.employeeCode) updates[val.employeeCode] = val;
+                }
+              });
+              if (Object.keys(updates).length > 0) {
+                setEmployeesMap((prev) => ({ ...prev, ...updates }));
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.debug('Expenses API fetch info:', err);
+      }
+    };
+    fetchApiExpenses();
+  }, [employeesMap]);
+
+  // Listen for storage changes & new expense submissions from all roles to notify Admin
+  useEffect(() => {
+    const handleStorageUpdate = (event: Event) => {
       try {
         const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) {
-            setExpenses(parsed);
+            const customEv = event as CustomEvent;
+            if (isAdmin && customEv.detail && customEv.detail.expense) {
+              const newExp = customEv.detail.expense;
+              addNotification({
+                title: 'New Expense Request Submitted',
+                message: `${newExp.employee || 'An employee'} (${(newExp.role || newExp.submittedBy?.role || 'Employee').toUpperCase()}) submitted an expense request of ₹${Number(newExp.amount).toLocaleString('en-IN')} for ${getCategoryLabel(newExp.category)}.`,
+                type: 'warning',
+                actionUrl: '/expenses',
+                metadata: {
+                  requesterName: newExp.employee,
+                  requesterId: newExp.submittedBy?.id ? String(newExp.submittedBy.id) : undefined,
+                },
+              });
+            }
+            // Re-merge to ensure any new expense is enriched with actual employee directory details
+            setExpenses((prev) => mergeExpenseRecords(prev, parsed));
           }
         }
       } catch (err) {
@@ -250,9 +699,62 @@ export default function ExpensesPage() {
       window.removeEventListener('storage', handleStorageUpdate);
       window.removeEventListener('staffly_expenses_updated', handleStorageUpdate);
     };
-  }, []);
+  }, [isAdmin, addNotification, employeesMap]);
 
   const [activeTab, setActiveTab] = useState<'my' | 'approval' | 'reports'>('my');
+
+  // Categories dynamically fetched from GET /{company_slug}/expenses/categories
+  const [categoriesList, setCategoriesList] = useState<{ value: string; label: string }[]>(EXPENSE_CATEGORIES);
+
+  // Admin Expense Dashboard stats fetched from GET /{company_slug}/expenses/dashboard
+  const [adminDashboardStats, setAdminDashboardStats] = useState<ExpenseDashboardCategory[] | null>(null);
+
+  // Fetch admin dashboard stats only for admin role
+  useEffect(() => {
+    if (!isAdmin) return;
+    let isMounted = true;
+    const fetchDashboard = async () => {
+      try {
+        const stats = await expensesService.getExpenseDashboard();
+        if (isMounted && Array.isArray(stats)) {
+          setAdminDashboardStats(stats);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch admin expense dashboard stats:', err);
+      }
+    };
+    fetchDashboard();
+    return () => {
+      isMounted = false;
+    };
+  }, [isAdmin]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCategories = async () => {
+      try {
+        const fetched = await expensesService.getExpenseCategories();
+        if (isMounted && Array.isArray(fetched) && fetched.length > 0) {
+          const mapped = fetched.map((catName: string) => {
+            const existing = EXPENSE_CATEGORIES.find(
+              (c) => c.label.toLowerCase() === catName.toLowerCase() || c.value.toLowerCase() === catName.toLowerCase()
+            );
+            return {
+              value: existing ? existing.value : catName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+              label: catName,
+            };
+          });
+          setCategoriesList(mapped);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch expense categories from API:', err);
+      }
+    };
+    fetchCategories();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -260,11 +762,13 @@ export default function ExpensesPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string>('');
 
-  // Pending Approval Requests Pagination
+  // Pending Approval Requests Pagination (filtered for on or after 19 Nov 2026)
   const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
   const [pendingItemsPerPage, setPendingItemsPerPage] = useState(10);
 
-  const pendingApprovalRequests = expenses.filter((item) => item.status === 'Pending');
+  const pendingApprovalRequests = expenses.filter(
+    (item) => item.status === 'Pending' && isExpenseOnOrAfter19Nov2026(item)
+  );
   const pendingTotalPages = Math.ceil(pendingApprovalRequests.length / pendingItemsPerPage) || 1;
   const paginatedPendingRequests = pendingApprovalRequests.slice(
     (pendingCurrentPage - 1) * pendingItemsPerPage,
@@ -283,6 +787,10 @@ export default function ExpensesPage() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('All Status');
 
   const filteredHistoryExpenses = expenses.filter((item) => {
+    // Hide all expense records dated before 19 November 2026
+    if (!isExpenseOnOrAfter19Nov2026(item)) {
+      return false;
+    }
     if (historyStatusFilter !== 'All Status' && item.status.toLowerCase() !== historyStatusFilter.toLowerCase()) {
       return false;
     }
@@ -315,10 +823,67 @@ export default function ExpensesPage() {
   const [viewExpense, setViewExpense] = useState<ExpenseItem | null>(null);
   const [editExpense, setEditExpense] = useState<ExpenseItem | null>(null);
   const [deleteExpenseId, setDeleteExpenseId] = useState<number | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  // Open Expense Details dialog and fetch full record from GET /{company_slug}/expenses/{expense_id}
+  const handleOpenViewExpense = async (expense: ExpenseItem) => {
+    setViewExpense(expense);
+    if (!expense?.id || expense.id > 1_000_000_000_000) return; // Skip local-only timestamp IDs
+
+    try {
+      setIsLoadingDetails(true);
+      const detailed = await expensesService.getExpenseById(expense.id);
+      if (detailed && detailed.expense_id) {
+        const d = new Date(detailed.expense_date);
+        const formattedDate = !isNaN(d.getTime())
+          ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : detailed.expense_date;
+        let statusCapitalized: 'Approved' | 'Pending' | 'Rejected' = 'Pending';
+        const st = (detailed.status || '').toLowerCase();
+        if (st === 'approved') statusCapitalized = 'Approved';
+        else if (st === 'rejected') statusCapitalized = 'Rejected';
+
+        const resolved = resolveRequesterDetails(detailed, expense);
+
+        setViewExpense((prev) => ({
+          ...(prev || expense),
+          id: detailed.expense_id,
+          employee: resolved.name || prev?.employee || expense.employee,
+          category: (detailed.category || prev?.category || expense.category) as any,
+          description: detailed.description || prev?.description || expense.description,
+          amount: typeof detailed.amount === 'string' ? parseFloat(detailed.amount) || 0 : (detailed.amount ?? expense.amount),
+          date: formattedDate,
+          status: statusCapitalized,
+          paymentMethod: detailed.payment_mode || prev?.paymentMethod || expense.paymentMethod || 'UPI',
+          receiptName: detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName),
+          subCategory: detailed.sub_category || prev?.subCategory || expense.subCategory,
+          vendorId: detailed.vendor_id || prev?.vendorId || (expense as any).vendorId,
+          vendorName: detailed.client_name || prev?.vendorName || expense.vendorName,
+          invoiceNumber: detailed.invoice_number || prev?.invoiceNumber || (expense as any).invoiceNumber,
+          invoiceDate: detailed.invoice_date || prev?.invoiceDate || (expense as any).invoiceDate,
+          gstNumber: detailed.gst_number || prev?.gstNumber || (expense as any).gstNumber,
+          gstAmount: detailed.gst_amount || prev?.gstAmount || (expense as any).gstAmount,
+          costCenter: detailed.cost_center || prev?.costCenter || expense.costCenter,
+          projectClient: detailed.project_name || prev?.projectClient || expense.projectClient,
+          role: resolved.role ? resolved.role.toUpperCase() : (prev?.role || expense.role),
+          department: resolved.department || prev?.department || expense.department,
+          employeeId: resolved.code || (detailed.user_id ? String(detailed.user_id) : expense.employeeId),
+          createdAt: detailed.created_at || prev?.createdAt || expense.createdAt,
+          expenseDate: detailed.expense_date || prev?.expenseDate || expense.expenseDate,
+        }));
+      }
+    } catch (err) {
+      console.warn('GET /expenses/{expense_id} warning:', err);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
 
   // Safe Filter Logic
   const filteredExpenses = expenses.filter((item) => {
-    if (!item) return false;
+    if (!item || isHiddenPlaceholderExpense(item)) return false;
+    // Hide all expense transaction records dated before 19 November 2026
+    if (!isExpenseOnOrAfter19Nov2026(item)) return false;
     const emp = item.employee ? item.employee.toLowerCase() : '';
     const desc = item.description ? item.description.toLowerCase() : '';
     const catVal = item.category ? item.category.toLowerCase() : '';
@@ -343,7 +908,12 @@ export default function ExpensesPage() {
   });
 
   // Calculate totals
-  const totalExpensesAmount = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+  const totalDashboardAmount = adminDashboardStats
+    ? adminDashboardStats.reduce((acc, curr) => acc + (Number(curr.total_amount) || 0), 0)
+    : null;
+  const totalExpensesAmount = totalDashboardAmount !== null
+    ? totalDashboardAmount
+    : expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const thisMonthAmount = expenses
     .filter((item) => item.date && item.date.includes('Sep 2026'))
     .reduce((acc, curr) => acc + (curr.amount || 0), 0);
@@ -355,7 +925,7 @@ export default function ExpensesPage() {
     .reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
   // Quick Approve / Reject in Expense Approval tab
-  const handleApproveStatus = (id: number) => {
+  const handleApproveStatus = async (id: number) => {
     if (processingId === id) return;
     setProcessingId(id);
     try {
@@ -369,17 +939,83 @@ export default function ExpensesPage() {
         setProcessingId(null);
         return;
       }
+
+      // 1. Verify if supporting document is attached with the expense record
+      let hasReceipt = false;
+
+      // Check with backend documents API first: GET /{company_slug}/expenses/{id}/documents/
+      try {
+        const docs = await expensesService.getExpenseDocuments(id);
+        if (Array.isArray(docs) && docs.length > 0) {
+          hasReceipt = true;
+        }
+      } catch (docCheckErr) {
+        console.warn('Document check via API encountered issue, checking local record:', docCheckErr);
+      }
+
+      // If API returned no docs, check if a valid receipt name is present on the record
+      if (!hasReceipt) {
+        hasReceipt = Boolean(
+          targetExpense.receiptName &&
+          targetExpense.receiptName.trim() &&
+          !targetExpense.receiptName.toLowerCase().includes('null') &&
+          !targetExpense.receiptName.toLowerCase().includes('undefined') &&
+          !targetExpense.receiptName.toLowerCase().startsWith('invoice_')
+        );
+      }
+
+      if (!hasReceipt) {
+        toast({
+          title: 'Supporting Document Required',
+          description: 'Approval cannot proceed until the required supporting document (receipt / bill) is attached by employee.',
+          variant: 'destructive',
+        });
+        setProcessingId(null);
+        return;
+      }
+
+      // Call POST /{company_slug}/expenses/{expense_id}/approve
+      const res = await expensesService.approveExpense(id, {
+        approved_amount: targetExpense.amount,
+      });
+
+      const updatedExpense: ExpenseItem = {
+        ...targetExpense,
+        status: 'Approved',
+        approvedAmount: (res as any)?.approved_amount ?? targetExpense.amount,
+      };
+
       setExpenses((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, status: 'Approved' } : e))
+        prev.map((e) => (e.id === id ? updatedExpense : e))
       );
+
+      try {
+        const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const updatedStorage = parsed.map((item: any) =>
+              item.id === id ? updatedExpense : item
+            );
+            localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedStorage));
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      window.dispatchEvent(new CustomEvent('staffly_expenses_updated', { detail: { expense: updatedExpense } }));
+
       toast({
         title: 'Expense Approved',
         description: `Expense request of ₹${targetExpense.amount.toLocaleString('en-IN')} for ${targetExpense.employee} has been approved.`,
       });
-    } catch (err) {
+    } catch (err: any) {
+      console.error('API approveExpense error details:', err);
+      const errMsg = err?.message || (typeof err === 'string' ? err : '');
       toast({
-        title: 'Error',
-        description: 'Failed to approve expense request.',
+        title: 'Approval Failed',
+        description: errMsg || 'Failed to approve expense request on server.',
         variant: 'destructive',
       });
     } finally {
@@ -387,7 +1023,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const handleRejectStatus = (id: number) => {
+  const handleRejectStatus = async (id: number) => {
     if (processingId === id) return;
     setProcessingId(id);
     try {
@@ -401,6 +1037,15 @@ export default function ExpensesPage() {
         setProcessingId(null);
         return;
       }
+
+      try {
+        await expensesService.rejectExpense(id, {
+          rejection_reason: 'Rejected by Admin',
+        });
+      } catch (apiErr) {
+        console.warn('API reject error:', apiErr);
+      }
+
       setExpenses((prev) =>
         prev.map((e) => (e.id === id ? { ...e, status: 'Rejected' } : e))
       );
@@ -421,7 +1066,7 @@ export default function ExpensesPage() {
   };
 
   // Add Expense submit
-  const handleAddExpenseSubmit = (e: React.FormEvent) => {
+  const handleAddExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newExpense.employee.trim() || !newExpense.description.trim() || !newExpense.amount || Number(newExpense.amount) <= 0) {
       toast({
@@ -432,13 +1077,28 @@ export default function ExpensesPage() {
       return;
     }
 
+    let apiCreated: any = null;
+    try {
+      apiCreated = await expensesService.createExpense({
+        category: newExpense.category,
+        sub_category: 'General',
+        expense_date: new Date().toISOString(),
+        amount: Number(newExpense.amount),
+        description: newExpense.description,
+      });
+    } catch (apiErr) {
+      console.warn('API createExpense error:', apiErr);
+    }
+
     const item: ExpenseItem = {
-      id: Date.now(),
+      id: apiCreated?.expense_id || Date.now(),
       employee: newExpense.employee,
       category: newExpense.category,
       description: newExpense.description,
       amount: Number(newExpense.amount),
       date: newExpense.date || '01 Sep 2026',
+      createdAt: new Date().toISOString(),
+      expenseDate: new Date().toISOString(),
       status: newExpense.status,
     };
 
@@ -460,29 +1120,181 @@ export default function ExpensesPage() {
   };
 
   // Edit Expense submit
-  const handleUpdateExpenseSubmit = (e: React.FormEvent) => {
+  const handleUpdateExpenseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editExpense) return;
 
-    setExpenses(expenses.map((item) => (item.id === editExpense.id ? editExpense : item)));
+    let updatedRecord: ExpenseItem = { ...editExpense };
+
+    // If it's a real backend expense ID (not local timestamp)
+    if (editExpense.id && editExpense.id <= 1_000_000_000_000) {
+      try {
+        const catLabel = getCategoryLabel(editExpense.category);
+        const res = await expensesService.updateExpense(Number(editExpense.id), {
+          category: catLabel,
+          sub_category: editExpense.subCategory || 'General',
+          amount: editExpense.amount,
+          description: editExpense.description,
+        });
+
+        if (res && res.expense_id) {
+          const d = new Date(res.expense_date);
+          const formattedDate = !isNaN(d.getTime())
+            ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+            : res.expense_date;
+          let statusCapitalized: 'Approved' | 'Pending' | 'Rejected' = 'Pending';
+          const st = (res.status || '').toLowerCase();
+          if (st === 'approved') statusCapitalized = 'Approved';
+          else if (st === 'rejected') statusCapitalized = 'Rejected';
+
+          updatedRecord = {
+            ...editExpense,
+            category: res.category || editExpense.category,
+            description: res.description || editExpense.description,
+            amount: typeof res.amount === 'string' ? parseFloat(res.amount) || 0 : (res.amount ?? editExpense.amount),
+            date: formattedDate || editExpense.date,
+            status: statusCapitalized || editExpense.status,
+            subCategory: res.sub_category || editExpense.subCategory,
+            costCenter: res.cost_center || editExpense.costCenter,
+            invoiceNumber: res.invoice_number || (editExpense as any).invoiceNumber,
+          };
+
+          setExpenses((prev) => prev.map((item) => (item.id === editExpense.id ? updatedRecord : item)));
+          try {
+            const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) {
+                const updatedStorage = parsed.map((item: any) => (item.id === editExpense.id ? updatedRecord : item));
+                localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedStorage));
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+          window.dispatchEvent(new CustomEvent('staffly_expenses_updated', { detail: { expense: updatedRecord } }));
+          setEditExpense(null);
+
+          toast({
+            title: 'Expense Updated',
+            description: 'The expense transaction has been updated successfully.',
+          });
+          return;
+        }
+      } catch (apiErr: any) {
+        console.warn('API updateExpense error:', apiErr);
+        const errMsg = apiErr?.message || (typeof apiErr === 'string' ? apiErr : '');
+        toast({
+          title: 'Update Failed',
+          description: errMsg || 'Failed to update expense record on server.',
+          variant: 'destructive',
+        });
+        return; // Stop execution: do not update state or show success toast if API fails
+      }
+    }
+
+    setExpenses((prev) => prev.map((item) => (item.id === editExpense.id ? updatedRecord : item)));
+    try {
+      const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const updatedStorage = parsed.map((item: any) => (item.id === editExpense.id ? updatedRecord : item));
+          localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedStorage));
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    window.dispatchEvent(new CustomEvent('staffly_expenses_updated', { detail: { expense: updatedRecord } }));
     setEditExpense(null);
 
     toast({
       title: 'Expense Updated',
-      description: 'The expense transaction has been updated.',
+      description: 'The expense transaction has been updated successfully.',
     });
   };
 
   // Delete Expense confirm
-  const handleConfirmDelete = () => {
-    if (deleteExpenseId !== null) {
-      setExpenses(expenses.filter((item) => item.id !== deleteExpenseId));
+  const handleConfirmDelete = async () => {
+    if (deleteExpenseId === null) return;
+    const target = expenses.find((e) => e.id === deleteExpenseId);
+    if (target && target.status && target.status.toLowerCase() !== 'pending') {
+      toast({
+        title: 'Action Not Allowed',
+        description: 'Only expense requests with Pending status can be deleted.',
+        variant: 'destructive',
+      });
       setDeleteExpenseId(null);
+      return;
+    }
+    const idToDelete = Number(deleteExpenseId);
+    setDeleteExpenseId(null);
+
+    // Helper to purge expense from memory and persistent storage
+    const removeRecordLocally = () => {
+      recordDeletedExpenseId(idToDelete);
+      setExpenses((prev) => {
+        const updated = prev.filter((item) => Number(item.id) !== idToDelete);
+        try {
+          localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {
+          console.error('Storage error:', e);
+        }
+        return updated;
+      });
+      window.dispatchEvent(new Event('staffly_expenses_updated'));
+    };
+
+    // Local-only pseudo-IDs created via Date.now() (> 1,000,000,000,000)
+    const isLocalOnlyRecord = idToDelete > 1_000_000_000_000;
+    if (isLocalOnlyRecord) {
+      removeRecordLocally();
+      toast({
+        title: 'Expense Deleted',
+        description: 'The pending expense request has been removed.',
+      });
+      return;
+    }
+
+    try {
+      // 1. Send DELETE to backend API: DELETE /{company_slug}/expenses/{expense_id}
+      const res = await expensesService.deleteExpense(idToDelete);
+
+      // 2. Remove from active state, sync local storage, and dispatch event
+      removeRecordLocally();
 
       toast({
         title: 'Expense Deleted',
-        description: 'The expense record has been removed.',
+        description: res?.message || 'Expense deleted successfully.',
       });
+    } catch (apiErr: any) {
+      console.error('API deleteExpense error details:', apiErr);
+      const errMsg = apiErr?.message || (typeof apiErr === 'string' ? apiErr : '');
+      const isNotFound = apiErr?.status === 404 || errMsg.includes('404') || errMsg.toLowerCase().includes('not found');
+      const isConflict = apiErr?.status === 409 || errMsg.includes('409') || errMsg.toLowerCase().includes('conflict');
+
+      if (isNotFound) {
+        // If backend already doesn't have it, remove local stale entry clean up
+        removeRecordLocally();
+        toast({
+          title: 'Expense Deleted',
+          description: 'The expense record has been removed.',
+        });
+      } else if (isConflict) {
+        toast({
+          title: 'Deletion Failed',
+          description: errMsg || 'Only Pending expenses can be deleted.',
+          variant: 'destructive',
+        });
+      } else {
+        // Display actual backend error message
+        toast({
+          title: 'Deletion Failed',
+          description: errMsg || 'Failed to delete expense record.',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -657,7 +1469,7 @@ export default function ExpensesPage() {
               className="h-[46px] px-3 bg-white dark:bg-slate-800 border-2 border-black dark:border-slate-600 rounded-[12px] text-sm font-medium text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4545E9]"
             >
               <option value="all">All Categories</option>
-              {EXPENSE_CATEGORIES.map((cat) => (
+              {categoriesList.map((cat) => (
                 <option key={cat.value} value={cat.value}>
                   {cat.label}
                 </option>
@@ -752,26 +1564,21 @@ export default function ExpensesPage() {
                         <TableCell className="py-4 px-4 whitespace-nowrap text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => setViewExpense(expense)}
+                              onClick={() => handleOpenViewExpense(expense)}
                               className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                               title="View Details"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => setEditExpense(expense)}
-                              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
-                              title="Edit Expense"
-                            >
-                              <SquarePen className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setDeleteExpenseId(expense.id)}
-                              className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
-                              title="Delete Expense"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {!isAdmin && expense.status && expense.status.toLowerCase() === 'pending' && (
+                              <button
+                                onClick={() => setDeleteExpenseId(expense.id)}
+                                className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                                title="Delete Pending Expense"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -874,6 +1681,15 @@ export default function ExpensesPage() {
                           {processingId === request.id ? 'Rejecting...' : 'Reject'}
                         </span>
                       </Button>
+                      {!isAdmin && (
+                        <button
+                          onClick={() => setDeleteExpenseId(request.id)}
+                          className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors h-9 w-9 flex items-center justify-center cursor-pointer"
+                          title="Delete Pending Expense"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1013,19 +1829,32 @@ export default function ExpensesPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-            {EXPENSE_CATEGORIES.map((catObj) => {
-              const catTotal = expenses
-                .filter((e) => {
-                  const catVal = e.category ? e.category.toLowerCase() : '';
-                  const catLabel = getCategoryLabel(e.category).toLowerCase();
-                  return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
-                })
-                .reduce((a, c) => a + (c.amount || 0), 0);
-              const catCount = expenses.filter((e) => {
-                const catVal = e.category ? e.category.toLowerCase() : '';
-                const catLabel = getCategoryLabel(e.category).toLowerCase();
-                return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
-              }).length;
+            {categoriesList.map((catObj) => {
+              // If admin dashboard stats are available from backend, use exact aggregated metrics
+              const dashboardMatch = adminDashboardStats?.find(
+                (d) =>
+                  d.category_name.trim().toLowerCase() === catObj.label.trim().toLowerCase() ||
+                  d.category_name.trim().toLowerCase() === catObj.value.trim().toLowerCase()
+              );
+
+              const catTotal = dashboardMatch
+                ? Number(dashboardMatch.total_amount) || 0
+                : expenses
+                    .filter((e) => {
+                      const catVal = e.category ? e.category.toLowerCase() : '';
+                      const catLabel = getCategoryLabel(e.category).toLowerCase();
+                      return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
+                    })
+                    .reduce((a, c) => a + (c.amount || 0), 0);
+
+              const catCount = dashboardMatch
+                ? Number(dashboardMatch.expense_count) || 0
+                : expenses.filter((e) => {
+                    const catVal = e.category ? e.category.toLowerCase() : '';
+                    const catLabel = getCategoryLabel(e.category).toLowerCase();
+                    return catVal === catObj.value.toLowerCase() || catLabel === catObj.label.toLowerCase();
+                  }).length;
+
               return (
                 <div key={catObj.value} className="p-5 border-2 border-black dark:border-slate-700 rounded-[20px] bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
                   <div>
@@ -1086,7 +1915,7 @@ export default function ExpensesPage() {
                   onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value as ExpenseCategory })}
                   className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
                 >
-                  {EXPENSE_CATEGORIES.map((cat) => (
+                  {categoriesList.map((cat) => (
                     <option key={cat.value} value={cat.value}>
                       {cat.label}
                     </option>
@@ -1196,79 +2025,23 @@ export default function ExpensesPage() {
         </Dialog>
       )}
 
-      {/* EDIT EXPENSE DIALOG */}
-      {editExpense && (
-        <Dialog open={!!editExpense} onOpenChange={() => setEditExpense(null)}>
-          <DialogContent className="sm:max-w-[480px] border-2 border-black rounded-[24px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-black">Edit Expense Record</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleUpdateExpenseSubmit} className="space-y-3 py-2">
-              <div className="space-y-1">
-                <Label className="font-bold text-sm">Employee Name</Label>
-                <Input
-                  value={editExpense.employee}
-                  onChange={(e) => setEditExpense({ ...editExpense, employee: e.target.value })}
-                  className="border-2 border-black rounded-[12px]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="font-bold text-sm">Category</Label>
-                  <select
-                    value={editExpense.category}
-                    onChange={(e) => setEditExpense({ ...editExpense, category: e.target.value as ExpenseCategory })}
-                    className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
-                  >
-                    {EXPENSE_CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="font-bold text-sm">Amount (₹)</Label>
-                  <Input
-                    type="number"
-                    value={editExpense.amount}
-                    onChange={(e) => setEditExpense({ ...editExpense, amount: Number(e.target.value) })}
-                    className="border-2 border-black rounded-[12px]"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="font-bold text-sm">Status</Label>
-                <select
-                  value={editExpense.status}
-                  onChange={(e) => setEditExpense({ ...editExpense, status: e.target.value as any })}
-                  className="w-full h-[44px] px-3 border-2 border-black rounded-[12px] text-sm bg-white dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="Approved">Approved</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label className="font-bold text-sm">Description</Label>
-                <Textarea
-                  value={editExpense.description}
-                  onChange={(e) => setEditExpense({ ...editExpense, description: e.target.value })}
-                  className="border-2 border-black rounded-[12px]"
-                />
-              </div>
-              <DialogFooter className="pt-2">
-                <Button type="button" variant="outline" onClick={() => setEditExpense(null)} className="rounded-[12px] border-2 border-black">
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-[#4545E9] hover:bg-[#3737D4] text-white font-bold rounded-[12px] border-2 border-black">
-                  Save Changes
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* REUSED PROFESSIONAL ADD & EDIT EXPENSE MODAL */}
+      <AddExpenseModal
+        isOpen={(!isAdmin && isAddDialogOpen) || !!editExpense}
+        editExpense={editExpense}
+        onClose={() => {
+          setIsAddDialogOpen(false);
+          setEditExpense(null);
+        }}
+        onExpenseCreated={(newExp) => {
+          setExpenses([newExp, ...expenses]);
+        }}
+        onExpenseUpdated={(updatedExp) => {
+          setExpenses((prev) =>
+            prev.map((item) => (item.id === updatedExp.id ? { ...item, ...updatedExp } : item))
+          );
+        }}
+      />
 
       {/* DELETE CONFIRMATION ALERT DIALOG */}
       <AlertDialog open={deleteExpenseId !== null} onOpenChange={() => setDeleteExpenseId(null)}>
