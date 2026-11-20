@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { EXPENSE_CATEGORIES } from '@/pages/expenses/ExpensesPage';
+import { expensesService, VendorResponse } from '@/services/expensesService';
 
 // Local storage key shared with Admin Expense management module
 const EXPENSES_STORAGE_KEY = 'staffly_expenses_data';
@@ -116,6 +117,45 @@ export default function AddExpensePage() {
   // Submission / Loading state
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [vendorsList, setVendorsList] = useState<VendorResponse[]>([]);
+  const [categoriesList, setCategoriesList] = useState<{ value: string; label: string }[]>(EXPENSE_CATEGORIES);
+
+  // Fetch real vendors and categories from backend APIs
+  useEffect(() => {
+    let isMounted = true;
+    const fetchFormData = async () => {
+      try {
+        const [fetchedVendors, fetchedCategories] = await Promise.allSettled([
+          expensesService.getVendors(),
+          expensesService.getExpenseCategories(),
+        ]);
+
+        if (isMounted) {
+          if (fetchedVendors.status === 'fulfilled' && Array.isArray(fetchedVendors.value)) {
+            setVendorsList(fetchedVendors.value);
+          }
+          if (fetchedCategories.status === 'fulfilled' && Array.isArray(fetchedCategories.value) && fetchedCategories.value.length > 0) {
+            const mapped = fetchedCategories.value.map((catName: string) => {
+              const existing = EXPENSE_CATEGORIES.find(
+                (c) => c.label.toLowerCase() === catName.toLowerCase() || c.value.toLowerCase() === catName.toLowerCase()
+              );
+              return {
+                value: existing ? existing.value : catName.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                label: catName,
+              };
+            });
+            setCategoriesList(mapped);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch page form data from API:', err);
+      }
+    };
+    fetchFormData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Sub-categories list computed from selected category
   const availableSubCategories = useMemo(() => {
@@ -238,7 +278,7 @@ export default function AddExpensePage() {
   };
 
   // Form Submit to Admin Workflow
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -261,10 +301,71 @@ export default function AddExpensePage() {
     // Identified logged-in user
     const authenticatedName = user?.name || user?.email?.split('@')[0] || 'Staff Member';
     const authenticatedRole = user?.role ? user.role.toUpperCase() : 'EMPLOYEE';
+    const isoExpenseDate = !isNaN(dateObj.getTime()) ? dateObj.toISOString() : new Date().toISOString();
+
+    let createdApiRecord: any = null;
+
+    try {
+      // 1. Call Backend Expenses API
+      const parsedAmount = parseFloat(amount) || 0;
+
+      // Resolve or auto-register vendor with backend
+      let resolvedVendorId: number | undefined = undefined;
+      const cleanVendorName = vendorName.trim();
+      if (cleanVendorName) {
+        const matched = vendorsList.find(
+          (v) => v.vendor_name.trim().toLowerCase() === cleanVendorName.toLowerCase()
+        );
+        if (matched) {
+          resolvedVendorId = matched.vendor_id;
+        } else {
+          try {
+            const newVendor = await expensesService.createVendor({
+              vendor_name: cleanVendorName,
+              contact_person: cleanVendorName,
+              email: `${cleanVendorName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'vendor'}@vendor.com`,
+              phone: '9999999999',
+              address: 'Registered Vendor Address',
+            });
+            if (newVendor && newVendor.vendor_id) {
+              resolvedVendorId = newVendor.vendor_id;
+              setVendorsList((prev) => [...prev, newVendor]);
+            }
+          } catch (vErr) {
+            console.warn('Vendor registration warning:', vErr);
+          }
+        }
+      }
+
+      createdApiRecord = await expensesService.createExpense({
+        category: selectedCategory,
+        sub_category: selectedSubCategory || 'General',
+        expense_date: isoExpenseDate,
+        amount: parsedAmount,
+        vendor_id: resolvedVendorId,
+        description: `${expenseTitle.trim()} - ${selectedSubCategory ? `[${selectedSubCategory}] ` : ''}${description.trim()}`.trim(),
+        invoice_number: invoiceNumber.trim() || null,
+        invoice_date: invoiceDate || null,
+        gst_number: gstDetails.trim() || null,
+        cost_center: costCenter || null,
+        project_name: projectClient || null,
+      });
+
+      // 2. If bill file attached, upload document
+      if (billFile && createdApiRecord?.expense_id) {
+        try {
+          await expensesService.uploadExpenseDocument(createdApiRecord.expense_id, billFile);
+        } catch (docErr) {
+          console.warn('Document upload warning:', docErr);
+        }
+      }
+    } catch (apiErr: any) {
+      console.warn('API createExpense encountered an issue, preserving local sync:', apiErr);
+    }
 
     // Construct the standard ExpenseItem record for the admin workflow
     const newExpenseRecord = {
-      id: Date.now(),
+      id: createdApiRecord?.expense_id || Date.now(),
       title: expenseTitle.trim(),
       date: formattedDate,
       employee: authenticatedName,
@@ -294,43 +395,42 @@ export default function AddExpensePage() {
       },
     };
 
-    setTimeout(() => {
-      try {
-        // Read existing records from localStorage
-        const existingDataRaw = localStorage.getItem(EXPENSES_STORAGE_KEY);
-        let currentExpenses: any[] = [];
-        if (existingDataRaw) {
-          try {
-            currentExpenses = JSON.parse(existingDataRaw);
-            if (!Array.isArray(currentExpenses)) currentExpenses = [];
-          } catch (e) {
-            currentExpenses = [];
-          }
+    try {
+      // Read existing records from localStorage
+      const existingDataRaw = localStorage.getItem(EXPENSES_STORAGE_KEY);
+      let currentExpenses: any[] = [];
+      if (existingDataRaw) {
+        try {
+          currentExpenses = JSON.parse(existingDataRaw);
+          if (!Array.isArray(currentExpenses)) currentExpenses = [];
+        } catch (e) {
+          currentExpenses = [];
         }
-
-        // Add new pending expense to the top
-        const updatedList = [newExpenseRecord, ...currentExpenses];
-        localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedList));
-
-        setIsSubmitting(false);
-
-        toast({
-          title: 'Expense Request Submitted',
-          description: `Your expense "${expenseTitle.trim()}" of ₹${parseFloat(amount).toLocaleString('en-IN')} has been sent to Admin for approval.`,
-        });
-
-        // Reset and close form
-        handleReset();
-        setIsFormOpen(false);
-      } catch (err) {
-        setIsSubmitting(false);
-        toast({
-          title: 'Submission Failed',
-          description: 'Failed to record your expense request. Please try again.',
-          variant: 'destructive',
-        });
       }
-    }, 600);
+
+      // Add new pending expense to the top
+      const updatedList = [newExpenseRecord, ...currentExpenses];
+      localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedList));
+      window.dispatchEvent(new Event('staffly_expenses_updated'));
+
+      setIsSubmitting(false);
+
+      toast({
+        title: 'Expense Request Submitted',
+        description: `Your expense "${expenseTitle.trim()}" of ₹${parseFloat(amount).toLocaleString('en-IN')} has been sent to Admin for approval.`,
+      });
+
+      // Reset and close form
+      handleReset();
+      setIsFormOpen(false);
+    } catch (err) {
+      setIsSubmitting(false);
+      toast({
+        title: 'Submission Failed',
+        description: 'Failed to record your expense request. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleReset = () => {
@@ -548,7 +648,7 @@ export default function AddExpensePage() {
                       }`}
                   >
                     <option value="">-- Select Category --</option>
-                    {EXPENSE_CATEGORIES.map((cat) => (
+                    {categoriesList.map((cat) => (
                       <option key={cat.value} value={cat.value}>
                         {cat.label}
                       </option>
@@ -752,11 +852,17 @@ export default function AddExpensePage() {
                   </Label>
                   <Input
                     id="vendorName"
+                    list="vendors-datalist-page"
                     placeholder="e.g. Uber India, Amazon, Staples"
                     value={vendorName}
                     onChange={(e) => setVendorName(e.target.value)}
                     className="border-2 border-black dark:border-slate-700 rounded-[12px] h-[46px]"
                   />
+                  <datalist id="vendors-datalist-page">
+                    {vendorsList.map((v) => (
+                      <option key={v.vendor_id} value={v.vendor_name} />
+                    ))}
+                  </datalist>
                 </div>
 
                 {/* Invoice Number */}
