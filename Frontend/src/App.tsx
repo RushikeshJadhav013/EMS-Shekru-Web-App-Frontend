@@ -212,6 +212,11 @@ const App = () => {
                                     <LeaveManagement />
                                   </ProtectedRoute>
                                 } />
+                                <Route path="admin/wfh" element={
+                                  <ProtectedRoute allowedRoles={['admin']}>
+                                    <WFHRequests />
+                                  </ProtectedRoute>
+                                } />
                                 <Route path="admin/hiring" element={
                                   <ProtectedRoute allowedRoles={['admin']}>
                                     <HiringManagement />

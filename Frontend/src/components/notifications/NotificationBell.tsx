@@ -20,17 +20,12 @@ import { useDesktopNotification } from '@/hooks/useDesktopNotification';
 export const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, unlockAudioContext } = useNotifications();
+  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, unlockAudioContext, refreshNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const { soundEnabled, toggleSound } = useNotificationSound();
   const { requestPermission } = useDesktopNotification();
   const hasUnlockedRef = useRef(false);
-
-  // ✅ REMOVED: No more API calls from UI component
-  // Notifications are fetched ONLY from NotificationContext on:
-  // 1. App initialization (user login)
-  // 2. Page visibility change (when tab becomes visible)
 
   // Debug: Log notifications state (only in dev)
   useEffect(() => {
@@ -40,14 +35,17 @@ export const NotificationBell: React.FC = () => {
     }
   }, [notifications.length, unreadCount]);
 
-  // Unlock AudioContext and request desktop notification permission on first open
+  // Unlock AudioContext, refresh notifications, and request desktop notification permission on open
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (open && !hasUnlockedRef.current) {
-      hasUnlockedRef.current = true;
-      unlockAudioContext();
-      // Lazily request desktop notification permission
-      requestPermission().catch(() => {/* ignore */ });
+    if (open) {
+      refreshNotifications();
+      if (!hasUnlockedRef.current) {
+        hasUnlockedRef.current = true;
+        unlockAudioContext();
+        // Lazily request desktop notification permission
+        requestPermission().catch(() => {/* ignore */ });
+      }
     }
   };
 
@@ -62,9 +60,8 @@ export const NotificationBell: React.FC = () => {
     return null;
   }
 
-  // Show ONLY unread notifications - sorted by date (newest first)
-  const allNotifications = notifications
-    .filter(n => !n.read)
+  // Show all notifications - sorted by date (newest first)
+  const allNotifications = [...notifications]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Group notifications by type (maintaining sort order)
@@ -81,9 +78,30 @@ export const NotificationBell: React.FC = () => {
   const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift', 'wfh', 'meeting', 'chat', 'attendance', 'hiring', 'project', 'salary'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
-    // Only mark as read, don't clear (remove) and don't navigate
     if (!notification.read) {
       markAsRead(notification.id);
+    }
+    const userRole = (user?.role || 'employee').toLowerCase();
+    const isApprover = ['admin', 'hr', 'manager', 'team_lead'].some(r => userRole.includes(r));
+    if (notification.type === 'leave') {
+      setIsOpen(false);
+      const leaveIdParam = notification.metadata?.leaveId ? `&leaveId=${notification.metadata.leaveId}` : '';
+      if (isApprover) {
+        navigate(`/${userRole}/leaves?tab=approvals${leaveIdParam}`);
+      } else {
+        navigate(`/${userRole}/leaves?tab=my-leaves${leaveIdParam}`);
+      }
+    } else if (notification.type === 'wfh') {
+      setIsOpen(false);
+      const wfhIdParam = notification.metadata?.wfhId ? `&wfhId=${notification.metadata.wfhId}` : '';
+      if (isApprover) {
+        navigate(`/${userRole}/wfh?tab=pending-approvals${wfhIdParam}`);
+      } else {
+        navigate(`/${userRole}/wfh?tab=my-requests${wfhIdParam}`);
+      }
+    } else if (notification.actionUrl) {
+      setIsOpen(false);
+      navigate(notification.actionUrl);
     }
   };
 

@@ -410,7 +410,7 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
         target="_blank"
         rel="noreferrer"
         className={cn(
-          "text-[14.5px] leading-snug font-medium tracking-tight underline break-all",
+          "text-[14px] leading-relaxed font-normal underline [overflow-wrap:anywhere] [word-break:break-all] break-all max-w-full inline-block",
           isOwn ? "text-black" : "text-blue-500"
         )}
       >
@@ -421,7 +421,12 @@ const MessageContent: React.FC<ContentProps> = ({ content, isOwn, isDark, onImag
 
   // Plain text
   return (
-    <div className="text-[14px] leading-snug font-medium tracking-tight pr-2 break-words whitespace-pre-wrap" style={{ color: "#000000" }}>
+    <div
+      className={cn(
+        "text-[14px] leading-relaxed font-normal [overflow-wrap:anywhere] [word-break:break-word] break-words whitespace-pre-wrap max-w-full",
+        isOwn ? (isDark ? "text-slate-100" : "text-slate-900") : (isDark ? "text-slate-100" : "text-slate-900")
+      )}
+    >
       {content}
     </div>
   );
@@ -462,30 +467,26 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
       <div
         className={cn(
-          'flex items-end space-x-3 mb-4 group/bubble animate-in fade-in slide-in-from-bottom-2 duration-500',
-          isOwn ? 'flex-row-reverse space-x-reverse' : 'flex-row'
+          'w-full min-w-0 flex items-end gap-2 mb-2 group/bubble animate-in fade-in slide-in-from-bottom-2 duration-200',
+          isOwn ? 'justify-end' : 'justify-start'
         )}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
       >
-        <Avatar className={cn(
-          "h-9 w-9 border-2 shadow-lg flex-shrink-0 transition-transform duration-300 group-hover/bubble:scale-110",
-          isOwn ? "border-green-500/20" : "border-slate-200 dark:border-slate-800"
-        )}>
-          <AvatarImage src={getUserAvatar()} />
-          <AvatarFallback className={cn(
-            "text-black text-[10px] font-black uppercase",
-            isOwn ? "bg-green-600" : "bg-gradient-to-br from-indigo-500 to-purple-600"
-          )}>
-            {message.senderName?.charAt(0).toUpperCase() || '?'}
-          </AvatarFallback>
-        </Avatar>
+        {!isOwn && (
+          <Avatar className="h-8 w-8 border shadow-sm flex-shrink-0 mb-0.5 border-slate-200 dark:border-slate-800">
+            <AvatarImage src={getUserAvatar()} />
+            <AvatarFallback className="text-white text-[11px] font-bold bg-gradient-to-br from-indigo-500 to-purple-600">
+              {message.senderName?.charAt(0).toUpperCase() || '?'}
+            </AvatarFallback>
+          </Avatar>
+        )}
 
-        <div className={cn('max-w-[80%] flex flex-col', isOwn ? 'items-end' : 'items-start')}>
+        <div className={cn('flex flex-col min-w-0 max-w-[85%] sm:max-w-[75%] md:max-w-[70%] lg:max-w-[65%]', isOwn ? 'items-end' : 'items-start')}>
           {/* Sender label */}
           {!isOwn && (
             <div className="flex items-center gap-2 mb-1.5 ml-1">
-              <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 truncate max-w-[200px]">
                 {message.senderName}
               </span>
               {message.senderRole && (
@@ -503,7 +504,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             </div>
           )}
 
-          <div className="relative group/content">
+          <div className="relative group/content max-w-full min-w-0">
             {/* Action toolbar */}
             <div className={cn(
               "absolute -top-1 pb-1.5 z-50 transition-all duration-300 pointer-events-none",
@@ -593,17 +594,17 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             {/* Reply context */}
             {replyMessage && (
               <div className={cn(
-                'border-l-[3px] px-3 py-1.5 mb-2 rounded-lg text-[11px] transition-all',
+                'border-l-[3.5px] px-2.5 py-1.5 mb-1.5 rounded-r-lg text-xs transition-all max-w-full min-w-0 overflow-hidden',
                 isOwn
-                  ? 'bg-black/10 border-white/40'
+                  ? 'bg-black/5 dark:bg-black/20 border-emerald-600 dark:border-emerald-400'
                   : isDark
-                    ? 'bg-[#1a1b1e] border-lime-500/80'
-                    : 'bg-slate-100 border-lime-500/80'
+                    ? 'bg-[#182229] border-emerald-500'
+                    : 'bg-slate-100 border-emerald-500'
               )}>
-                <p className={cn("font-bold text-[10px] mb-0.5 leading-tight", isOwn ? "text-black/80" : "text-lime-500")}>
-                  @{replyMessage.senderId?.toString() === user?.id?.toString() ? 'You' : replyMessage.senderName}
+                <p className="font-semibold text-[11px] mb-0.5 truncate text-emerald-700 dark:text-emerald-400">
+                  {replyMessage.senderId?.toString() === user?.id?.toString() ? 'You' : replyMessage.senderName}
                 </p>
-                <p className={cn("line-clamp-1 opacity-90 text-[11px] leading-snug", isOwn ? "text-black/90" : "text-slate-300")}>
+                <p className="line-clamp-1 text-[12px] text-slate-600 dark:text-slate-300 truncate">
                   {replyMessage.messageType === 'image' || isImageUrl(replyMessage.content.trim())
                     ? '📷 Photo'
                     : replyMessage.messageType === 'file' || isPdfUrl(replyMessage.content.trim())
@@ -615,25 +616,25 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
 
             {/* Core bubble */}
             <div className={cn(
-              'px-5 py-3 relative shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] transition-all duration-300 min-w-[110px]',
+              'px-3.5 py-2 relative shadow-sm transition-all duration-200 min-w-[80px] max-w-full',
               message.messageType === 'emoji'
                 ? 'bg-transparent border-0 shadow-none px-2 scale-150 py-6 min-w-0'
                 : isMediaMsg
                   ? cn(
                     'rounded-[22px]',
                     isOwn
-                      ? 'bg-green-500 text-black rounded-tr-none shadow-green-500/20 p-1.5'
+                      ? 'bg-[#d9fdd3] dark:bg-[#005c4b] rounded-2xl rounded-tr-xs p-1.5 shadow-sm'
                       : isDark
-                        ? 'bg-[#1e1f23] border border-slate-800 text-slate-100 rounded-tl-none p-1.5'
-                        : 'bg-white border border-slate-100 text-slate-900 rounded-tl-none shadow-slate-200/50 p-1.5'
+                        ? 'bg-[#202c33] border border-slate-700/60 text-slate-100 rounded-2xl rounded-tl-xs p-1.5 shadow-sm'
+                        : 'bg-white border border-slate-200/80 text-slate-900 rounded-2xl rounded-tl-xs p-1.5 shadow-sm'
                   )
                   : isOwn
-                    ? 'bg-green-100 text-black rounded-[20px] rounded-tr-[4px] shadow-green-600/10'
+                    ? 'bg-[#d9fdd3] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-2xl rounded-tr-xs border border-[#c1f3b7] dark:border-[#005c4b]'
                     : isDark
-                      ? 'bg-[#dcf8c6] border border-slate-800 text-black rounded-[20px] rounded-tl-[4px]'
-                      : 'bg-[#dcf8c6] border border-slate-100 text-black rounded-[20px] rounded-tl-[4px] shadow-slate-200/50'
+                      ? 'bg-[#202c33] border border-slate-700/60 text-slate-100 rounded-2xl rounded-tl-xs'
+                      : 'bg-white border border-slate-200/80 text-slate-900 rounded-2xl rounded-tl-xs'
             )}>
-              <div className="break-words">
+              <div className="w-full min-w-0 [overflow-wrap:anywhere] [word-break:break-word] break-words">
                 {message.messageType === 'emoji' ? (
                   <span className="leading-none select-none">{message.content}</span>
                 ) : (
@@ -648,16 +649,21 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
 
               {/* Timestamp + read receipt — hidden for media (shown below separately) */}
-              {!isMediaMsg && (
-                <div className={cn("flex items-center gap-1.5 mt-1.5 h-4 justify-end select-none", message.messageType === 'emoji' && "hidden")}>
-                  <span style={{ color: "#000000", fontSize: "12px" }}>
+              {!isMediaMsg && message.messageType !== 'emoji' && (
+                <div className="flex items-center gap-1 mt-1 justify-end select-none">
+                  <span className={cn(
+                    "text-[11px] font-normal leading-none",
+                    isOwn
+                      ? (isDark ? "text-emerald-100/70" : "text-slate-500")
+                      : "text-slate-400 dark:text-slate-400"
+                  )}>
                     {formatTime(message.timestamp)}
                   </span>
                   {isOwn && (
-                    <div className="flex items-center">
+                    <div className="flex items-center leading-none">
                       {message.isRead
-                        ? <CheckCheck className="h-3.5 w-3.5 text-black" />
-                        : <Check className="h-3.5 w-3.5 text-black/70" />}
+                        ? <CheckCheck className="h-3.5 w-3.5 text-[#53bdeb]" />
+                        : <Check className={cn("h-3.5 w-3.5", isDark ? "text-emerald-100/70" : "text-slate-400")} />}
                     </div>
                   )}
                 </div>
@@ -667,13 +673,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             {/* Timestamp below for media messages */}
             {isMediaMsg && (
               <div className={cn("flex items-center gap-1.5 mt-1 h-4 select-none", isOwn ? "justify-end" : "justify-start", "px-1")}>
-                <span style={{ color: "#000000", fontSize: "12px" }}>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
                   {formatTime(message.timestamp)}
                 </span>
                 {isOwn && (
                   <div className="flex items-center">
                     {message.isRead
-                      ? <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+                      ? <CheckCheck className="h-3.5 w-3.5 text-[#53bdeb]" />
                       : <Check className="h-3.5 w-3.5 text-slate-400" />}
                   </div>
                 )}

@@ -99,13 +99,13 @@ const Chat: React.FC = () => {
   return (
     <ErrorBoundary>
       <div className={cn(
-        "flex h-[calc(100vh-5.5rem)] lg:h-[calc(100vh-5rem)] overflow-hidden rounded-3xl border m-2 lg:m-4 shadow-2xl transition-all duration-500",
-        isDark ? "bg-[#0a1628] border-slate-800" : "bg-white border-slate-100"
+        "flex h-full w-full min-h-0 flex-1 overflow-hidden transition-all duration-300",
+        isDark ? "bg-[#0b141a]" : "bg-white"
       )}>
         {/* Sidebar for Conversations - Hidden on mobile when chat is selected */}
         <div className={cn(
-          "w-full sm:w-80 lg:w-[420px] flex-shrink-0 border-r flex flex-col transition-all duration-300",
-          isDark ? "border-slate-800" : "border-slate-100",
+          "w-full sm:w-80 lg:w-[340px] xl:w-[380px] flex-shrink-0 min-w-0 border-r flex flex-col transition-all duration-300 h-full",
+          isDark ? "border-slate-800 bg-[#111b21]" : "border-slate-200/80 bg-white",
           chatId && "hidden sm:flex"
         )}>
           <ChatList />
@@ -113,7 +113,7 @@ const Chat: React.FC = () => {
 
         {/* Messaging Area - Shown on mobile only when chat is selected */}
         <div className={cn(
-          "flex-1 flex flex-col relative transition-all duration-500 ease-in-out",
+          "flex-1 min-w-0 w-full h-full flex flex-col relative overflow-hidden transition-all duration-300 ease-in-out",
           !chatId ? "hidden sm:flex" : "flex animate-in slide-in-from-right-4 fade-in duration-300"
         )}>
           {chatId ? (

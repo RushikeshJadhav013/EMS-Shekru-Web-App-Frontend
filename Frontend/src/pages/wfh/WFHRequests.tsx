@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWFH } from "@/contexts/WFHContext";
 import {
@@ -113,6 +114,35 @@ const WFHRequests: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "my-requests" | "pending-approvals" | "recent-decisions"
   >("my-requests");
+  const [searchParams] = useSearchParams();
+
+  // Handle URL parameters for tab navigation and WFH highlighting
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    const wfhId = searchParams.get("wfhId");
+
+    if (tabParam && ["my-requests", "pending-approvals", "recent-decisions"].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    } else if (wfhId) {
+      const isApprover = ["admin", "hr", "manager", "team_lead"].includes(user?.role || "");
+      if (isApprover) {
+        setActiveTab("pending-approvals");
+      }
+    }
+
+    if (wfhId) {
+      setTimeout(() => {
+        const element = document.getElementById(`wfh-request-${wfhId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.add("ring-2", "ring-primary", "ring-offset-2");
+          setTimeout(() => {
+            element.classList.remove("ring-2", "ring-primary", "ring-offset-2");
+          }, 3000);
+        }
+      }, 300);
+    }
+  }, [searchParams, user?.role]);
   const [statusFilter, setStatusFilter] = useState<
     "all" | "pending" | "approved" | "rejected"
   >("all");
@@ -829,6 +859,7 @@ const WFHRequests: React.FC = () => {
                   {paginatedMyRequests.map((request) => (
                     <div
                       key={request.id}
+                      id={`wfh-request-${request.id}`}
                       className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -948,6 +979,7 @@ const WFHRequests: React.FC = () => {
                   {paginatedPendingApprovals.map((request) => (
                     <div
                       key={request.id}
+                      id={`wfh-request-${request.id}`}
                       className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-4">
