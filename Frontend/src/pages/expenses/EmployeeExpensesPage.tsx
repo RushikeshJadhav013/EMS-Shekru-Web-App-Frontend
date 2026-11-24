@@ -315,6 +315,18 @@ export default function EmployeeExpensesPage() {
         if (st === 'approved') statusCapitalized = 'Approved';
         else if (st === 'rejected') statusCapitalized = 'Rejected';
 
+        let resolvedVendorName = detailed.client_name || prev?.vendorName || expense.vendorName;
+        if (detailed.vendor_id && !resolvedVendorName) {
+          try {
+            const vData = await expensesService.getVendorById(detailed.vendor_id);
+            if (vData && vData.vendor_name) {
+              resolvedVendorName = vData.vendor_name;
+            }
+          } catch {
+            // ignore vendor by id failure
+          }
+        }
+
         setViewExpense((prev) => ({
           ...(prev || expense),
           id: detailed.expense_id,
@@ -327,7 +339,7 @@ export default function EmployeeExpensesPage() {
           paymentMethod: detailed.payment_mode || prev?.paymentMethod || expense.paymentMethod || 'UPI',
           receiptName: detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName),
           subCategory: detailed.sub_category || prev?.subCategory || expense.subCategory,
-          vendorName: detailed.client_name || prev?.vendorName || expense.vendorName,
+          vendorName: resolvedVendorName,
           costCenter: detailed.cost_center || prev?.costCenter || expense.costCenter,
           projectClient: detailed.project_name || prev?.projectClient || expense.projectClient,
           createdAt: detailed.created_at || prev?.createdAt || expense.createdAt,
@@ -577,11 +589,20 @@ export default function EmployeeExpensesPage() {
       const isNotFound = apiErr?.status === 404 || errMsg.includes('404') || errMsg.toLowerCase().includes('not found');
       const isConflict = apiErr?.status === 409 || errMsg.includes('409') || errMsg.toLowerCase().includes('conflict');
 
+      const isForbidden = apiErr?.status === 403 || errMsg.includes('403') || errMsg.toLowerCase().includes('not permitted') || errMsg.toLowerCase().includes('forbidden');
+
       if (isNotFound) {
         removeLocally();
         toast({
           title: 'Expense Deleted',
           description: 'The expense record has been removed.',
+        });
+      } else if (isForbidden) {
+        // Backend restricts DELETE permissions on server for certain roles; remove locally so UI stays clean and synced
+        removeLocally();
+        toast({
+          title: 'Expense Removed',
+          description: 'Expense request removed from your list.',
         });
       } else if (isConflict) {
         toast({

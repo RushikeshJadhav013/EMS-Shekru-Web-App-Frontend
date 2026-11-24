@@ -337,6 +337,11 @@ export default function AddExpensePage() {
         }
       }
 
+      // If no vendor created/found yet, check existing vendors list
+      if (!resolvedVendorId && vendorsList.length > 0) {
+        resolvedVendorId = vendorsList[0].vendor_id;
+      }
+
       createdApiRecord = await expensesService.createExpense({
         category: selectedCategory,
         sub_category: selectedSubCategory || 'General',

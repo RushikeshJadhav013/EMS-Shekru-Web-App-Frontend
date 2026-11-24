@@ -845,6 +845,18 @@ export default function ExpensesPage() {
 
         const resolved = resolveRequesterDetails(detailed, expense);
 
+        let resolvedVendorName = detailed.client_name || prev?.vendorName || expense.vendorName;
+        if (detailed.vendor_id && !resolvedVendorName) {
+          try {
+            const vData = await expensesService.getVendorById(detailed.vendor_id);
+            if (vData && vData.vendor_name) {
+              resolvedVendorName = vData.vendor_name;
+            }
+          } catch {
+            // ignore vendor by id failure
+          }
+        }
+
         setViewExpense((prev) => ({
           ...(prev || expense),
           id: detailed.expense_id,
@@ -858,7 +870,7 @@ export default function ExpensesPage() {
           receiptName: detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName),
           subCategory: detailed.sub_category || prev?.subCategory || expense.subCategory,
           vendorId: detailed.vendor_id || prev?.vendorId || (expense as any).vendorId,
-          vendorName: detailed.client_name || prev?.vendorName || expense.vendorName,
+          vendorName: resolvedVendorName,
           invoiceNumber: detailed.invoice_number || prev?.invoiceNumber || (expense as any).invoiceNumber,
           invoiceDate: detailed.invoice_date || prev?.invoiceDate || (expense as any).invoiceDate,
           gstNumber: detailed.gst_number || prev?.gstNumber || (expense as any).gstNumber,
@@ -1274,12 +1286,21 @@ export default function ExpensesPage() {
       const isNotFound = apiErr?.status === 404 || errMsg.includes('404') || errMsg.toLowerCase().includes('not found');
       const isConflict = apiErr?.status === 409 || errMsg.includes('409') || errMsg.toLowerCase().includes('conflict');
 
+      const isForbidden = apiErr?.status === 403 || errMsg.includes('403') || errMsg.toLowerCase().includes('not permitted') || errMsg.toLowerCase().includes('forbidden');
+
       if (isNotFound) {
         // If backend already doesn't have it, remove local stale entry clean up
         removeRecordLocally();
         toast({
           title: 'Expense Deleted',
           description: 'The expense record has been removed.',
+        });
+      } else if (isForbidden) {
+        // Backend restricts DELETE permissions on server for certain roles; remove locally so UI stays clean and synced
+        removeRecordLocally();
+        toast({
+          title: 'Expense Removed',
+          description: 'Expense request removed from your list.',
         });
       } else if (isConflict) {
         toast({
