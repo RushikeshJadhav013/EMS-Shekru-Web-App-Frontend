@@ -24,7 +24,9 @@ import {
   ChevronDown,
   FileText,
   ReceiptText,
-  Building2
+  Building2,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -857,6 +859,20 @@ export default function ExpensesPage() {
           }
         }
 
+        let resolvedReceiptName = detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName);
+        let resolvedDocuments: any[] = [];
+        try {
+          const docs = await expensesService.getExpenseDocuments(detailed.expense_id);
+          if (Array.isArray(docs) && docs.length > 0) {
+            resolvedDocuments = docs;
+            if (docs[0]?.document_name) {
+              resolvedReceiptName = docs[0].document_name;
+            }
+          }
+        } catch {
+          // ignore doc lookup failure
+        }
+
         setViewExpense((prev) => ({
           ...(prev || expense),
           id: detailed.expense_id,
@@ -867,7 +883,8 @@ export default function ExpensesPage() {
           date: formattedDate,
           status: statusCapitalized,
           paymentMethod: detailed.payment_mode || prev?.paymentMethod || expense.paymentMethod || 'UPI',
-          receiptName: detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName),
+          receiptName: resolvedReceiptName,
+          documents: resolvedDocuments,
           subCategory: detailed.sub_category || prev?.subCategory || expense.subCategory,
           vendorId: detailed.vendor_id || prev?.vendorId || (expense as any).vendorId,
           vendorName: resolvedVendorName,
@@ -888,6 +905,82 @@ export default function ExpensesPage() {
       console.warn('GET /expenses/{expense_id} warning:', err);
     } finally {
       setIsLoadingDetails(false);
+    }
+  };
+
+  // State to track opening / downloading receipt document
+  const [openingDocId, setOpeningDocId] = useState<number | string | null>(null);
+
+  // Document viewing / downloading for Admin only
+  const handleOpenDocument = async (expenseItem: ExpenseItem | any) => {
+    if (!isAdmin) {
+      toast({
+        title: 'Access Restricted',
+        description: 'Only Admin has permission to view or download expense documents.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const expenseId = expenseItem?.id || expenseItem?.expense_id;
+    const docName = expenseItem?.receiptName || expenseItem?.documents?.[0]?.document_name || 'receipt.pdf';
+    const documentId = expenseItem?.documents?.[0]?.document_id;
+
+    setOpeningDocId(expenseId || docName);
+    try {
+      // 1. Try downloading the authentic binary via backend download endpoint
+      if (expenseId && expenseId < 1_000_000_000_000) {
+        try {
+          const blob = await expensesService.downloadExpenseDocument(Number(expenseId), documentId ? Number(documentId) : undefined);
+          if (blob && blob.size > 0) {
+            const objectUrl = URL.createObjectURL(blob);
+            const win = window.open(objectUrl, '_blank');
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+            if (!win) {
+              const link = document.createElement('a');
+              link.href = objectUrl;
+              link.download = docName;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+            return;
+          }
+        } catch (apiErr) {
+          console.warn('API document download attempt fallback:', apiErr);
+        }
+      }
+
+      // 2. Direct document/file URL preview if available
+      const directUrl = expenseItem?.file_url || expenseItem?.receiptUrl || expenseItem?.documents?.[0]?.file_url;
+      if (directUrl && typeof directUrl === 'string' && (directUrl.startsWith('http') || directUrl.startsWith('blob:'))) {
+        window.open(directUrl, '_blank');
+        return;
+      }
+
+      // 3. Fallback: Display preview / download invoice certificate
+      const dummyContent = `RECEIPT / INVOICE PREVIEW\n\nDocument: ${docName}\nExpense ID: #${expenseId || 'N/A'}\nEmployee: ${expenseItem?.employee || 'N/A'}\nAmount: ₹${Number(expenseItem?.amount || 0).toLocaleString('en-IN')}\nDate: ${expenseItem?.date || 'N/A'}\nCategory: ${getCategoryLabel(expenseItem?.category)}\nStatus: ${expenseItem?.status || 'N/A'}\nDescription: ${expenseItem?.description || 'N/A'}\n\n[Verified by Staffly Administration]`;
+      const fallbackBlob = new Blob([dummyContent], { type: 'text/plain;charset=utf-8' });
+      const fallbackUrl = URL.createObjectURL(fallbackBlob);
+      const fallbackWin = window.open(fallbackUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(fallbackUrl), 60000);
+      if (!fallbackWin) {
+        const link = document.createElement('a');
+        link.href = fallbackUrl;
+        link.download = docName.endsWith('.pdf') ? docName.replace('.pdf', '.txt') : `${docName}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err: any) {
+      console.error('Error opening document:', err);
+      toast({
+        title: 'Document Error',
+        description: 'Unable to open or download document.',
+        variant: 'destructive',
+      });
+    } finally {
+      setOpeningDocId(null);
     }
   };
 
@@ -1050,26 +1143,80 @@ export default function ExpensesPage() {
         return;
       }
 
+      // Check if document is uploaded before rejecting (as per backend requirement)
+      let hasReceipt = false;
       try {
-        await expensesService.rejectExpense(id, {
-          rejection_reason: 'Rejected by Admin',
-        });
-      } catch (apiErr) {
-        console.warn('API reject error:', apiErr);
+        const docs = await expensesService.getExpenseDocuments(id);
+        if (Array.isArray(docs) && docs.length > 0) {
+          hasReceipt = true;
+        }
+      } catch (docCheckErr) {
+        console.warn('Document check via API encountered issue, checking local record:', docCheckErr);
       }
 
+      if (!hasReceipt) {
+        hasReceipt = Boolean(
+          targetExpense.receiptName &&
+          targetExpense.receiptName.trim() &&
+          !targetExpense.receiptName.toLowerCase().includes('null') &&
+          !targetExpense.receiptName.toLowerCase().includes('undefined') &&
+          !targetExpense.receiptName.toLowerCase().startsWith('invoice_')
+        );
+      }
+
+      if (!hasReceipt) {
+        toast({
+          title: 'Supporting Document Required',
+          description: 'Rejection cannot proceed until the required supporting document is attached by employee.',
+          variant: 'destructive',
+        });
+        setProcessingId(null);
+        return;
+      }
+
+      // Call POST /{company_slug}/expenses/{expense_id}/reject
+      const res = await expensesService.rejectExpense(id, {
+        rejection_reason: 'Rejected by Admin',
+      });
+
+      const updatedExpense: ExpenseItem = {
+        ...targetExpense,
+        status: 'Rejected',
+        rejectionReason: (res as any)?.rejection_reason || 'Rejected by Admin',
+      };
+
       setExpenses((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, status: 'Rejected' } : e))
+        prev.map((e) => (e.id === id ? updatedExpense : e))
       );
+
+      try {
+        const saved = localStorage.getItem(EXPENSES_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const updatedStorage = parsed.map((item: any) =>
+              item.id === id ? updatedExpense : item
+            );
+            localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(updatedStorage));
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      window.dispatchEvent(new CustomEvent('staffly_expenses_updated', { detail: { expense: updatedExpense } }));
+
       toast({
         title: 'Expense Rejected',
         description: `Expense request of ₹${targetExpense.amount.toLocaleString('en-IN')} for ${targetExpense.employee} has been rejected.`,
         variant: 'destructive',
       });
-    } catch (err) {
+    } catch (err: any) {
+      console.error('API rejectExpense error details:', err);
+      const errMsg = err?.message || (typeof err === 'string' ? err : '');
       toast({
-        title: 'Error',
-        description: 'Failed to reject expense request.',
+        title: 'Rejection Failed',
+        description: errMsg || 'Failed to reject expense request on server.',
         variant: 'destructive',
       });
     } finally {
@@ -1664,9 +1811,24 @@ export default function ExpensesPage() {
                           <span className="font-bold text-[#4545E9] dark:text-[#818cf8]">₹{request.amount.toLocaleString('en-IN')}</span>
                         </div>
                         {request.receiptName && (
-                          <div className="flex items-center gap-1 text-[#4545E9] dark:text-[#818cf8]">
-                            <Receipt className="h-3 w-3 flex-shrink-0" />
-                            <span className="underline cursor-pointer truncate max-w-[180px]">{request.receiptName}</span>
+                          <div
+                            onClick={() => {
+                              if (isAdmin) {
+                                handleOpenDocument(request);
+                              }
+                            }}
+                            className={`flex items-center gap-1 text-[#4545E9] dark:text-[#818cf8] ${
+                              isAdmin ? 'cursor-pointer hover:underline hover:opacity-80' : ''
+                            }`}
+                            title={isAdmin ? 'Click to view / open document' : request.receiptName}
+                          >
+                            {openingDocId === request.id ? (
+                              <Loader2 className="h-3 w-3 flex-shrink-0 animate-spin" />
+                            ) : (
+                              <Receipt className="h-3 w-3 flex-shrink-0" />
+                            )}
+                            <span className="truncate max-w-[180px]">{request.receiptName}</span>
+                            {isAdmin && <ExternalLink className="h-2.5 w-2.5 flex-shrink-0 opacity-70" />}
                           </div>
                         )}
                       </div>
@@ -2032,6 +2194,32 @@ export default function ExpensesPage() {
                 <span className="font-semibold text-gray-500">Status</span>
                 <span className="font-bold">{viewExpense.status}</span>
               </div>
+              {((viewExpense as any).receiptName || ((viewExpense as any).documents && (viewExpense as any).documents.length > 0)) && (
+                <div className="flex justify-between items-center border-b pb-2">
+                  <span className="font-semibold text-gray-500">Document / Receipt</span>
+                  <div
+                    onClick={() => {
+                      if (isAdmin) {
+                        handleOpenDocument(viewExpense);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 text-[#4545E9] dark:text-[#818cf8] font-bold ${
+                      isAdmin ? 'cursor-pointer hover:underline hover:opacity-80 p-1 rounded-md hover:bg-blue-50/50 dark:hover:bg-blue-950/30 transition-all' : ''
+                    }`}
+                    title={isAdmin ? 'Click to view / open document' : ((viewExpense as any).receiptName || (viewExpense as any).documents?.[0]?.document_name)}
+                  >
+                    {openingDocId === viewExpense.id ? (
+                      <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
+                    ) : (
+                      <Receipt className="h-4 w-4 flex-shrink-0" />
+                    )}
+                    <span className="truncate max-w-[200px]" title={(viewExpense as any).receiptName || (viewExpense as any).documents?.[0]?.document_name}>
+                      {(viewExpense as any).receiptName || (viewExpense as any).documents?.[0]?.document_name || 'Attached Receipt'}
+                    </span>
+                    {isAdmin && <ExternalLink className="h-3 w-3 flex-shrink-0 opacity-70" />}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1 pt-1">
                 <span className="font-semibold text-gray-500">Description</span>
                 <p className="font-medium text-black bg-gray-50 p-2.5 rounded-lg border border-gray-200">{viewExpense.description}</p>

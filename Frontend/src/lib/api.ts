@@ -192,6 +192,10 @@ class ApiService {
     this.baseURL = baseURL;
   }
 
+  public getBaseURL(): string {
+    return this.baseURL;
+  }
+
   private getAuthHeader() {
     let token = localStorage.getItem("token");
     if (token && !token.startsWith("Bearer ")) {
@@ -1193,6 +1197,13 @@ class ApiService {
   async downloadCandidateResume(candidateId: number): Promise<Blob> {
     // Returns the file blob if it's a stored file
     return this.download(`/hiring/candidates/${candidateId}/resume`);
+  }
+
+  async downloadExpenseDocument(expenseId: number, documentId?: number): Promise<Blob> {
+    const endpoint = documentId
+      ? `/expenses/${expenseId}/documents/${documentId}/download`
+      : `/expenses/${expenseId}/documents/download`;
+    return this.download(endpoint);
   }
 
   // Interview Management APIs

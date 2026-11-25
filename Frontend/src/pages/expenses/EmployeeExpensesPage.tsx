@@ -327,6 +327,16 @@ export default function EmployeeExpensesPage() {
           }
         }
 
+        let resolvedReceiptName = detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName);
+        try {
+          const docs = await expensesService.getExpenseDocuments(detailed.expense_id);
+          if (Array.isArray(docs) && docs.length > 0 && docs[0]?.document_name) {
+            resolvedReceiptName = docs[0].document_name;
+          }
+        } catch {
+          // ignore doc lookup failure
+        }
+
         setViewExpense((prev) => ({
           ...(prev || expense),
           id: detailed.expense_id,
@@ -337,7 +347,7 @@ export default function EmployeeExpensesPage() {
           date: formattedDate,
           status: statusCapitalized,
           paymentMethod: detailed.payment_mode || prev?.paymentMethod || expense.paymentMethod || 'UPI',
-          receiptName: detailed.invoice_number ? `invoice_${detailed.invoice_number}.pdf` : (prev?.receiptName || expense.receiptName),
+          receiptName: resolvedReceiptName,
           subCategory: detailed.sub_category || prev?.subCategory || expense.subCategory,
           vendorName: resolvedVendorName,
           costCenter: detailed.cost_center || prev?.costCenter || expense.costCenter,
@@ -852,6 +862,17 @@ export default function EmployeeExpensesPage() {
                 <span className="font-semibold text-gray-500">Status</span>
                 <span className="font-bold">{viewExpense.status}</span>
               </div>
+              {((viewExpense as any).receiptName || ((viewExpense as any).documents && (viewExpense as any).documents.length > 0)) && (
+                <div className="flex justify-between items-center border-b pb-2">
+                  <span className="font-semibold text-gray-500">Document / Receipt</span>
+                  <div className="flex items-center gap-1.5 text-[#4545E9] dark:text-[#818cf8] font-bold">
+                    <Receipt className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate max-w-[220px]" title={(viewExpense as any).receiptName || (viewExpense as any).documents?.[0]?.document_name}>
+                      {(viewExpense as any).receiptName || (viewExpense as any).documents?.[0]?.document_name || 'Attached Receipt'}
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-1 pt-1">
                 <span className="font-semibold text-gray-500">Description</span>
                 <p className="font-medium text-black bg-gray-50 p-2.5 rounded-lg border border-gray-200">{viewExpense.description}</p>

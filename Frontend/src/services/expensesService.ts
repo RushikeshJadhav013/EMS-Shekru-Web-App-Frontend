@@ -626,20 +626,38 @@ export const expensesService = {
    * Reject Expense Record
    */
   async rejectExpense(expenseId: number, payload: ExpenseRejectPayload): Promise<ExpenseOut> {
-    return apiService.request(`/expenses/${expenseId}/reject`, {
+    const cleanPayload: ExpenseRejectPayload = {
+      rejection_reason: (payload?.rejection_reason || 'Rejected by Admin').trim(),
+    };
+
+    return apiService.request(`/expenses/${Number(expenseId)}/reject`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': '*/*',
+      },
+      body: JSON.stringify(cleanPayload),
     });
   },
 
   /**
    * POST /{company_slug}/expenses/{expense_id}/pay
-   * Mark Expense as Paid
+   * Mark Expense as Paid (Pay Expense Record)
    */
   async payExpense(expenseId: number, payload: ExpensePaymentPayload): Promise<ExpenseOut> {
-    return apiService.request(`/expenses/${expenseId}/pay`, {
+    const cleanPayload: ExpensePaymentPayload = {
+      payment_mode: (payload?.payment_mode || 'Cash').trim(),
+      payment_date: payload?.payment_date || new Date().toISOString().split('T')[0],
+      transaction_reference: payload?.transaction_reference ? payload.transaction_reference.trim() : null,
+    };
+
+    return apiService.request(`/expenses/${Number(expenseId)}/pay`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      headers: {
+        'Content-Type': 'application/json',
+        'accept': '*/*',
+      },
+      body: JSON.stringify(cleanPayload),
     });
   },
 
@@ -651,8 +669,11 @@ export const expensesService = {
     const formData = new FormData();
     formData.append('file', file);
 
-    return apiService.request(`/expenses/${expenseId}/documents/`, {
+    return apiService.request(`/expenses/${Number(expenseId)}/documents/`, {
       method: 'POST',
+      headers: {
+        'accept': '*/*',
+      },
       body: formData,
     });
   },
@@ -662,19 +683,41 @@ export const expensesService = {
    * List Expense Documents
    */
   async getExpenseDocuments(expenseId: number): Promise<ExpenseDocumentResponse[]> {
-    return apiService.request(`/expenses/${expenseId}/documents/`, {
-      method: 'GET',
-    });
+    try {
+      const res = await apiService.request(`/expenses/${Number(expenseId)}/documents/`, {
+        method: 'GET',
+        headers: {
+          'accept': '*/*',
+        },
+      });
+      if (Array.isArray(res)) return res;
+      if (res && Array.isArray(res.documents)) return res.documents;
+      if (res && Array.isArray(res.data)) return res.data;
+      return [];
+    } catch (err: any) {
+      console.warn('GET /expenses/{expense_id}/documents/ warning:', err);
+      return [];
+    }
   },
 
   /**
    * DELETE /{company_slug}/expenses/{expense_id}/documents/{document_id}
    * Remove Expense Document
    */
-  async deleteExpenseDocument(expenseId: number, documentId: number): Promise<void> {
-    return apiService.request(`/expenses/${expenseId}/documents/${documentId}`, {
+  async deleteExpenseDocument(expenseId: number, documentId: number): Promise<{ message?: string } | void> {
+    return apiService.request(`/expenses/${Number(expenseId)}/documents/${Number(documentId)}`, {
       method: 'DELETE',
+      headers: {
+        'accept': '*/*',
+      },
     });
+  },
+
+  /**
+   * Download / View Expense Document
+   */
+  async downloadExpenseDocument(expenseId: number, documentId?: number): Promise<Blob> {
+    return apiService.downloadExpenseDocument(Number(expenseId), documentId ? Number(documentId) : undefined);
   },
 };
 
