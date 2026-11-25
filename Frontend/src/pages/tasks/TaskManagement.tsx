@@ -4237,22 +4237,26 @@ const TaskManagement: React.FC = () => {
                                     className="cursor-pointer group hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
                                     onClick={() => setSelectedTask(task)}
                                   >
-                                    <div className="max-w-[300px] py-1">
-                                      <div className="mb-1 flex items-center gap-2">
-                                        <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0">#{task.id}</span>
-                                        <TruncatedText
-                                          text={task.title}
-                                          maxLength={40}
-                                          showToggle={false}
-                                          textClassName="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors"
-                                        />
+                                    <div className="max-w-[320px] py-1">
+                                      <div className="mb-1 flex items-start gap-2">
+                                        <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0 mt-0.5">#{task.id}</span>
+                                        <span
+                                          className="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors line-clamp-2 break-words [overflow-wrap:anywhere] min-w-0"
+                                          style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                          title={task.title}
+                                        >
+                                          {task.title}
+                                        </span>
                                       </div>
-                                      <TruncatedText
-                                        text={task.description}
-                                        maxLength={80}
-                                        showToggle={false}
-                                        textClassName="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed"
-                                      />
+                                      {task.description && (
+                                        <p
+                                          className="text-[12px] text-black dark:text-slate-400 font-medium leading-relaxed line-clamp-2 break-words [overflow-wrap:anywhere] min-w-0"
+                                          style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                          title={task.description}
+                                        >
+                                          {task.description}
+                                        </p>
+                                      )}
                                     </div>
                                   </TableCell>
                                   <TableCell>
@@ -4519,14 +4523,15 @@ const TaskManagement: React.FC = () => {
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white flex items-center gap-1.5" style={{}}>
-                                  <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0">#{task.id}</span>
-                                  <TruncatedText
-                                    text={task.title}
-                                    maxLength={30}
-                                    showToggle={false}
-                                    textClassName="text-black dark:text-white"
-                                  />
+                                <div className="text-[14px] font-black leading-tight pr-1 text-black dark:text-white flex items-start gap-1.5 min-w-0" style={{}}>
+                                  <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0 mt-0.5">#{task.id}</span>
+                                  <span
+                                    className="line-clamp-2 break-words [overflow-wrap:anywhere] min-w-0 flex-1 hover:underline transition-colors text-black dark:text-white"
+                                    style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                    title={task.title}
+                                  >
+                                    {task.title}
+                                  </span>
                                 </div>
                               </div>
                               {/* Interactive Status Select */}
@@ -4953,11 +4958,25 @@ const TaskManagement: React.FC = () => {
                                           <TableRow key={task.id} className="hover:bg-violet-50/30 cursor-pointer" onClick={() => setSelectedTask(task)}>
                                             <TableCell className="py-4">
                                               <div className="flex flex-col">
-                                                <div className="mb-1 flex items-center gap-2">
-                                                  <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0">#{task.id}</span>
-                                                  <span className="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors line-clamp-1 break-all">{task.title}</span>
+                                                <div className="mb-1 flex items-start gap-2">
+                                                  <span className="text-[12px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-1.5 py-0.5 rounded shrink-0 mt-0.5">#{task.id}</span>
+                                                  <span
+                                                    className="text-[14px] font-bold text-black dark:text-white group-hover:underline transition-colors line-clamp-2 break-words [overflow-wrap:anywhere] min-w-0"
+                                                    style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                                    title={task.title}
+                                                  >
+                                                    {task.title}
+                                                  </span>
                                                 </div>
-                                                {task.description && <span className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2">{task.description}</span>}
+                                                {task.description && (
+                                                  <span
+                                                    className="text-[12px] text-black dark:text-slate-400 font-medium line-clamp-2 break-words [overflow-wrap:anywhere] min-w-0"
+                                                    style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                                    title={task.description}
+                                                  >
+                                                    {task.description}
+                                                  </span>
+                                                )}
                                               </div>
                                             </TableCell>
                                             <TableCell>
@@ -5755,78 +5774,86 @@ const TaskManagement: React.FC = () => {
             open={Boolean(selectedTask)}
             onOpenChange={() => setSelectedTask(null)}
           >
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader className="flex-shrink-0">
-                <DialogTitle className="text-2xl font-bold whitespace-pre-wrap break-words flex items-center gap-2">
-                  <span className="text-[14px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-2 py-0.5 rounded shrink-0">#{selectedTask.id}</span>
-                  {selectedTask.title}
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+              <DialogHeader className="flex-shrink-0 pr-12">
+                <DialogTitle className="text-xl sm:text-2xl font-bold flex items-start gap-2 min-w-0 pr-4">
+                  <span className="text-[14px] font-black text-violet-600 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-400 px-2 py-0.5 rounded shrink-0 mt-1">#{selectedTask.id}</span>
+                  <span
+                    className="min-w-0 flex-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]"
+                    style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                  >
+                    {selectedTask.title}
+                  </span>
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="min-w-0 break-words [overflow-wrap:anywhere] [word-break:break-word] pr-4">
                   Detailed view of task assignments and progress
                 </DialogDescription>
               </DialogHeader>
 
               <Tabs
                 defaultValue="details"
-                className="mt-4 flex-1 flex flex-col overflow-hidden"
+                className="mt-4 flex-1 flex flex-col overflow-hidden min-w-0 w-full"
               >
-                <TabsList className="grid grid-cols-3 gap-2 bg-muted/50 flex-shrink-0">
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="activity">Activity</TabsTrigger>
-                  <TabsTrigger value="comments">Comments</TabsTrigger>
+                <TabsList className="grid grid-cols-3 gap-2 bg-muted/50 flex-shrink-0 w-full min-w-0">
+                  <TabsTrigger value="details" className="min-w-0 truncate">Details</TabsTrigger>
+                  <TabsTrigger value="activity" className="min-w-0 truncate">Activity</TabsTrigger>
+                  <TabsTrigger value="comments" className="min-w-0 truncate">Comments</TabsTrigger>
                 </TabsList>
 
                 <TabsContent
                   value="details"
-                  className="mt-4 overflow-y-auto flex-1"
+                  className="mt-4 overflow-y-auto overflow-x-hidden flex-1 min-w-0 w-full"
                 >
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border-2 border-[#000000]">
+                  <div className="space-y-4 min-w-0 w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0 w-full">
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 border-2 border-[#000000] min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
                             <FileText className="h-4 w-4 text-white" />
                           </div>
                           Description
                         </h4>
-                        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+                        <p
+                          className="text-muted-foreground leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word] min-w-0 max-w-full"
+                          style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                        >
                           {selectedTask.description}
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                          <UserCheck className="h-4 w-4 text-violet-600" />
+                          <UserCheck className="h-4 w-4 text-violet-600 shrink-0" />
                           Assigned By
                         </h4>
-                        <p className="text-muted-foreground font-medium">
+                        <p className="text-muted-foreground font-medium truncate">
                           {selectedTaskAssignerInfo?.name || "Unknown"}
                           {selectedTaskAssignerInfo?.roleLabel && (
-                            <span className="block text-xs text-muted-foreground">
+                            <span className="block text-xs text-muted-foreground truncate">
                               {selectedTaskAssignerInfo.roleLabel}
                             </span>
                           )}
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                          <User className="h-4 w-4 text-violet-600" />
+                          <User className="h-4 w-4 text-violet-600 shrink-0" />
                           Assigned To
                         </h4>
-                        <p className="text-muted-foreground font-medium">
+                        <p className="text-muted-foreground font-medium truncate">
                           {selectedTaskAssigneeInfo?.name || "Unassigned"}
                           {selectedTaskAssigneeInfo?.roleLabel && (
-                            <span className="block text-xs text-muted-foreground">
+                            <span className="block text-xs text-muted-foreground truncate">
                               {selectedTaskAssigneeInfo.roleLabel}
                             </span>
                           )}
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                          <AlertCircle className="h-4 w-4 text-violet-600" />
+                          <AlertCircle className="h-4 w-4 text-violet-600 shrink-0" />
                           Priority
                         </h4>
                         <Badge
@@ -5836,9 +5863,9 @@ const TaskManagement: React.FC = () => {
                         </Badge>
                       </div>
 
-                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-violet-600" />
+                          <Calendar className="h-4 w-4 text-violet-600 shrink-0" />
                           Start Date
                         </h4>
                         <p className="text-muted-foreground font-medium">
@@ -5851,9 +5878,9 @@ const TaskManagement: React.FC = () => {
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-violet-600" />
+                          <Calendar className="h-4 w-4 text-violet-600 shrink-0" />
                           Deadline
                         </h4>
                         <p className="text-muted-foreground font-medium">
@@ -5861,9 +5888,9 @@ const TaskManagement: React.FC = () => {
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                          <Clock className="h-4 w-4 text-violet-600" />
+                          <Clock className="h-4 w-4 text-violet-600 shrink-0" />
                           Assigned Date
                         </h4>
                         <p className="text-muted-foreground font-medium">
@@ -5876,14 +5903,14 @@ const TaskManagement: React.FC = () => {
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                      <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                          <Clock className="h-4 w-4 text-violet-600" />
+                          <Clock className="h-4 w-4 text-violet-600 shrink-0" />
                           Status
                         </h4>
                         <div className="flex items-center gap-2">
                           <div
-                            className={`h-3 w-3 rounded-full ${getStatusColor(selectedTask.status)} shadow-md`}
+                            className={`h-3 w-3 rounded-full ${getStatusColor(selectedTask.status)} shadow-md shrink-0`}
                           />
                           <span className="capitalize font-medium">
                             {selectedTask.status.replace("-", " ")}
@@ -5892,9 +5919,9 @@ const TaskManagement: React.FC = () => {
                       </div>
 
                       {selectedTask.projectId && (
-                        <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow">
+                        <div className="p-4 rounded-lg border-2 border-[#000000] bg-white dark:bg-gray-950 hover:shadow-md transition-shadow min-w-0 overflow-hidden">
                           <h4 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-                            <FolderKanban className="h-4 w-4 text-violet-600" />
+                            <FolderKanban className="h-4 w-4 text-violet-600 shrink-0" />
                             Project
                           </h4>
                           <Badge
@@ -5908,9 +5935,9 @@ const TaskManagement: React.FC = () => {
                     </div>
 
                     {selectedTask.tags && selectedTask.tags.length > 0 && (
-                      <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border-2 border-[#000000]">
+                      <div className="p-4 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border-2 border-[#000000] min-w-0 overflow-hidden">
                         <h4 className="font-semibold mb-3 flex items-center gap-2">
-                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
                             <Paperclip className="h-4 w-4 text-white" />
                           </div>
                           Tags
@@ -5932,7 +5959,7 @@ const TaskManagement: React.FC = () => {
 
                 <TabsContent
                   value="activity"
-                  className="mt-6 overflow-y-auto flex-1"
+                  className="mt-6 overflow-y-auto overflow-x-hidden flex-1 min-w-0 w-full"
                 >
                   <div className="space-y-4">
                     {isFetchingHistory &&
@@ -6014,7 +6041,10 @@ const TaskManagement: React.FC = () => {
                                   )}
                                 </div>
                                 {note && (
-                                  <div className="whitespace-pre-wrap break-words">
+                                  <div
+                                    className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word] min-w-0 max-w-full"
+                                    style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                  >
                                     "{note}"
                                   </div>
                                 )}
@@ -6146,12 +6176,12 @@ const TaskManagement: React.FC = () => {
                             >
                               {actionIcon}
                             </div>
-                            <div className="flex-1 space-y-2">
+                            <div className="flex-1 min-w-0 space-y-2">
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <p className="font-semibold text-lg">
                                   {actionLabel}
                                 </p>
-                                <div className="flex flex-col items-end">
+                                <div className="flex flex-col items-end min-w-0 shrink-0">
                                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                                     <User className="h-3.5 w-3.5" />
                                     {actorInfo.name}
@@ -6178,7 +6208,7 @@ const TaskManagement: React.FC = () => {
 
                 <TabsContent
                   value="comments"
-                  className="mt-4 flex flex-col h-[calc(100vh-280px)] min-h-[500px]"
+                  className="mt-4 flex flex-col h-[calc(100vh-280px)] min-h-[500px] min-w-0 w-full overflow-hidden"
                 >
                   {/* Comments Header */}
                   <div className="p-3 rounded-lg border-2 border-[#000000] bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 flex-shrink-0">
@@ -6193,7 +6223,7 @@ const TaskManagement: React.FC = () => {
 
                   {/* Comments List with Scrolling - WhatsApp Style */}
                   <div
-                    className="flex-1 overflow-y-auto space-y-3 p-4 bg-[#efeae2] dark:bg-slate-900 rounded-lg my-3"
+                    className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full space-y-3 p-4 bg-[#efeae2] dark:bg-slate-900 rounded-lg my-3"
                     style={{
                       scrollbarWidth: "thin",
                       scrollbarColor: "#a78bfa #e2e8f0",
@@ -6255,7 +6285,7 @@ const TaskManagement: React.FC = () => {
                             dateSeparator !== previousDateSeparator;
 
                           return (
-                            <div key={comment.id}>
+                            <div key={comment.id} className="w-full min-w-0">
                               {/* Date Separator */}
                               {showDateSeparator && (
                                 <div className="flex items-center gap-3 my-4">
@@ -6269,7 +6299,7 @@ const TaskManagement: React.FC = () => {
 
                               {/* Comment */}
                               <div
-                                className={`flex gap-2 ${isOwnComment ? "flex-row-reverse" : "flex-row"} animate-in slide-in-from-bottom-2`}
+                                className={`flex gap-2 w-full min-w-0 ${isOwnComment ? "flex-row-reverse" : "flex-row"} animate-in slide-in-from-bottom-2`}
                               >
                                 {/* Profile Photo */}
                                 <div className="flex-shrink-0">
@@ -6288,7 +6318,7 @@ const TaskManagement: React.FC = () => {
 
                                 {/* Message Bubble */}
                                 <div
-                                  className={`max-w-[70%] ${isOwnComment ? "items-end" : "items-start"} flex flex-col`}
+                                  className={`max-w-[85%] sm:max-w-[75%] min-w-0 ${isOwnComment ? "items-end" : "items-start"} flex flex-col`}
                                 >
                                   {/* Name & Role (only for others' messages) */}
                                   {!isOwnComment && (
@@ -6304,10 +6334,11 @@ const TaskManagement: React.FC = () => {
 
                                   {/* Message Content */}
                                   <div
-                                    className={`rounded-lg px-3 py-2 shadow-sm ${isOwnComment
+                                    className={`group rounded-lg px-3 py-2 shadow-sm min-w-0 max-w-full break-words [overflow-wrap:anywhere] [word-break:break-word] ${isOwnComment
                                       ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-tr-none"
                                       : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none"
                                       }`}
+                                    style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
                                   >
                                     {/* Role badge for own messages (inside bubble) */}
                                     {isOwnComment && (
@@ -6328,7 +6359,7 @@ const TaskManagement: React.FC = () => {
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         download={comment.file_name}
-                                        className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors ${isOwnComment
+                                        className={`flex items-center gap-2 p-2 rounded-lg mb-2 transition-colors max-w-full min-w-0 ${isOwnComment
                                           ? "bg-white/10 hover:bg-white/20"
                                           : "bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
                                           }`}
@@ -6336,7 +6367,7 @@ const TaskManagement: React.FC = () => {
                                         {comment.file_type?.startsWith(
                                           "image/",
                                         ) ? (
-                                          <div className="flex flex-col gap-1">
+                                          <div className="flex flex-col gap-1 max-w-full min-w-0">
                                             <img
                                               src={`${API_BASE_URL}${comment.file_url}`}
                                               alt={
@@ -6345,7 +6376,7 @@ const TaskManagement: React.FC = () => {
                                               className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
                                             />
                                             <span
-                                              className={`text-xs ${isOwnComment ? "text-white/80" : "text-slate-600 dark:text-slate-400"}`}
+                                              className={`text-xs truncate max-w-full ${isOwnComment ? "text-white/80" : "text-slate-600 dark:text-slate-400"}`}
                                             >
                                               {comment.file_name}
                                             </span>
@@ -6356,7 +6387,7 @@ const TaskManagement: React.FC = () => {
                                               "pdf",
                                             ) ? (
                                               <FileText
-                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-red-500"}`}
+                                                className={`h-5 w-5 shrink-0 ${isOwnComment ? "text-white" : "text-red-500"}`}
                                               />
                                             ) : comment.file_type?.includes(
                                               "spreadsheet",
@@ -6368,7 +6399,7 @@ const TaskManagement: React.FC = () => {
                                                 ".csv",
                                               ) ? (
                                               <FileSpreadsheet
-                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-green-500"}`}
+                                                className={`h-5 w-5 shrink-0 ${isOwnComment ? "text-white" : "text-green-500"}`}
                                               />
                                             ) : comment.file_type?.includes(
                                               "word",
@@ -6380,11 +6411,11 @@ const TaskManagement: React.FC = () => {
                                                 ".docx",
                                               ) ? (
                                               <FileText
-                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-blue-500"}`}
+                                                className={`h-5 w-5 shrink-0 ${isOwnComment ? "text-white" : "text-blue-500"}`}
                                               />
                                             ) : (
                                               <FileIcon
-                                                className={`h-5 w-5 ${isOwnComment ? "text-white" : "text-slate-500"}`}
+                                                className={`h-5 w-5 shrink-0 ${isOwnComment ? "text-white" : "text-slate-500"}`}
                                               />
                                             )}
                                             <div className="flex-1 min-w-0">
@@ -6405,7 +6436,7 @@ const TaskManagement: React.FC = () => {
                                               )}
                                             </div>
                                             <Download
-                                              className={`h-4 w-4 ${isOwnComment ? "text-white/70" : "text-slate-400"}`}
+                                              className={`h-4 w-4 shrink-0 ${isOwnComment ? "text-white/70" : "text-slate-400"}`}
                                             />
                                           </>
                                         )}
@@ -6415,14 +6446,15 @@ const TaskManagement: React.FC = () => {
                                     {/* Text Comment */}
                                     {comment.comment && (
                                       <p
-                                        className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${isOwnComment ? "text-white" : "text-slate-800 dark:text-slate-200"}`}
+                                        className={`text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word] min-w-0 max-w-full ${isOwnComment ? "text-white" : "text-slate-800 dark:text-slate-200"}`}
+                                        style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
                                       >
                                         {comment.comment}
                                       </p>
                                     )}
                                     <div className="flex items-center justify-end gap-2 mt-1">
                                       <span
-                                        className={`text-xs ${isOwnComment ? "text-white/80" : "text-slate-500 dark:text-slate-400"}`}
+                                        className={`text-xs shrink-0 ${isOwnComment ? "text-white/80" : "text-slate-500 dark:text-slate-400"}`}
                                       >
                                         {formattedTime}
                                       </span>
@@ -6431,7 +6463,7 @@ const TaskManagement: React.FC = () => {
                                           onClick={() =>
                                             handleDeleteComment(comment.id)
                                           }
-                                          className="opacity-0 group-hover:opacity-100 hover:bg-white/20 rounded p-0.5 transition-all"
+                                          className="opacity-0 group-hover:opacity-100 hover:bg-white/20 rounded p-0.5 transition-all shrink-0"
                                         >
                                           <Trash2 className="h-3 w-3" />
                                         </button>
@@ -6449,22 +6481,22 @@ const TaskManagement: React.FC = () => {
                   </div>
 
                   {/* WhatsApp-style Comment Input */}
-                  <div className="p-2 bg-slate-50 dark:bg-slate-900 flex-shrink-0">
+                  <div className="p-2 bg-slate-50 dark:bg-slate-900 flex-shrink-0 min-w-0 w-full rounded-b-lg">
                     {/* Attached Files Preview */}
                     {attachedFiles.length > 0 && (
-                      <div className="mb-2 flex flex-wrap gap-2 px-2">
+                      <div className="mb-2 flex flex-wrap gap-2 px-2 max-w-full min-w-0">
                         {attachedFiles.map((file, index) => (
                           <div
                             key={index}
-                            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border text-xs shadow-sm"
+                            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border text-xs shadow-sm max-w-full min-w-0"
                           >
-                            <Paperclip className="h-3 w-3 text-violet-600" />
-                            <span className="font-medium truncate max-w-[100px]">
+                            <Paperclip className="h-3 w-3 text-violet-600 shrink-0" />
+                            <span className="font-medium truncate max-w-[120px]">
                               {file.name}
                             </span>
                             <button
                               onClick={() => removeAttachedFile(index)}
-                              className="hover:bg-red-100 dark:hover:bg-red-900 rounded-full p-0.5"
+                              className="hover:bg-red-100 dark:hover:bg-red-900 rounded-full p-0.5 shrink-0"
                             >
                               <XCircle className="h-3 w-3 text-red-500" />
                             </button>
@@ -6474,12 +6506,12 @@ const TaskManagement: React.FC = () => {
                     )}
 
                     {/* WhatsApp-style Input Row */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0 w-full">
                       {/* File Upload Button */}
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors"
+                        className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors shrink-0"
                         title="Attach file"
                       >
                         <Paperclip className="h-5 w-5 text-slate-600 dark:text-slate-400" />
@@ -6494,7 +6526,7 @@ const TaskManagement: React.FC = () => {
                       />
 
                       {/* Input Field */}
-                      <div className="flex-1 bg-white dark:bg-slate-800 rounded-full px-4 py-2 border border-slate-300 dark:border-slate-700 focus-within:border-violet-500 transition-colors">
+                      <div className="flex-1 min-w-0 bg-white dark:bg-slate-800 rounded-full px-4 py-2 border border-slate-300 dark:border-slate-700 focus-within:border-violet-500 transition-colors">
                         <input
                           type="text"
                           placeholder="Type a message"
@@ -6513,7 +6545,7 @@ const TaskManagement: React.FC = () => {
                               handlePostComment();
                             }
                           }}
-                          className="w-full bg-transparent outline-none text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                          className="w-full min-w-0 bg-transparent outline-none text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
                         />
                       </div>
 
@@ -6524,7 +6556,7 @@ const TaskManagement: React.FC = () => {
                           (!newComment.trim() && attachedFiles.length === 0) ||
                           isPostingComment
                         }
-                        className="p-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        className="p-2.5 shrink-0 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                         title="Send message"
                       >
                         {isPostingComment ? (
