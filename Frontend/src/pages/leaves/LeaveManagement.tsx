@@ -2462,7 +2462,7 @@ export default function LeaveManagement() {
                                 </div>
                                 <p className="text-[12px] font-bold text-black dark:text-white flex items-start gap-2" style={{}}>
                                   <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                                  <span className="line-clamp-2 break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                                  <span className="line-clamp-2 break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap">
                                     {request.reason}
                                   </span>
                                 </p>
@@ -3792,7 +3792,7 @@ export default function LeaveManagement() {
                     <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
                       Reason
                     </p>
-                    <p className="text-sm text-red-700 dark:text-red-300 mt-1 line-clamp-2 break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1 line-clamp-2 break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap">
                       {leaveToDelete.reason}
                     </p>
                   </div>

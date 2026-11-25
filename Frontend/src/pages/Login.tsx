@@ -716,8 +716,8 @@ const Login: React.FC = () => {
                 <CardDescription className="text-center text-slate-600">
                   {showCompanySelect ? 'Select an organization to continue' : (
                     loginMode === 'email' ? 'Enter your email to receive a secure OTP' :
-                      loginMode === 'pin' ? 'Enter your 6-digit security PIN' :
-                        loginMode === 'otp' ? 'Enter the OTP sent to your email' :
+                      loginMode === 'pin' ? 'Enter your 4-digit security PIN' :
+                        loginMode === 'otp' ? 'Enter the 6-digit OTP sent to your email' :
                           'Choose a secure 6-digit PIN for future logins'
                   )}
                 </CardDescription>

@@ -28,6 +28,7 @@ import {
 import { chatService } from '@/services/chatService';
 import { useChat } from '@/contexts/ChatContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRoleBasePath } from '@/utils/navigation';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -496,6 +497,31 @@ const ChatBox: React.FC = () => {
   }
 
   if (!displayedChat) {
+    if (!isLoading) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center space-y-4 p-8 text-center bg-inherit">
+          <div className="p-5 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-400">
+            <MessageCircle className="h-10 w-10 opacity-40" />
+          </div>
+          <div className="space-y-1">
+            <h3 className={cn("text-base font-bold", themeClasses.text)}>Conversation Not Available</h3>
+            <p className={cn("text-xs opacity-60 max-w-sm", themeClasses.textSecondary)}>
+              This conversation may have been deleted, or you may not be a participant.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              navigate(`${getRoleBasePath(user?.role)}/chat`);
+            }}
+            className="text-xs font-semibold rounded-xl mt-2"
+          >
+            Back to Chats
+          </Button>
+        </div>
+      );
+    }
     return (
       <div className="flex-1 flex flex-col items-center justify-center space-y-4 bg-inherit">
         <div className="relative">
@@ -711,7 +737,11 @@ const ChatBox: React.FC = () => {
             {enrichedMessages.map((message, index) => {
               const showDateSeparator = index === 0 || formatDateIST(message.timestamp, 'yyyy-MM-dd') !== formatDateIST(enrichedMessages[index - 1].timestamp, 'yyyy-MM-dd');
               return (
-                <div key={message.id} className="animate-in slide-in-from-bottom-2 fade-in duration-200">
+                <div
+                  key={message.id}
+                  id={`msg-${message.id}`}
+                  className="animate-in slide-in-from-bottom-2 fade-in duration-200 rounded-xl"
+                >
                   {showDateSeparator && (
                     <div className="flex justify-center my-3.5 sticky top-2 z-20 pointer-events-none">
                       <span className="px-3 py-1 rounded-lg text-[11px] font-semibold tracking-wide shadow-sm border bg-white/95 dark:bg-[#182229]/95 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/60 pointer-events-auto">

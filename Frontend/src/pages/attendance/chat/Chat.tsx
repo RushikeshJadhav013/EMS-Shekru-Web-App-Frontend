@@ -1,10 +1,9 @@
 import React from 'react';
-import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import ChatList from './ChatList';
 import ChatBox from './ChatBox';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { MessageCircle, Zap } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useChat } from '@/contexts/ChatContext';
@@ -62,8 +61,9 @@ const Chat: React.FC = () => {
   const { themeMode } = useTheme();
   const location = useLocation();
   const { chatId: paramChatId } = useParams();
-  const { chats, setActiveChat, activeChat } = useChat();
+  const { chats, setActiveChat, activeChat, loadChats, isLoading } = useChat();
   const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const hasAttemptedReloadRef = React.useRef<Record<string, boolean>>({});
 
   // Robustly derive the chatId from the URL pathname, regardless of slug prefix
   // The chat URL pattern is: /{role}/chat/{chatId} or /{slug}/{role}/chat/{chatId}
@@ -82,19 +82,58 @@ const Chat: React.FC = () => {
     return derivedId;
   }, [location.pathname, paramChatId]);
 
-  // Sync active chat when URL changes (for deep links/refresh)
+  const queryParams = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const senderId = queryParams.get('senderId') || (location.state as any)?.senderId;
+
+  // Sync active chat when URL changes (for deep links/refresh/notifications)
   React.useEffect(() => {
+    // If chats are currently in their initial load, wait for them to finish
+    if (isLoading && chats.length === 0) return;
+
     if (chatId) {
-      if (!activeChat || activeChat.id !== chatId) {
-        const chat = chats.find(c => String(c.id) === String(chatId));
-        if (chat) {
-          setActiveChat(chat);
+      // Primary: Find chat by actual Chat ID (for both individual and group chats)
+      const matchingChat = chats.find(c => String(c.id) === String(chatId));
+
+      if (matchingChat) {
+        if (!activeChat || String(activeChat.id) !== String(matchingChat.id)) {
+          setActiveChat(matchingChat);
+        }
+      } else {
+        // Chat not found in local cache - attempt to reload once to fetch recently created chat
+        if (!hasAttemptedReloadRef.current[chatId]) {
+          hasAttemptedReloadRef.current[chatId] = true;
+          loadChats(true);
+        } else {
+          // Genuinely invalid or deleted chat - clear activeChat so ChatBox shows fallback UI
+          if (activeChat) {
+            setActiveChat(null);
+          }
+        }
+      }
+    } else if (senderId) {
+      // Fallback: When no chatId is provided, find individual chat by participant senderId
+      const matchingChat = chats.find(
+        c => c.type === 'individual' && c.participants?.some(p => String(p.userId) === String(senderId))
+      );
+
+      if (matchingChat) {
+        if (!activeChat || String(activeChat.id) !== String(matchingChat.id)) {
+          setActiveChat(matchingChat);
+        }
+      } else {
+        const reloadKey = `sender-${senderId}`;
+        if (!hasAttemptedReloadRef.current[reloadKey]) {
+          hasAttemptedReloadRef.current[reloadKey] = true;
+          loadChats(true);
+        } else if (activeChat) {
+          setActiveChat(null);
         }
       }
     } else if (activeChat) {
+      // Neither chatId nor senderId in URL: Clear activeChat to show placeholder
       setActiveChat(null);
     }
-  }, [chatId, chats, setActiveChat, activeChat]);
+  }, [chatId, senderId, chats, activeChat, isLoading, setActiveChat, loadChats]);
 
   return (
     <ErrorBoundary>

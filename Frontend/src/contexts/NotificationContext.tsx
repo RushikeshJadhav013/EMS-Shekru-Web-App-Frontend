@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { apiService } from '@/lib/api';
 import { playNotificationChime, unlockAudio } from '@/utils/notificationSound';
 import { useDesktopNotification } from '@/hooks/useDesktopNotification';
+import { getChatNavigationUrl, getRoleBasePath } from '@/utils/navigation';
 
 // Polling disabled - only fetch on app init/auth
 const FETCH_INTERVAL_MS = 0; // Disabled
@@ -376,7 +377,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       type: 'wfh',
       read: isRead,
       createdAt: notification.created_at || notification.createdAt || new Date().toISOString(),
-      actionUrl: normRole ? `/${normRole}/wfh` : '/wfh',
+      actionUrl: normRole ? `/${normRole === 'teamlead' ? 'team_lead' : normRole}/attendance?tab=wfh_requests` : '/attendance?tab=wfh_requests',
       metadata: {
         wfhId: wfhId ? String(wfhId) : undefined,
       },
@@ -441,6 +442,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) return null;
 
+    const chatId = notification.chat_id ? String(notification.chat_id) : '';
+    const senderId = notification.sender_id ? String(notification.sender_id) : undefined;
+    const { url: actionUrl } = getChatNavigationUrl(userRole, chatId, senderId);
+
     return {
       id: `backend-chat-${notification.notification_id}`,
       backendId: notification.notification_id,
@@ -450,9 +455,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       type: 'chat',
       read: notification.is_read,
       createdAt: notification.created_at,
-      actionUrl: '/admin/messages',
+      actionUrl,
       metadata: {
-        chatId: notification.chat_id,
+        chatId: chatId,
+        msgId: notification.msg_id ? String(notification.msg_id) : undefined,
+        senderId: senderId,
       },
     };
   }, []);
@@ -460,6 +467,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const mapBackendAttendanceNotification = useCallback((notification: BackendAttendanceNotification, userRole?: string, currentUserId?: string): Notification | null => {
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) return null;
+
+    const actionUrl = userRole ? `${getRoleBasePath(userRole)}/attendance` : '/attendance';
 
     return {
       id: `backend-attendance-${notification.notification_id}`,
@@ -470,7 +479,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       type: 'attendance',
       read: notification.is_read,
       createdAt: notification.created_at,
-      actionUrl: userRole ? `/${userRole}/attendance` : '/attendance',
+      actionUrl,
       metadata: {},
     };
   }, []);
@@ -478,6 +487,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const mapBackendHiringNotification = useCallback((notification: BackendHiringNotification, userRole?: string, currentUserId?: string): Notification | null => {
     const notificationUserId = String(notification.user_id);
     if (currentUserId && notificationUserId !== currentUserId) return null;
+
+    const actionUrl = userRole ? `${getRoleBasePath(userRole)}/hiring` : '/hiring';
 
     return {
       id: `backend-hiring-${notification.notification_id}`,
@@ -488,7 +499,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       type: 'hiring',
       read: notification.is_read,
       createdAt: notification.created_at,
-      actionUrl: userRole ? `/${userRole}/hiring` : '/hiring',
+      actionUrl,
       metadata: {},
     };
   }, []);

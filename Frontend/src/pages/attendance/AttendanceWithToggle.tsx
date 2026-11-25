@@ -855,7 +855,7 @@ const AttendanceWithToggle: React.FC = () => {
     }
   }, [refreshLocationFast, user?.id]);
 
-  // Handle navigation from HR Dashboard with viewMode state or query param
+  // Handle navigation from HR Dashboard or notification with viewMode state or query param
   useEffect(() => {
     const state = routerLocation.state as { viewMode?: string } | null;
     const queryParams = new URLSearchParams(routerLocation.search);
@@ -864,9 +864,17 @@ const AttendanceWithToggle: React.FC = () => {
     if (state?.viewMode) {
       setViewMode(state.viewMode as any);
     } else if (tab) {
-      setViewMode(tab as any);
+      if (tab === "wfh-requests" || tab === "wfh_requests") {
+        if (canViewEmployeeAttendance) {
+          setViewMode("wfh_requests");
+        } else {
+          setViewMode("wfh");
+        }
+      } else {
+        setViewMode(tab as any);
+      }
     }
-  }, [routerLocation.state, routerLocation.search]);
+  }, [routerLocation.state, routerLocation.search, canViewEmployeeAttendance]);
 
   useEffect(() => {
     if (viewMode === "employee" && canViewEmployeeAttendance) {
@@ -4503,7 +4511,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   </Badge>
                                 </div>
                               </div>
-                              <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                              <p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">
                                 {request.reason}
                               </p>
                               <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -4786,7 +4794,7 @@ const AttendanceWithToggle: React.FC = () => {
                                     </Badge>
                                   </div>
                                 </div>
-                                <p className="text-[14px] font-bold text-black dark:text-white break-words overflow-wrap-anywhere whitespace-pre-wrap" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                                <p className="text-[14px] font-bold text-black dark:text-white break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0" style={{ fontFamily: 'Outfit, sans-serif' }}>
                                   {request.reason}
                                 </p>
                                 <div className="flex items-center gap-4 text-[12px] font-bold text-black dark:text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
@@ -4814,8 +4822,8 @@ const AttendanceWithToggle: React.FC = () => {
                                   <span>Department: {request.department}</span>
                                 </div>
                                 {request.rejectionReason && (
-                                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                    <p className="text-sm text-red-800 dark:text-red-200 break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 min-w-0 max-w-full overflow-hidden">
+                                    <p className="text-sm text-red-800 dark:text-red-200 break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">
                                       <strong>Rejection Reason:</strong>{" "}
                                       {request.rejectionReason}
                                     </p>
@@ -5138,7 +5146,7 @@ const AttendanceWithToggle: React.FC = () => {
                                   : "Half Day"}
                               </Badge>
                             </div>
-                            <p className="text-[14px] font-bold text-black dark:text-white break-words overflow-wrap-anywhere whitespace-pre-wrap" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                            <p className="text-[14px] font-bold text-black dark:text-white break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0" style={{ fontFamily: 'Outfit, sans-serif' }}>
                               {request.reason}
                             </p>
                             <p className="text-[12px] font-bold text-black dark:text-white" style={{ fontFamily: 'Outfit, sans-serif' }}>
@@ -6134,8 +6142,8 @@ const AttendanceWithToggle: React.FC = () => {
         open={showWfhRequestDialog}
         onOpenChange={setShowWfhRequestDialog}
       >
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[500px] w-full max-w-full overflow-hidden">
+          <DialogHeader className="w-full">
             <DialogTitle className="flex items-center gap-2">
               <X className="h-5 w-5 text-red-600" />
               Reject WFH Request
@@ -6146,20 +6154,20 @@ const AttendanceWithToggle: React.FC = () => {
           </DialogHeader>
 
           {selectedWfhRequest && (
-            <div className="space-y-4 py-4">
-              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium">
+            <div className="space-y-4 py-4 w-full min-w-0 max-w-full overflow-hidden">
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border w-full min-w-0 max-w-full overflow-hidden">
+                <div className="space-y-2 w-full min-w-0 max-w-full overflow-hidden">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <User className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                    <span className="font-medium truncate">
                       {selectedWfhRequest.submittedBy}
                     </span>
                     <Badge variant="outline" className="text-xs">
                       {formatRoleDisplay(selectedWfhRequest.role)}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-green-600" />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Calendar className="h-4 w-4 text-green-600 flex-shrink-0" />
                     <span className="text-sm">
                       {formatDateIST(
                         selectedWfhRequest.startDate,
@@ -6169,13 +6177,13 @@ const AttendanceWithToggle: React.FC = () => {
                       {formatDateIST(selectedWfhRequest.endDate, "dd MMM yyyy")}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere whitespace-pre-wrap">
+                  <p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0 max-w-full">
                     {selectedWfhRequest.reason}
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 w-full min-w-0">
                 <Label htmlFor="rejection-reason">
                   Rejection Reason <span className="text-red-500">*</span>
                 </Label>
@@ -6184,7 +6192,7 @@ const AttendanceWithToggle: React.FC = () => {
                   placeholder="Please provide a clear reason for rejecting this request."
                   value={selectedWfhRequest?.rejectionReason || ""}
                   rows={3}
-                  className="resize-none"
+                  className="resize-none w-full"
                   onChange={(e) => {
                     setSelectedWfhRequest((prev) =>
                       prev
@@ -6203,7 +6211,7 @@ const AttendanceWithToggle: React.FC = () => {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="w-full sm:justify-end gap-2 sm:gap-3 flex-wrap">
             <Button
               variant="outline"
               onClick={() => {

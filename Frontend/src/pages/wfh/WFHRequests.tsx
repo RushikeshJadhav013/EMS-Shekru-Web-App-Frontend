@@ -855,15 +855,15 @@ const WFHRequests: React.FC = () => {
                   <p className="text-muted-foreground">No WFH requests found</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 w-full min-w-0">
                   {paginatedMyRequests.map((request) => (
                     <div
                       key={request.id}
                       id={`wfh-request-${request.id}`}
-                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors w-full min-w-0 max-w-full overflow-hidden"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
+                      <div className="flex items-start justify-between gap-4 w-full min-w-0">
+                        <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-center gap-3 flex-wrap">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-blue-600" />
@@ -878,10 +878,10 @@ const WFHRequests: React.FC = () => {
                             </Badge>
                             {getStatusBadge(request.status)}
                           </div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">
                             {request.reason}
                           </p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                             <span>
                               Submitted:{" "}
                               {formatDateTimeIST(
@@ -900,7 +900,7 @@ const WFHRequests: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0 flex-shrink-0">
                           {getStatusIcon(request.status)}
                           {request.status === "pending" && (
                             <div className="flex gap-2">
@@ -975,16 +975,16 @@ const WFHRequests: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 w-full min-w-0">
                   {paginatedPendingApprovals.map((request) => (
                     <div
                       key={request.id}
                       id={`wfh-request-${request.id}`}
-                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors w-full min-w-0 max-w-full overflow-hidden"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-center gap-3">
+                      <div className="flex items-start justify-between gap-4 w-full min-w-0">
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <span className="font-bold text-lg">
                               {request.employee_name}
                             </span>
@@ -1003,7 +1003,7 @@ const WFHRequests: React.FC = () => {
                               {request.start_date} - {request.end_date}
                             </span>
                           </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                          <p className="text-sm text-slate-600 dark:text-slate-400 font-medium break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">
                             Reason: {request.reason}
                           </p>
 
@@ -1045,7 +1045,7 @@ const WFHRequests: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2 shrink-0 flex-shrink-0">
                           <Button
                             className="bg-green-600 hover:bg-green-700 text-white"
                             onClick={() => handleApproveRequest(request.id)}
@@ -1190,14 +1190,14 @@ const WFHRequests: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 w-full min-w-0">
                   {paginatedRecentDecisions.map((decision) => (
                     <div
                       key={decision.id}
-                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
+                      className="border rounded-lg p-4 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors w-full min-w-0 max-w-full overflow-hidden"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 space-y-2">
+                      <div className="flex items-start justify-between gap-4 w-full min-w-0">
+                        <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="font-medium text-sm">
                               {decision.employee_name}
@@ -1215,10 +1215,10 @@ const WFHRequests: React.FC = () => {
                               {decision.start_date} - {decision.end_date}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">
                             {decision.reason}
                           </p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                             <span>
                               Decision:{" "}
                               {formatDateTimeIST(
@@ -1231,15 +1231,15 @@ const WFHRequests: React.FC = () => {
                             )}
                           </div>
                           {decision.rejection_reason && (
-                            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                              <p className="text-sm text-red-800 dark:text-red-200">
+                            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 min-w-0 max-w-full overflow-hidden">
+                              <p className="text-sm text-red-800 dark:text-red-200 break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">
                                 <strong>Rejection Reason:</strong>{" "}
                                 {decision.rejection_reason}
                               </p>
                             </div>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0 flex-shrink-0">
                           {getStatusIcon(decision.status)}
                         </div>
                       </div>
@@ -1269,14 +1269,14 @@ const WFHRequests: React.FC = () => {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px] w-full max-w-full overflow-hidden">
           <DialogHeader>
             <DialogTitle>Edit WFH Request</DialogTitle>
             <DialogDescription>
               Update your work from home request details
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 w-full min-w-0 max-w-full overflow-hidden">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date</Label>

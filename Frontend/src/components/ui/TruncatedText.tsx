@@ -30,8 +30,8 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
         : text;
 
     return (
-        <div className={cn("inline", className)}>
-            <span className={cn(textClassName, "break-words whitespace-pre-wrap")} style={style}>
+        <div className={cn("inline break-words [overflow-wrap:anywhere]", className)}>
+            <span className={cn(textClassName, "break-words [overflow-wrap:anywhere] whitespace-pre-wrap")} style={style}>
                 {displayedText}
             </span>
             {showToggle && shouldTruncate && (

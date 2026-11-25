@@ -17,7 +17,7 @@ import ChatTypeSelectorModal from '@/components/chat/ChatTypeSelectorModal';
 const ChatList: React.FC = () => {
   const navigate = useNavigate();
   const { chatId: activeChatId } = useParams();
-  const { chats, isLoading, setActiveChat, availableUsers } = useChat();
+  const { chats, isLoading, setActiveChat, activeChat, availableUsers } = useChat();
   const { user } = useAuth();
   const { themeMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,6 +25,7 @@ const ChatList: React.FC = () => {
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [selectedType, setSelectedType] = useState<'individual' | 'group'>('individual');
   const [filter, setFilter] = useState<'all' | 'individual' | 'group'>('all');
+
 
   const permissions = user ? chatService.getChatPermissions(user.role) : null;
   const isDark = themeMode === 'dark' || (themeMode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -225,7 +226,7 @@ const ChatList: React.FC = () => {
           />
         </div>
 
-        <div className="flex gap-2 mt-3.5 overflow-x-auto pb-1 custom-scrollbar-hide no-scrollbar">
+        <div className="flex items-center gap-1.5 mt-3.5 w-full">
           {[
             { id: 'all', label: 'All', icon: MessageCircle, count: chatCounts.all },
             { id: 'individual', label: 'Direct', icon: MessageCircle, count: chatCounts.individual },
@@ -238,7 +239,7 @@ const ChatList: React.FC = () => {
                 key={type.id}
                 onClick={() => setFilter(type.id as any)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 border flex-shrink-0 animate-in fade-in slide-in-from-left-2",
+                  "flex items-center justify-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-full text-[11px] sm:text-xs font-semibold uppercase tracking-tight transition-all duration-200 border flex-1 min-w-0 animate-in fade-in whitespace-nowrap",
                   isSelected
                     ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-500/20"
                     : isDark
@@ -246,11 +247,11 @@ const ChatList: React.FC = () => {
                       : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-gray-50"
                 )}
               >
-                <Icon className={cn("h-3 w-3", isSelected ? "text-white" : "text-emerald-500")} />
-                <span>{type.label}</span>
+                <Icon className={cn("h-3 w-3 shrink-0", isSelected ? "text-white" : "text-emerald-500")} />
+                <span className="whitespace-nowrap font-bold">{type.label}</span>
                 {type.count > 0 && (
                   <span className={cn(
-                    "ml-1 px-1.5 py-0.5 rounded-md text-[9px] font-black",
+                    "ml-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-extrabold shrink-0 leading-none",
                     isSelected ? "bg-white/20 text-white" : "bg-emerald-500/10 text-emerald-500"
                   )}>
                     {type.count}
@@ -276,7 +277,7 @@ const ChatList: React.FC = () => {
           </div>
         ) : (
           filteredChats.map((chat) => {
-            const isActive = activeChatId === chat.id?.toString();
+            const isActive = (activeChat?.id && String(activeChat.id) === String(chat.id)) || (activeChatId && String(activeChatId) === String(chat.id));
             const otherParticipant = chat.type === 'individual'
               ? chat.participants?.find((p: any) => p.userId?.toString() !== user?.id?.toString())
               : null;
