@@ -1490,13 +1490,13 @@ const AttendancePage: React.FC = () => {
                                 {request.type === 'full_day' || request.type === 'Full Day' ? 'Full Day' : 'Half Day'}
                               </Badge>
                             </div>
-                            <p className="text-sm text-muted-foreground">{request.reason}</p>
+                            <p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">{request.reason}</p>
                             <p className="text-xs text-muted-foreground">
                               Submitted {formatRelativeTime(request.submittedAt)} ({formatDateTimeIST(request.submittedAt, 'dd MMM yyyy, hh:mm a')})
                             </p>
                             {request.status === 'rejected' && request.rejectionReason && (
-                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2">
-                                <p className="text-sm text-red-800 dark:text-red-200">
+                              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-2 mt-2 min-w-0 max-w-full overflow-hidden">
+                                <p className="text-sm text-red-800 dark:text-red-200 break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0">
                                   <strong>Rejection Reason:</strong> {request.rejectionReason}
                                 </p>
                               </div>

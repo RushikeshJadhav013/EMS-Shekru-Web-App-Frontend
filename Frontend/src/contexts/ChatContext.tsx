@@ -603,19 +603,26 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await chatService.removeParticipant(chatId, userIds);
 
+      const targetIdStr = String(chatId);
+      const userIdsStr = userIds.map(String);
+
       // Update local state for chats list
       setChats(prev => prev.map(chat =>
-        chat.id === chatId
-          ? { ...chat, participants: chat.participants.filter(p => !userIds.includes(p.userId)), memberCount: (chat.memberCount || 0) - userIds.length }
+        String(chat.id) === targetIdStr
+          ? {
+              ...chat,
+              participants: (chat.participants || []).filter(p => !userIdsStr.includes(String(p.userId))),
+              memberCount: Math.max(0, (chat.memberCount || chat.participants?.length || 0) - userIds.length)
+            }
           : chat
       ));
 
       // Update active chat if it matches to ensure immediate UI feedback
-      if (activeChat?.id === chatId) {
+      if (String(activeChat?.id) === targetIdStr) {
         setActiveChat(prev => prev ? {
           ...prev,
-          participants: prev.participants.filter(p => !userIds.includes(p.userId)),
-          memberCount: (prev.memberCount || 0) - userIds.length
+          participants: (prev.participants || []).filter(p => !userIdsStr.includes(String(p.userId))),
+          memberCount: Math.max(0, (prev.memberCount || prev.participants?.length || 0) - userIds.length)
         } : null);
       }
 
@@ -623,13 +630,14 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: 'Success',
         description: `Removed ${userIds.length} member(s)`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to remove participants:', error);
       toast({
         title: 'Error',
-        description: 'Failed to remove participants',
+        description: error?.message || 'Failed to remove participants',
         variant: 'destructive',
       });
+      throw error;
     }
   }, [activeChat, toast]);
 

@@ -16,21 +16,17 @@ import TruncatedText from '@/components/ui/TruncatedText';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { useDesktopNotification } from '@/hooks/useDesktopNotification';
+import { getChatNavigationUrl, getAttendanceNavigationUrl, getRoleBasePath } from '@/utils/navigation';
 
 export const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, unlockAudioContext } = useNotifications();
+  const { notifications, unreadCount, isLoading, error, markAsRead, markAllAsRead, clearNotification, unlockAudioContext, refreshNotifications } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const { soundEnabled, toggleSound } = useNotificationSound();
   const { requestPermission } = useDesktopNotification();
   const hasUnlockedRef = useRef(false);
-
-  // ✅ REMOVED: No more API calls from UI component
-  // Notifications are fetched ONLY from NotificationContext on:
-  // 1. App initialization (user login)
-  // 2. Page visibility change (when tab becomes visible)
 
   // Debug: Log notifications state (only in dev)
   useEffect(() => {
@@ -40,14 +36,17 @@ export const NotificationBell: React.FC = () => {
     }
   }, [notifications.length, unreadCount]);
 
-  // Unlock AudioContext and request desktop notification permission on first open
+  // Unlock AudioContext, refresh notifications, and request desktop notification permission on open
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (open && !hasUnlockedRef.current) {
-      hasUnlockedRef.current = true;
-      unlockAudioContext();
-      // Lazily request desktop notification permission
-      requestPermission().catch(() => {/* ignore */ });
+    if (open) {
+      refreshNotifications();
+      if (!hasUnlockedRef.current) {
+        hasUnlockedRef.current = true;
+        unlockAudioContext();
+        // Lazily request desktop notification permission
+        requestPermission().catch(() => {/* ignore */ });
+      }
     }
   };
 
@@ -62,9 +61,8 @@ export const NotificationBell: React.FC = () => {
     return null;
   }
 
-  // Show ONLY unread notifications - sorted by date (newest first)
-  const allNotifications = notifications
-    .filter(n => !n.read)
+  // Show all notifications - sorted by date (newest first)
+  const allNotifications = [...notifications]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Group notifications by type (maintaining sort order)
@@ -81,9 +79,35 @@ export const NotificationBell: React.FC = () => {
   const otherNotifications = allNotifications.filter(n => !['leave', 'task', 'shift', 'wfh', 'meeting', 'chat', 'attendance', 'hiring', 'project', 'salary'].includes(n.type));
 
   const handleNotificationClick = async (notification: any) => {
-    // Only mark as read, don't clear (remove) and don't navigate
     if (!notification.read) {
       markAsRead(notification.id);
+    }
+    const rawRole = (user?.role || 'employee').toLowerCase();
+    const userRole = rawRole === 'teamlead' ? 'team_lead' : rawRole;
+    const isApprover = ['admin', 'hr', 'manager', 'team_lead'].some(r => userRole.includes(r));
+    const roleBase = getRoleBasePath(userRole);
+    if (notification.type === 'leave') {
+      setIsOpen(false);
+      const leaveIdParam = notification.metadata?.leaveId ? `&leaveId=${notification.metadata.leaveId}` : '';
+      if (isApprover) {
+        navigate(`${roleBase}/leaves?tab=approvals${leaveIdParam}`);
+      } else {
+        navigate(`${roleBase}/leaves?tab=my-leaves${leaveIdParam}`);
+      }
+    } else if (notification.type === 'wfh') {
+      setIsOpen(false);
+      const wfhId = notification.metadata?.wfhId || notification.wfh_id || notification.wfhId;
+      const targetUrl = getAttendanceNavigationUrl(userRole, 'wfh_requests', wfhId ? { wfhId } : undefined);
+      navigate(targetUrl);
+    } else if (notification.type === 'chat') {
+      setIsOpen(false);
+      const chatId = notification.metadata?.chatId || notification.chat_id || notification.chatId;
+      const senderId = notification.metadata?.senderId || notification.sender_id || notification.senderId;
+      const { url, state } = getChatNavigationUrl(userRole, chatId, senderId);
+      navigate(url, { state });
+    } else if (notification.actionUrl) {
+      setIsOpen(false);
+      navigate(notification.actionUrl);
     }
   };
 
@@ -174,40 +198,42 @@ export const NotificationBell: React.FC = () => {
 
   const NotificationItem = ({ notification }: { notification: any }) => (
     <div
-      className={`p-4 hover:bg-opacity-75 dark:hover:bg-opacity-30 cursor-pointer transition-all duration-200 hover:scale-[1.01] ${getNotificationBgColor(notification.type)} ${notification.read ? 'opacity-70' : 'opacity-100'}`}
+      className={`p-4 hover:bg-opacity-75 dark:hover:bg-opacity-30 cursor-pointer transition-all duration-200 hover:scale-[1.01] ${getNotificationBgColor(notification.type)} ${notification.read ? 'opacity-70' : 'opacity-100'} w-full max-w-full box-border overflow-hidden`}
       onClick={() => handleNotificationClick(notification)}
     >
-      <div className="flex gap-3">
+      <div className="flex gap-3 w-full min-w-0 items-start">
         <div className="flex-shrink-0 mt-0.5">
           {getNotificationIcon(notification.type)}
         </div>
-        <div className="flex-1 space-y-1.5 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className={`text-sm leading-tight ${notification.read ? 'font-normal text-muted-foreground' : 'font-semibold text-foreground'}`}>
+        <div className="flex-1 space-y-1.5 min-w-0 max-w-full overflow-hidden">
+          <div className="flex items-start justify-between gap-2 w-full">
+            <div className={`text-sm leading-tight min-w-0 flex-1 break-words [overflow-wrap:anywhere] ${notification.read ? 'font-normal text-muted-foreground' : 'font-semibold text-foreground'}`}>
               <TruncatedText
                 text={notification.title || 'Notification'}
                 maxLength={60}
                 showToggle={true}
+                className="break-words [overflow-wrap:anywhere]"
               />
             </div>
             {!notification.read && (
-              <Badge className="h-5 text-[10px] px-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md flex-shrink-0 animate-pulse">
+              <Badge className="h-5 text-[10px] px-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md flex-shrink-0 animate-pulse ml-2">
                 NEW
               </Badge>
             )}
           </div>
           {notification.message && (
-            <div className="text-xs text-muted-foreground leading-relaxed">
+            <div className="text-xs text-muted-foreground leading-relaxed break-words [overflow-wrap:anywhere] min-w-0">
               <TruncatedText
                 text={notification.message}
                 maxLength={100}
                 showToggle={true}
+                className="break-words [overflow-wrap:anywhere]"
               />
             </div>
           )}
-          <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700 dark:text-slate-300">
+          <div className="flex items-center justify-between pt-1 gap-2 flex-wrap w-full">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-700 dark:text-slate-300 flex-shrink-0">
                 {getModuleLabel(notification.type)}
               </span>
               <p className="text-[10px] text-muted-foreground whitespace-nowrap">
@@ -224,7 +250,7 @@ export const NotificationBell: React.FC = () => {
                 })()}
               </p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
               {!notification.read && (
                 <Button
                   variant="ghost"
@@ -274,7 +300,7 @@ export const NotificationBell: React.FC = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[420px] max-h-[600px] bg-background z-50 border-2 border-[#5e5b5b] shadow-2xl p-0">
+      <DropdownMenuContent align="end" className="w-[420px] max-w-[calc(100vw-1rem)] max-h-[600px] bg-background z-50 border-2 border-[#5e5b5b] shadow-2xl p-0 overflow-hidden">
         <div className="flex flex-col p-4 border-b-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 sticky top-0 z-10">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -471,8 +497,8 @@ export const NotificationBell: React.FC = () => {
               </TabsList>
             </div>
 
-            <ScrollArea className="h-[450px] w-full">
-              <TabsContent value="all" className="m-0 divide-y">
+            <ScrollArea className="h-[450px] w-full max-w-full overflow-x-hidden [&>div>div]:!block [&>div>div]:!w-full [&>div>div]:!min-w-0 [&_[data-radix-scroll-area-viewport]>div]:!block [&_[data-radix-scroll-area-viewport]>div]:!w-full [&_[data-radix-scroll-area-viewport]>div]:!max-w-full [&_[data-radix-scroll-area-viewport]]:!overflow-x-hidden">
+              <TabsContent value="all" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {allNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No notifications found</p>
@@ -484,7 +510,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="leave" className="m-0 divide-y">
+              <TabsContent value="leave" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {leaveNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No leave notifications</p>
@@ -496,7 +522,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="shift" className="m-0 divide-y">
+              <TabsContent value="shift" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {shiftNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No shift notifications</p>
@@ -508,7 +534,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="wfh" className="m-0 divide-y">
+              <TabsContent value="wfh" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {wfhNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No WFH notifications</p>
@@ -520,7 +546,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="meeting" className="m-0 divide-y">
+              <TabsContent value="meeting" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {meetingNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No meeting notifications</p>
@@ -532,7 +558,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="chat" className="m-0 divide-y">
+              <TabsContent value="chat" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {chatNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No chat notifications</p>
@@ -544,7 +570,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="attendance" className="m-0 divide-y">
+              <TabsContent value="attendance" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {attendanceNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No attendance notifications</p>
@@ -556,7 +582,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="hiring" className="m-0 divide-y">
+              <TabsContent value="hiring" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {hiringNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No hiring notifications</p>
@@ -568,7 +594,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="project" className="m-0 divide-y">
+              <TabsContent value="project" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {projectNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No project notifications</p>
@@ -580,7 +606,7 @@ export const NotificationBell: React.FC = () => {
                 )}
               </TabsContent>
 
-              <TabsContent value="salary" className="m-0 divide-y">
+              <TabsContent value="salary" className="m-0 divide-y w-full max-w-full overflow-hidden">
                 {salaryNotifications.length === 0 ? (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <p className="text-sm">No salary notifications</p>

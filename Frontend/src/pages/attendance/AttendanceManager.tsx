@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -235,6 +236,19 @@ const AttendanceManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "attendance" | "office-hours" | "wfh-requests"
   >("attendance");
+  const routerLocation = useLocation();
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(routerLocation.search);
+    const tab = queryParams.get("tab");
+    if (tab === "wfh-requests" || tab === "wfh_requests" || tab === "wfh") {
+      setActiveTab("wfh-requests");
+    } else if (tab === "office-hours" || tab === "office_hours") {
+      setActiveTab("office-hours");
+    } else if (tab === "attendance") {
+      setActiveTab("attendance");
+    }
+  }, [routerLocation.search]);
   const [officeTimings, setOfficeTimings] = useState<OfficeTiming[]>([]);
   const [officeFormLoading, setOfficeFormLoading] = useState(false);
   const [isGlobalSaving, setIsGlobalSaving] = useState(false);
@@ -1978,14 +1992,17 @@ const AttendanceManager: React.FC = () => {
 
   // Handle WFH request approval/rejection for Admin
   const handleAdminWfhRequestAction = async (
-    requestId: string,
+    requestId: string | number,
     action: "approve" | "reject",
     reason?: string,
   ) => {
     setIsProcessingWfhRequest(true);
     try {
       // Call API to approve/reject WFH request
-      const wfhId = parseInt(requestId);
+      const wfhId = typeof requestId === "number" ? requestId : parseInt(String(requestId), 10);
+      if (isNaN(wfhId)) {
+        throw new Error("Invalid WFH request ID");
+      }
       const approved = action === "approve";
 
       await apiService.approveWFHRequest(wfhId, approved, reason);
@@ -1994,7 +2011,7 @@ const AttendanceManager: React.FC = () => {
       const currentTime = new Date();
       setAllWfhRequests((prev) =>
         prev.map((req) =>
-          req.id === requestId
+          String(req.id) === String(requestId)
             ? {
               ...req,
               status: action === "approve" ? "approved" : "rejected",
@@ -2118,8 +2135,8 @@ const AttendanceManager: React.FC = () => {
           </div>
         </div>
 
-        <div className="relative flex gap-3 shrink-0 mt-6 xl:mt-0">
-          {(user?.role === "admin" || user?.role === "hr") && (
+        {activeTab === "attendance" && (user?.role === "admin" || user?.role === "hr") && (
+          <div className="relative flex gap-3 shrink-0 mt-6 xl:mt-0">
             <Button
               onClick={openExportModal}
               size="lg"
@@ -2130,8 +2147,8 @@ const AttendanceManager: React.FC = () => {
               <Download className="h-4 w-4" />
               {isExporting ? t.attendance.exporting : "Export"}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3633,8 +3650,8 @@ const AttendanceManager: React.FC = () => {
                                       </Badge>
                                     </div>
                                   </div>
-                                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 min-w-0 max-w-full overflow-hidden">
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed italic break-words [overflow-wrap:anywhere] break-all w-full min-w-0">
                                       "{request.reason}"
                                     </p>
                                   </div>
@@ -3659,7 +3676,7 @@ const AttendanceManager: React.FC = () => {
                                     <CheckCircle className="h-4 w-4 mr-2" />
                                     Approve
                                   </Button>
-                                  <Button   
+                                  <Button
                                     size="lg"
                                     className="!h-[36px] min-h-[36px] px-6 rounded-xl bg-rose-600 hover:bg-rose-700 text-white border-2 border-black font-black text-xs uppercase tracking-widest transition-all active:scale-95 lg:w-full"
                                     onClick={() => {
@@ -3855,14 +3872,14 @@ const AttendanceManager: React.FC = () => {
                                         </Badge>
                                       </div>
                                     </div>
-                                    <div className="p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800">
-                                      <p className="text-sm font-bold text-slate-600 dark:text-slate-400 italic">
+                                    <div className="p-4 bg-white dark:bg-slate-950 rounded-xl border border-slate-100 dark:border-slate-800 min-w-0 max-w-full overflow-hidden">
+                                      <p className="text-sm font-bold text-slate-600 dark:text-slate-400 italic break-words [overflow-wrap:anywhere] break-all w-full min-w-0">
                                         {request.reason}
                                       </p>
                                     </div>
                                     {request.rejectionReason && (
-                                      <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border-2 border-rose-100 dark:border-rose-900/50 rounded-xl">
-                                        <p className="text-[12px] font-bold text-rose-700 dark:text-rose-400">
+                                      <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border-2 border-rose-100 dark:border-rose-900/50 rounded-xl min-w-0 max-w-full overflow-hidden">
+                                        <p className="text-[12px] font-bold text-rose-700 dark:text-rose-400 break-words [overflow-wrap:anywhere] break-all w-full min-w-0">
                                           <span className="uppercase tracking-widest mr-2 opacity-70">Rejection Reason:</span>
                                           {request.rejectionReason}
                                         </p>
@@ -3921,6 +3938,145 @@ const AttendanceManager: React.FC = () => {
           {attendanceContent}
         </div>
       )}
+
+      {/* WFH Request Rejection Dialog for Admin */}
+      <Dialog
+        open={showWfhRequestDialog}
+        onOpenChange={(open) => {
+          setShowWfhRequestDialog(open);
+          if (!open) {
+            setSelectedWfhRequest(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px] w-full max-w-full overflow-hidden">
+          <DialogHeader className="w-full">
+            <DialogTitle className="flex items-center gap-2">
+              <X className="h-5 w-5 text-red-600" />
+              Reject WFH Request
+            </DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this work from home request.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedWfhRequest && (
+            <div className="space-y-4 py-4 w-full min-w-0 max-w-full overflow-hidden">
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border w-full min-w-0 max-w-full overflow-hidden">
+                <div className="space-y-2 w-full min-w-0 max-w-full overflow-hidden">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <User className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                    <span className="font-medium truncate">
+                      {selectedWfhRequest.submittedBy}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${selectedWfhRequest.role === "hr"
+                          ? "border-green-500 text-green-700 bg-green-50 dark:bg-green-950"
+                          : selectedWfhRequest.role === "manager"
+                            ? "border-purple-500 text-purple-700 bg-purple-50 dark:bg-purple-950"
+                            : "border-blue-500 text-blue-700 bg-blue-50 dark:bg-blue-950"
+                        }`}
+                    >
+                      {formatRoleDisplay(selectedWfhRequest.role)}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Calendar className="h-4 w-4 text-green-600 flex-shrink-0" />
+                    <span className="text-sm">
+                      {formatDateIST(
+                        selectedWfhRequest.startDate,
+                        "dd MMM yyyy",
+                      )}{" "}
+                      -{" "}
+                      {formatDateIST(selectedWfhRequest.endDate, "dd MMM yyyy")}
+                    </span>
+                    <Badge variant="secondary" className="text-[10px] ml-1">
+                      {selectedWfhRequest.type === "full_day"
+                        ? "Full Day"
+                        : "Half Day"}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground break-words [overflow-wrap:anywhere] break-all whitespace-pre-wrap w-full min-w-0 max-w-full">
+                    {selectedWfhRequest.reason}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 w-full min-w-0">
+                <Label htmlFor="admin-rejection-reason">
+                  Rejection Reason <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="admin-rejection-reason"
+                  placeholder="Please provide a clear reason for rejecting this request."
+                  value={selectedWfhRequest?.rejectionReason || ""}
+                  rows={3}
+                  className="resize-none w-full"
+                  onChange={(e) => {
+                    setSelectedWfhRequest((prev: any) =>
+                      prev
+                        ? {
+                          ...prev,
+                          rejectionReason: e.target.value,
+                        }
+                        : null,
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="w-full sm:justify-end gap-2 sm:gap-3 flex-wrap">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowWfhRequestDialog(false);
+                setSelectedWfhRequest(null);
+              }}
+              disabled={isProcessingWfhRequest}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (selectedWfhRequest?.rejectionReason?.trim()) {
+                  handleAdminWfhRequestAction(
+                    selectedWfhRequest.id,
+                    "reject",
+                    selectedWfhRequest.rejectionReason,
+                  );
+                } else {
+                  toast({
+                    title: "Rejection Reason Required",
+                    description:
+                      "Please provide a reason for rejecting this request.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={
+                isProcessingWfhRequest ||
+                !selectedWfhRequest?.rejectionReason?.trim()
+              }
+            >
+              {isProcessingWfhRequest ? (
+                <>
+                  <Timer className="h-4 w-4 mr-2 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4 mr-2" />
+                  Reject Request
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

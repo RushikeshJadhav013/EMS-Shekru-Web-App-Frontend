@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications, Notification } from '@/contexts/NotificationContext';
+import { getChatNavigationUrl, getAttendanceNavigationUrl, getRoleBasePath } from '@/utils/navigation';
 import {
   Inbox as InboxIcon,
   Archive,
@@ -65,15 +66,24 @@ export default function Inbox() {
   };
 
   const handleAction = (notification: Notification) => {
-    const userRole = user?.role || 'employee';
+    const rawRole = (user?.role || 'employee').toLowerCase();
+    const userRole = rawRole === 'teamlead' ? 'team_lead' : rawRole;
+    const roleBase = getRoleBasePath(userRole);
     if (notification.type === 'leave' && notification.metadata?.leaveId) {
-      navigate(`/${userRole}/leaves?tab=approvals&leaveId=${notification.metadata.leaveId}`);
+      navigate(`${roleBase}/leaves?tab=approvals&leaveId=${notification.metadata.leaveId}`);
     } else if (notification.type === 'task' && notification.metadata?.taskId) {
-      navigate(`/${userRole}/tasks?taskId=${notification.metadata.taskId}`);
+      navigate(`${roleBase}/tasks?taskId=${notification.metadata.taskId}`);
     } else if (notification.type === 'shift' && notification.actionUrl) {
       navigate(notification.actionUrl);
-    } else if (notification.type === 'wfh' && notification.metadata?.wfhId) {
-      navigate(`/${userRole}/wfh?wfhId=${notification.metadata.wfhId}`);
+    } else if (notification.type === 'wfh') {
+      const wfhId = notification.metadata?.wfhId || (notification as any).wfh_id || (notification as any).wfhId;
+      const targetUrl = getAttendanceNavigationUrl(userRole, 'wfh_requests', wfhId ? { wfhId } : undefined);
+      navigate(targetUrl);
+    } else if (notification.type === 'chat') {
+      const chatId = notification.metadata?.chatId || (notification as any).chat_id || (notification as any).chatId;
+      const senderId = notification.metadata?.senderId || (notification as any).sender_id || (notification as any).senderId;
+      const { url, state } = getChatNavigationUrl(userRole, chatId, senderId);
+      navigate(url, { state });
     } else if (notification.type === 'meeting') {
       navigate('/meetings');
     } else if (notification.actionUrl) {
@@ -250,7 +260,7 @@ export default function Inbox() {
                     </div>
                   </div>
 
-                  {(selectedNotification.actionUrl || (selectedNotification.type === 'leave' && selectedNotification.metadata?.leaveId) || (selectedNotification.type === 'task' && selectedNotification.metadata?.taskId)) && (
+                  {(selectedNotification.actionUrl || selectedNotification.type === 'wfh' || selectedNotification.type === 'chat' || (selectedNotification.type === 'leave' && selectedNotification.metadata?.leaveId) || (selectedNotification.type === 'task' && selectedNotification.metadata?.taskId)) && (
                     <div className="flex justify-end pt-4">
                       <Button
                         onClick={() => handleAction(selectedNotification)}
@@ -259,8 +269,9 @@ export default function Inbox() {
                         {selectedNotification.type === 'task' ? 'Go to Task' :
                           selectedNotification.type === 'leave' ? 'View Leave' :
                             selectedNotification.type === 'wfh' ? 'View WFH' :
-                              selectedNotification.type === 'meeting' ? 'View Meeting' :
-                                'View Details'}
+                              selectedNotification.type === 'chat' ? 'Open Chat' :
+                                selectedNotification.type === 'meeting' ? 'View Meeting' :
+                                  'View Details'}
                         <ChevronRight className="h-4 w-4" />
                       </Button>
                     </div>
