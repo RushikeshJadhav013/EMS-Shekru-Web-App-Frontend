@@ -376,7 +376,7 @@ const HRDashboard: React.FC = () => {
   const activityFeedContent = useMemo(() => {
     if (isLoadingActivities) {
       return (
-        <div className="p-6 text-center font-bold text-xs" style={{ color: '#000000' }}>
+        <div className="p-8 text-center font-bold text-xs text-slate-500">
           Loading recent activities...
         </div>
       );
@@ -384,7 +384,7 @@ const HRDashboard: React.FC = () => {
 
     if (!recentActivities.length) {
       return (
-        <div className="p-6 text-center font-bold text-xs" style={{ color: '#000000' }}>
+        <div className="p-8 text-center font-medium text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
           No recent activities available yet.
         </div>
       );
@@ -396,48 +396,52 @@ const HRDashboard: React.FC = () => {
     );
 
     return (
-      <>
-        {paginatedActivities.map((activity) => (
-          <div
-            key={activity.id}
-            className="flex items-start gap-3 p-3 rounded-lg border hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors"
-          >
+      <div className="flex-1 flex flex-col justify-between min-w-0">
+        <div className="space-y-3 min-w-0">
+          {paginatedActivities.map((activity) => (
             <div
-              className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${getActivityIconClasses(
-                activity.type,
-              )}`}
+              key={activity.id}
+              className="flex items-start justify-between gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50/70 dark:hover:bg-gray-800/50 transition-colors min-w-0"
             >
-              {renderActivityIcon(activity.type)}
-            </div>
-            <div className="flex-1 space-y-1">
-              <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
-              <div className="text-xs font-medium" style={{ color: '#000000' }}>
-                <TruncatedText
-                  text={formatActivityDescription(activity)}
-                  maxLength={60}
-                  showToggle={false}
-                />
+              <div
+                className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${getActivityIconClasses(
+                  activity.type,
+                )}`}
+              >
+                {renderActivityIcon(activity.type)}
+              </div>
+              <div className="flex-1 min-w-0 space-y-1">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] [word-break:break-word] leading-tight">
+                  {activity.user}
+                </p>
+                <div className="text-xs font-medium text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere] [word-break:break-word] leading-relaxed">
+                  <TruncatedText
+                    text={formatActivityDescription(activity)}
+                    maxLength={60}
+                    showToggle={false}
+                  />
+                </div>
+              </div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-1.5 min-w-[75px] pl-2">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  {formatActivityTime(activity.time)}
+                </p>
+                <Badge
+                  className={`text-white border-0 font-bold uppercase text-[10px] h-5 px-2 whitespace-nowrap shrink-0 shadow-none ${getCorrectAttendanceStatus(activity) === 'on-time'
+                    ? 'bg-emerald-500 hover:bg-emerald-600'
+                    : getCorrectAttendanceStatus(activity) === 'late'
+                      ? 'bg-rose-500 hover:bg-rose-600'
+                      : 'bg-amber-500 hover:bg-amber-600'
+                    }`}
+                >
+                  {formatStatusLabel(getCorrectAttendanceStatus(activity))}
+                </Badge>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs font-medium" style={{ color: '#000000' }}>
-                {formatActivityTime(activity.time)}
-              </p>
-              <Badge
-                className={`text-white border-0 font-bold uppercase text-[10px] h-5 mt-1 ${getCorrectAttendanceStatus(activity) === 'on-time'
-                  ? 'bg-emerald-500 hover:bg-emerald-600'
-                  : getCorrectAttendanceStatus(activity) === 'late'
-                    ? 'bg-rose-500 hover:bg-rose-600'
-                    : 'bg-amber-500 hover:bg-amber-600'
-                  }`}
-              >
-                {formatStatusLabel(getCorrectAttendanceStatus(activity))}
-              </Badge>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
         {recentActivities.length > ACTIVITIES_PER_PAGE && (
-          <div className="mt-6">
+          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Pagination
               currentPage={activitiesPage}
               totalPages={Math.ceil(recentActivities.length / ACTIVITIES_PER_PAGE)}
@@ -449,7 +453,7 @@ const HRDashboard: React.FC = () => {
             />
           </div>
         )}
-      </>
+      </div>
     );
   }, [isLoadingActivities, recentActivities, activitiesPage]);
 
@@ -479,30 +483,30 @@ const HRDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl" />
+      <div className="relative overflow-hidden flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-gray-900 border-2 border-[#000000] shadow-sm mt-1 min-w-0">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-16 -mb-16 h-64 w-64 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative flex items-center gap-5">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-200 dark:shadow-none">
-            <Users className="h-8 w-8 text-white" />
+        <div className="relative flex items-center gap-4 sm:gap-5 min-w-0">
+          <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-200 dark:shadow-none shrink-0">
+            <Users className="h-7 w-7 sm:h-8 sm:w-8 text-white" />
           </div>
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: '#000000' }}>
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight truncate" style={{ color: '#000000' }}>
               {t.common.welcome}, <span style={{ color: '#9333EA' }}>{user?.name}</span>
             </h1>
-            <p className="font-medium flex items-center gap-2 mt-1 text-sm" style={{ color: '#000000' }}>
-              <CalendarDays className="h-4 w-4" style={{ color: '#000000' }} />
+            <p className="font-medium flex items-center gap-2 mt-1 text-sm text-slate-700 dark:text-slate-300">
+              <CalendarDays className="h-4 w-4 shrink-0 text-slate-700 dark:text-slate-300" />
               {formatIST(new Date(), 'EEEE, MMMM dd, yyyy | hh:mm a')}
             </p>
           </div>
         </div>
 
-        <div className="relative flex gap-3">
+        <div className="relative flex gap-3 shrink-0">
           <Button
             onClick={() => navigate('/hr/employees/', { state: { highlight: true } })}
             size="lg"
-            className="rounded-xl px-6 h-12 bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-2 border-[#2563EB] transition-all active:scale-95 gap-2"
+            className="rounded-xl px-5 sm:px-6 h-11 sm:h-12 bg-[#2563EB] hover:bg-blue-700 text-white shadow-lg shadow-blue-200 border-2 border-[#2563EB] transition-all active:scale-95 gap-2 font-bold"
             style={{ fontFamily: 'Inter, system-ui, -apple-system, sans-serif' }}
           >
             <UserPlus className="h-4 w-4" />
@@ -512,8 +516,8 @@ const HRDashboard: React.FC = () => {
       </div>
 
       {/* Quick Stats Grid */}
-      <div className="border-2 border-[#000000] p-4 rounded-2xl bg-white/50 mb-8 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="border-2 border-[#000000] p-4 sm:p-5 rounded-3xl bg-white/50 mb-8 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {[
             {
               label: t.dashboard.totalEmployees,
@@ -565,118 +569,124 @@ const HRDashboard: React.FC = () => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 sm:gap-8 items-start">
         {/* Recent Activities */}
-        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
-            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+        <Card className="lg:col-span-3 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col min-w-0">
+          <CardHeader className="border-b-2 border-[#000000] bg-slate-50 px-6 py-5 shrink-0">
+            <CardTitle className="flex items-center gap-2.5 font-bold" style={{ color: '#000000' }}>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shrink-0">
                 <Activity className="h-5 w-5 text-white" />
               </div>
               <span className="text-[16px] font-bold">{t.dashboard.recentActivities}</span>
             </CardTitle>
-            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Latest HR activities and requests</p>
+            <p className="text-[14px] font-medium text-slate-600 mt-1">Latest HR activities and requests</p>
           </CardHeader>
-          <CardContent className="space-y-3">{activityFeedContent}</CardContent>
+          <CardContent className="p-5 sm:p-6 space-y-4 flex-1 flex flex-col justify-between min-w-0">
+            {activityFeedContent}
+          </CardContent>
         </Card>
 
         {/* WFH Requests */}
-        <Card className="lg:col-span-2 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col">
-          <CardHeader className="border-b border-slate-100 bg-slate-50 px-6 py-5">
-            <CardTitle className="flex items-center gap-2 font-bold" style={{ color: '#000000' }}>
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+        <Card className="lg:col-span-2 border-2 border-[#000000] shadow-xl bg-white rounded-2xl overflow-hidden flex flex-col min-w-0">
+          <CardHeader className="border-b-2 border-[#000000] bg-slate-50 px-6 py-5 shrink-0">
+            <CardTitle className="flex items-center gap-2.5 font-bold" style={{ color: '#000000' }}>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
                 <Home className="h-5 w-5 text-white" />
               </div>
               <span className="text-[16px] font-bold">WFH Requests</span>
             </CardTitle>
-            <p className="text-[14px] font-medium" style={{ color: '#000000' }}>Review pending work-from-home requests</p>
+            <p className="text-[14px] font-medium text-slate-600 mt-1">Review pending work-from-home requests</p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-4 gap-2">
-              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Total</div>
-                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.total}</div>
+          <CardContent className="p-5 sm:p-6 space-y-4 flex-1 flex flex-col justify-between min-w-0">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-gray-900/30 p-3 text-center sm:text-left">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">Total</div>
+                  <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">{wfhSummary.total}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-gray-900/30 p-3 text-center sm:text-left">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-amber-600">Pending</div>
+                  <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">{wfhSummary.pending}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-gray-900/30 p-3 text-center sm:text-left">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Approved</div>
+                  <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">{wfhSummary.approved}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-gray-900/30 p-3 text-center sm:text-left">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-rose-600">Rejected</div>
+                  <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">{wfhSummary.rejected}</div>
+                </div>
               </div>
-              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Pending</div>
-                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.pending}</div>
-              </div>
-              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Approved</div>
-                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.approved}</div>
-              </div>
-              <div className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3">
-                <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#000000' }}>Rejected</div>
-                <div className="text-base font-bold" style={{ color: '#000000' }}>{wfhSummary.rejected}</div>
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-bold" style={{ color: '#000000' }}>Pending (latest)</div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/hr/attendance?tab=wfh_requests')}
-                className="h-8 text-blue-600 border-blue-600 hover:bg-blue-50 hover:text-blue-700 font-bold"
-              >
-                View All
-                <ChevronRightIcon className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
+              <div className="flex items-center justify-between pt-1">
+                <div className="text-sm font-bold text-slate-900 dark:text-slate-100">Pending (latest)</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/hr/attendance?tab=wfh_requests')}
+                  className="h-8 text-blue-600 border-blue-600 hover:bg-blue-50 hover:text-blue-700 font-bold rounded-lg"
+                >
+                  View All
+                  <ChevronRightIcon className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
 
-            {isLoadingWfhRequests ? (
-              <div className="p-4 text-center font-bold text-xs" style={{ color: '#000000' }}>Loading WFH requests...</div>
-            ) : !wfhSummary.pendingList.length ? (
-              <div className="p-4 text-center font-bold text-xs" style={{ color: '#000000' }}>No pending requests.</div>
-            ) : (
-              <div className="space-y-2">
-                {wfhSummary.pendingList.map((req: any) => (
-                  <div
-                    key={req.id}
-                    className="rounded-lg border bg-white/60 dark:bg-gray-900/30 p-3 flex items-start justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-bold truncate" style={{ color: '#000000' }}>{req.user_name}</div>
-                        <Badge className="bg-yellow-500 text-white hover:bg-yellow-600 border-0 font-bold uppercase text-[10px] h-5">
-                          {formatStatusLabel(req.status)}
-                        </Badge>
-                      </div>
-                      <div className="text-xs font-medium mt-1" style={{ color: '#000000' }}>
-                        {formatShortDate(req.start_date)} → {formatShortDate(req.end_date)} • {req.department}
-                      </div>
-                      {req.reason ? (
-                        <div className="text-xs font-medium mt-1" style={{ color: '#000000' }}>
-                          <TruncatedText
-                            text={req.reason}
-                            maxLength={80}
-                            showToggle={false}
-                          />
+              {isLoadingWfhRequests ? (
+                <div className="p-6 text-center font-bold text-xs text-slate-500">Loading WFH requests...</div>
+              ) : !wfhSummary.pendingList.length ? (
+                <div className="p-8 text-center font-medium text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                  No pending requests.
+                </div>
+              ) : (
+                <div className="space-y-2.5 min-w-0">
+                  {wfhSummary.pendingList.map((req: any) => (
+                    <div
+                      key={req.id}
+                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-gray-900/30 p-3.5 flex items-center justify-between gap-3 min-w-0"
+                    >
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="text-sm font-bold truncate text-slate-900 dark:text-slate-100">{req.user_name}</div>
+                          <Badge className="bg-yellow-500 text-white hover:bg-yellow-600 border-0 font-bold uppercase text-[10px] h-5 shrink-0">
+                            {formatStatusLabel(req.status)}
+                          </Badge>
                         </div>
-                      ) : null}
+                        <div className="text-xs font-medium text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere]">
+                          {formatShortDate(req.start_date)} → {formatShortDate(req.end_date)} • {req.department}
+                        </div>
+                        {req.reason && (
+                          <div className="text-xs font-medium text-slate-500 dark:text-slate-400 break-words [overflow-wrap:anywhere]">
+                            <TruncatedText
+                              text={req.reason}
+                              maxLength={80}
+                              showToggle={false}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2 shrink-0 self-center">
+                        <Button
+                          size="sm"
+                          disabled={isProcessingWfhRequest}
+                          onClick={() => handleWfhRequestAction(Number(req.id), 'approve')}
+                          className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm"
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={isProcessingWfhRequest}
+                          onClick={() => openRejectDialog(req)}
+                          className="h-8 px-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg shadow-sm"
+                        >
+                          Reject
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button
-                        size="sm"
-                        disabled={isProcessingWfhRequest}
-                        onClick={() => handleWfhRequestAction(Number(req.id), 'approve')}
-                        className="h-8 bg-green-600 hover:bg-green-700 text-white font-bold"
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={isProcessingWfhRequest}
-                        onClick={() => openRejectDialog(req)}
-                        className="h-8 bg-red-600 hover:bg-red-700 text-white font-bold"
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

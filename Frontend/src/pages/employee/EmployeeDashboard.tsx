@@ -589,8 +589,8 @@ const EmployeeDashboard: React.FC = () => {
               </div>
             ) : (
               recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${activity.type === 'success' ? 'bg-gradient-to-br from-green-400 to-emerald-500' :
+                <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors min-w-0">
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${activity.type === 'success' ? 'bg-gradient-to-br from-green-400 to-emerald-500' :
                     activity.type === 'warning' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
                       'bg-gradient-to-br from-blue-400 to-indigo-500'
                     }`}>
@@ -599,16 +599,16 @@ const EmployeeDashboard: React.FC = () => {
                     {activity.type === 'info' && <Activity className="h-5 w-5 text-white" />}
                     {activity.type === 'error' && <XCircle className="h-5 w-5 text-white" />}
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.action}</p>
-                    <div className="text-xs" style={{ color: '#000000' }}>
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] [word-break:break-word] leading-tight">{activity.action}</p>
+                    <div className="text-xs text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere] [word-break:break-word] leading-relaxed">
                       <TruncatedText
                         text={activity.description}
                         maxLength={50}
                         showToggle={false}
                       />
                     </div>
-                    <p className="text-[12px]" style={{ color: '#000000' }}>{activity.time}</p>
+                    <p className="text-[12px] text-slate-500 dark:text-slate-400">{activity.time}</p>
                   </div>
                 </div>
               ))

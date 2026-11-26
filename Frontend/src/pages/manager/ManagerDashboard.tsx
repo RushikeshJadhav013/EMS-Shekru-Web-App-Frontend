@@ -431,8 +431,8 @@ const ManagerDashboard: React.FC = () => {
                 {teamActivities
                   .slice((activitiesPage - 1) * ACTIVITIES_PER_PAGE, activitiesPage * ACTIVITIES_PER_PAGE)
                   .map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg border hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors">
-                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${activity.type === 'task' ? 'bg-gradient-to-br from-blue-400 to-indigo-500' :
+                    <div key={activity.id} className="flex items-start justify-between gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-white/50 dark:hover:bg-gray-800/50 transition-colors min-w-0">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${activity.type === 'task' ? 'bg-gradient-to-br from-blue-400 to-indigo-500' :
                         activity.type === 'leave' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
                           'bg-gradient-to-br from-green-400 to-emerald-500'
                         }`}>
@@ -440,9 +440,9 @@ const ManagerDashboard: React.FC = () => {
                         {activity.type === 'leave' && <CalendarDays className="h-5 w-5 text-white" />}
                         {activity.type === 'check-in' && <Clock className="h-5 w-5 text-white" />}
                       </div>
-                      <div className="flex-1 space-y-1">
-                        <p className="text-sm font-bold" style={{ color: '#000000' }}>{activity.user}</p>
-                        <div className="text-xs" style={{ color: '#000000' }}>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="text-sm font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] [word-break:break-word] leading-tight">{activity.user}</p>
+                        <div className="text-xs text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere] [word-break:break-word] leading-relaxed">
                           <TruncatedText
                             text={activity.description || ''}
                             maxLength={50}
@@ -450,12 +450,12 @@ const ManagerDashboard: React.FC = () => {
                           />
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs font-bold" style={{ color: '#000000' }}>
+                      <div className="text-right shrink-0 flex flex-col items-end gap-1 min-w-[75px] pl-2">
+                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                           {formatTimeIST(activity.time, 'hh:mm a')}
                         </p>
                         <div
-                          className="text-xs font-bold uppercase mt-1"
+                          className="text-xs font-bold uppercase mt-1 whitespace-nowrap shrink-0"
                           style={{
                             color: (getCorrectAttendanceStatus(activity) === 'on-time' || getCorrectAttendanceStatus(activity) === 'completed')
                               ? '#16a34a'

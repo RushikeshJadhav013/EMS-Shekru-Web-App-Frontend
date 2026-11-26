@@ -469,9 +469,9 @@ const AdminDashboard: React.FC = () => {
                           {activity.type === 'leave' && <CalendarDays className="h-4 w-4" />}
                           {activity.type === 'task' && <ClipboardList className="h-4 w-4" />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-bold truncate" style={{ color: '#000000' }}>{formatName(activity.user)}</p>
-                          <p className="text-[12px] font-medium mt-0.5" style={{ color: '#000000' }}>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <p className="text-[14px] font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] leading-tight">{formatName(activity.user)}</p>
+                          <p className="text-[12px] font-medium text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere]">
                             {activity.type === 'check-in' && 'Checked in'}
                             {activity.type === 'check-out' && 'Checked out'}
                             {activity.type === 'leave' && 'Applied for leave'}
@@ -481,7 +481,7 @@ const AdminDashboard: React.FC = () => {
                             {formatActivityTime(activity.time)}
                           </p>
                         </div>
-                        <div className="flex flex-col items-end">
+                        <div className="flex flex-col items-end shrink-0 pl-2">
                           <div
                             className={`text-xs font-bold px-2 py-0.5 capitalize`}
                             style={{
