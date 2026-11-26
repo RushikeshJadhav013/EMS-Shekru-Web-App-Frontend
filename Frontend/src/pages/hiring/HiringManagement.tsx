@@ -1368,12 +1368,12 @@ export default function HiringManagement() {
           key={`list-${blocks.length}`}
           className={
             listType === 'ul'
-              ? 'list-disc pl-5 text-sm space-y-1'
-              : 'list-decimal pl-5 text-sm space-y-1'
+              ? 'list-disc pl-5 text-sm space-y-1 break-words [overflow-wrap:anywhere] [word-break:break-word]'
+              : 'list-decimal pl-5 text-sm space-y-1 break-words [overflow-wrap:anywhere] [word-break:break-word]'
           }
         >
           {listBuffer.map((item, idx) => (
-            <li key={`item-${idx}`} dangerouslySetInnerHTML={{ __html: item }} />
+            <li key={`item-${idx}`} className="break-words [overflow-wrap:anywhere] [word-break:break-word]" dangerouslySetInnerHTML={{ __html: item }} />
           ))}
         </ListTag>,
       );
@@ -1408,7 +1408,7 @@ export default function HiringManagement() {
         blocks.push(
           <p
             key={`p-${idx}`}
-            className="whitespace-pre-wrap text-sm"
+            className="whitespace-pre-wrap text-sm break-words [overflow-wrap:anywhere] [word-break:break-word]"
             dangerouslySetInnerHTML={{ __html: formatInline(line) }}
           />,
         );
@@ -1417,7 +1417,7 @@ export default function HiringManagement() {
 
     flushList();
 
-    return <div className="mt-1 space-y-1">{blocks}</div>;
+    return <div className="mt-1 space-y-1 min-w-0 break-words [overflow-wrap:anywhere] [word-break:break-word]">{blocks}</div>;
   };
 
   const openEditDialog = (vacancy: Vacancy) => {
@@ -1710,34 +1710,39 @@ export default function HiringManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>TITLE</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>LOCATION</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>TYPE</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>CANDIDATES</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
-
-                        <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
+                        <TableHead className="w-[280px] min-w-[200px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>TITLE</TableHead>
+                        <TableHead className="min-w-[140px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
+                        <TableHead className="min-w-[140px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>LOCATION</TableHead>
+                        <TableHead className="min-w-[110px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>TYPE</TableHead>
+                        <TableHead className="min-w-[110px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>CANDIDATES</TableHead>
+                        <TableHead className="min-w-[110px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
+                        <TableHead className="text-right w-[140px] min-w-[140px] shrink-0 whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {paginatedVacancies.map((vacancy) => {
                         return (
                           <TableRow key={vacancy.vacancy_id}>
-                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.title}</TableCell>
-                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.department}</TableCell>
-                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
-                              <div className="flex items-center gap-1">
-                                <MapPin className="h-3 w-3 text-muted-foreground" />
-                                {vacancy.location}
+                            <TableCell className="max-w-[280px] min-w-[200px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                              <div className="max-w-[280px] min-w-0">
+                                <p className="line-clamp-2 break-words [overflow-wrap:anywhere] [word-break:break-word] font-semibold text-slate-800 dark:text-slate-200" title={vacancy.title}>
+                                  {vacancy.title}
+                                </p>
                               </div>
                             </TableCell>
-                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="capitalize">
+                            <TableCell className="whitespace-nowrap truncate max-w-[160px]" title={vacancy.department} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.department}</TableCell>
+                            <TableCell className="max-w-[160px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                              <div className="flex items-center gap-1 truncate" title={vacancy.location}>
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                <span className="truncate">{vacancy.location}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="capitalize whitespace-nowrap">
                               {(vacancy.employment_type || "").replace("-", " ")}
                             </TableCell>
-                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{vacancy.candidates_count}</TableCell>
-                            <TableCell>{getStatusBadge(vacancy.status)}</TableCell>
-                            <TableCell className="text-right">
+                            <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }} className="whitespace-nowrap">{vacancy.candidates_count}</TableCell>
+                            <TableCell className="whitespace-nowrap">{getStatusBadge(vacancy.status)}</TableCell>
+                            <TableCell className="text-right w-[140px] min-w-[140px] shrink-0 whitespace-nowrap">
                               <div className="flex items-center justify-end gap-2">
                                 <Button
                                   variant="ghost"
@@ -1858,28 +1863,38 @@ export default function HiringManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>NAME</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMAIL</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PHONE</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>POSITION</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>APPLIED DATE</TableHead>
-                        <TableHead style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
-                        <TableHead className="text-right" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
+                        <TableHead className="w-[200px] min-w-[160px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>NAME</TableHead>
+                        <TableHead className="w-[220px] min-w-[180px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>EMAIL</TableHead>
+                        <TableHead className="min-w-[120px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>PHONE</TableHead>
+                        <TableHead className="max-w-[180px] min-w-[140px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>POSITION</TableHead>
+                        <TableHead className="min-w-[130px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>DEPARTMENT</TableHead>
+                        <TableHead className="min-w-[120px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>APPLIED DATE</TableHead>
+                        <TableHead className="min-w-[150px] whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>STATUS</TableHead>
+                        <TableHead className="text-right w-[140px] min-w-[140px] shrink-0 whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>ACTIONS</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {paginatedCandidates.map((candidate) => (
                         <TableRow key={candidate.candidate_id}>
-                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.name}</TableCell>
-                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.email}</TableCell>
-                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.phone || "-"}</TableCell>
-                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.vacancy_title || "-"}</TableCell>
-                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.vacancy_department || "-"}</TableCell>
-                          <TableCell style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                          <TableCell className="max-w-[200px] min-w-[160px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                            <div className="max-w-[200px] min-w-0">
+                              <p className="line-clamp-2 break-words [overflow-wrap:anywhere] [word-break:break-word] font-semibold text-slate-800 dark:text-slate-200" title={candidate.name}>
+                                {candidate.name}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[220px] min-w-[180px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                            <span className="truncate block" title={candidate.email}>{candidate.email}</span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.phone || "-"}</TableCell>
+                          <TableCell className="max-w-[180px] min-w-[140px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
+                            <span className="truncate block" title={candidate.vacancy_title || "-"}>{candidate.vacancy_title || "-"}</span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap truncate max-w-[140px]" title={candidate.vacancy_department || "-"} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{candidate.vacancy_department || "-"}</TableCell>
+                          <TableCell className="whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>
                             {candidate.applied_at ? formatDateIST(candidate.applied_at, "MMM dd, yyyy") : "N/A"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="whitespace-nowrap">
                             <Select
                               value={candidate.status}
                               onValueChange={(value) =>
@@ -1900,7 +1915,7 @@ export default function HiringManagement() {
                               </SelectContent>
                             </Select>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right w-[140px] min-w-[140px] shrink-0 whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="ghost"
@@ -2245,33 +2260,32 @@ export default function HiringManagement() {
 
       {/* Create/Edit Vacancy Dialog */}
       <Dialog open={isVacancyDialogOpen} onOpenChange={setIsVacancyDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-[#000000] bg-white dark:bg-slate-950 shadow-2xl">
-          <DialogHeader className="border-b border-slate-200/60 dark:border-slate-800/60 pb-4 mb-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 rounded-2xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center shadow-sm">
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border-2 border-[#000000] bg-white dark:bg-slate-950 shadow-2xl">
+          <DialogHeader className="!border-b-2 !border-[#000000] shrink-0 p-5 sm:p-6 pr-14 min-w-0 bg-white dark:bg-slate-950">
+            <div className="flex items-start justify-between gap-3 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-11 w-11 rounded-2xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center shadow-sm shrink-0">
                   <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div>
-                  <DialogTitle className="text-lg sm:text-xl font-semibold tracking-tight">
+                <div className="min-w-0">
+                  <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight break-words [overflow-wrap:anywhere]">
                     {selectedVacancy ? 'Edit Vacancy' : 'Create New Vacancy'}
                   </DialogTitle>
-                  <DialogDescription className="text-xs sm:text-sm mt-1">
+                  <DialogDescription className="text-xs sm:text-sm mt-1 break-words [overflow-wrap:anywhere]">
                     {selectedVacancy
                       ? 'Polish the details for this role before publishing.'
                       : 'Craft a compelling job post with clear responsibilities and requirements.'}
                   </DialogDescription>
                 </div>
               </div>
-
             </div>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <div className="p-5 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden flex-1 min-w-0">
             {/* Role Snapshot */}
-            <div className="rounded-2xl border-2 border-[#000000] bg-slate-50/70 dark:bg-slate-900/40 p-4 sm:p-5 space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
+            <div className="rounded-2xl border-2 border-[#000000] bg-slate-50/70 dark:bg-slate-900/40 p-4 sm:p-5 space-y-4 min-w-0">
+              <div className="flex items-start justify-between gap-3 min-w-0">
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Role Snapshot
                   </p>
@@ -2280,8 +2294,8 @@ export default function HiringManagement() {
                   </p>
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className="grid gap-4 md:grid-cols-2 min-w-0">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="title">Job Title *</Label>
                   <Input
                     id="title"
@@ -2290,10 +2304,10 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, title: e.target.value })
                     }
                     placeholder="e.g., Senior Software Engineer"
-                    className="h-10 border-2 border-[#000000]"
+                    className="h-10 border-2 border-[#000000] w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="department">Department *</Label>
                   <Select
                     value={vacancyFormData.department}
@@ -2302,7 +2316,7 @@ export default function HiringManagement() {
                     }
                     disabled={false}
                   >
-                    <SelectTrigger className="h-10 border-2 border-[#000000]">
+                    <SelectTrigger className="h-10 border-2 border-[#000000] w-full">
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2316,8 +2330,8 @@ export default function HiringManagement() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
+              <div className="grid gap-4 md:grid-cols-3 min-w-0">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="location">Location *</Label>
                   <Input
                     id="location"
@@ -2326,10 +2340,10 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, location: e.target.value })
                     }
                     placeholder="e.g., Mumbai, India"
-                    className="h-10 border-2 border-[#000000]"
+                    className="h-10 border-2 border-[#000000] w-full"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="employment_type">Employment Type *</Label>
                   <Select
                     value={vacancyFormData.employment_type}
@@ -2337,7 +2351,7 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, employment_type: value })
                     }
                   >
-                    <SelectTrigger className="h-10 border-2 border-[#000000]">
+                    <SelectTrigger className="h-10 border-2 border-[#000000] w-full">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2348,10 +2362,10 @@ export default function HiringManagement() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="salary_range">Salary Range</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <div className="relative w-full">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                       id="salary_range"
                       value={vacancyFormData.salary_range}
@@ -2359,14 +2373,14 @@ export default function HiringManagement() {
                         setVacancyFormData({ ...vacancyFormData, salary_range: e.target.value })
                       }
                       placeholder="e.g., ₹5L - ₹10L"
-                      className="pl-7 h-10 border-2 border-[#000000]"
+                      className="pl-9 h-10 border-2 border-[#000000] w-full"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
+              <div className="grid gap-4 md:grid-cols-3 min-w-0">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="status">Status *</Label>
                   <Select
                     value={vacancyFormData.status}
@@ -2374,7 +2388,7 @@ export default function HiringManagement() {
                       setVacancyFormData({ ...vacancyFormData, status: value })
                     }
                   >
-                    <SelectTrigger className="h-10 border-2 border-[#000000]">
+                    <SelectTrigger className="h-10 border-2 border-[#000000] w-full">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2390,9 +2404,9 @@ export default function HiringManagement() {
             </div>
 
             {/* Role Narrative */}
-            <div className="rounded-2xl border-2 border-[#000000] bg-white/90 dark:bg-slate-950/70 p-4 sm:p-5 space-y-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
+            <div className="rounded-2xl border-2 border-[#000000] bg-white/90 dark:bg-slate-950/70 p-4 sm:p-5 space-y-5 min-w-0 overflow-hidden">
+              <div className="flex items-start justify-between gap-3 min-w-0">
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     Role Narrative
                   </p>
@@ -2403,8 +2417,8 @@ export default function HiringManagement() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="space-y-5 min-w-0">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="description">📝 Job Description *</Label>
                   {renderFormattingToolbar('description')}
                   <Textarea
@@ -2416,19 +2430,21 @@ export default function HiringManagement() {
                     }
                     placeholder="Describe the role, mission, and impact of this position..."
                     rows={4}
-                    className="border-2 border-[#000000]"
+                    className="border-2 border-[#000000] w-full break-words [overflow-wrap:anywhere]"
                   />
                   {vacancyFormData.description && (
-                    <div className="mt-1">
+                    <div className="mt-2 min-w-0 max-w-full overflow-hidden">
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
                         Live Preview
                       </p>
-                      {renderRichText(vacancyFormData.description)}
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 break-words [overflow-wrap:anywhere] [word-break:break-word] min-w-0 overflow-hidden text-sm">
+                        {renderRichText(vacancyFormData.description)}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="responsibilities">🔧 Responsibilities</Label>
                   {renderFormattingToolbar('responsibilities')}
                   <Textarea
@@ -2440,19 +2456,21 @@ export default function HiringManagement() {
                     }
                     placeholder="Outline the day-to-day responsibilities..."
                     rows={4}
-                    className="border-2 border-[#000000]"
+                    className="border-2 border-[#000000] w-full break-words [overflow-wrap:anywhere]"
                   />
                   {vacancyFormData.responsibilities && (
-                    <div className="mt-1">
+                    <div className="mt-2 min-w-0 max-w-full overflow-hidden">
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
                         Live Preview
                       </p>
-                      {renderRichText(vacancyFormData.responsibilities)}
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 break-words [overflow-wrap:anywhere] [word-break:break-word] min-w-0 overflow-hidden text-sm">
+                        {renderRichText(vacancyFormData.responsibilities)}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="requirements">🎯 Requirements</Label>
                   {renderFormattingToolbar('requirements')}
                   <Textarea
@@ -2464,18 +2482,21 @@ export default function HiringManagement() {
                     }
                     placeholder="List the required skills, qualifications, and experience..."
                     rows={4}
+                    className="border-2 border-[#000000] w-full break-words [overflow-wrap:anywhere]"
                   />
                   {vacancyFormData.requirements && (
-                    <div className="mt-1">
+                    <div className="mt-2 min-w-0 max-w-full overflow-hidden">
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
                         Live Preview
                       </p>
-                      {renderRichText(vacancyFormData.requirements)}
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 break-words [overflow-wrap:anywhere] [word-break:break-word] min-w-0 overflow-hidden text-sm">
+                        {renderRichText(vacancyFormData.requirements)}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label htmlFor="nice_to_have_skills">✨ Nice-to-Have Skills</Label>
                   {renderFormattingToolbar('nice_to_have_skills')}
                   <Textarea
@@ -2490,29 +2511,37 @@ export default function HiringManagement() {
                     }
                     placeholder="Share any bonus skills or experience that would make candidates stand out..."
                     rows={3}
+                    className="border-2 border-[#000000] w-full break-words [overflow-wrap:anywhere]"
                   />
                   {vacancyFormData.nice_to_have_skills && (
-                    <div className="mt-1">
+                    <div className="mt-2 min-w-0 max-w-full overflow-hidden">
                       <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
                         Live Preview
                       </p>
-                      {renderRichText(vacancyFormData.nice_to_have_skills)}
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 break-words [overflow-wrap:anywhere] [word-break:break-word] min-w-0 overflow-hidden text-sm">
+                        {renderRichText(vacancyFormData.nice_to_have_skills)}
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsVacancyDialogOpen(false);
-              resetVacancyForm();
-              setSelectedVacancy(null);
-            }}>
+
+          <DialogFooter className="shrink-0 border-t-2 border-[#000000] p-4 sm:p-5 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 bg-slate-50/50 dark:bg-slate-900/50">
+            <Button
+              variant="outline"
+              className="rounded-xl border-2 border-[#000000] font-semibold"
+              onClick={() => {
+                setIsVacancyDialogOpen(false);
+                resetVacancyForm();
+                setSelectedVacancy(null);
+              }}
+            >
               Cancel
             </Button>
             <Button
+              className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white"
               onClick={selectedVacancy ? handleUpdateVacancy : handleCreateVacancy}
               disabled={isCreating || isUpdating}
             >
@@ -2522,7 +2551,7 @@ export default function HiringManagement() {
                   {selectedVacancy ? 'Updating...' : 'Creating...'}
                 </>
               ) : (
-                selectedVacancy ? 'Update' : 'Create'
+                selectedVacancy ? 'Update Vacancy' : 'Create Vacancy'
               )}
             </Button>
           </DialogFooter>
@@ -2531,77 +2560,96 @@ export default function HiringManagement() {
 
       {/* View Vacancy Dialog */}
       <Dialog open={isViewVacancyDialogOpen} onOpenChange={setIsViewVacancyDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
-          <DialogHeader>
-            <DialogTitle>{selectedVacancy?.title}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border-2 border-[#000000] bg-white dark:bg-slate-900 shadow-2xl">
+          <DialogHeader className="!border-b-2 !border-[#000000] shrink-0 p-5 sm:p-6 pr-14 min-w-0 bg-white dark:bg-slate-900">
+            <DialogTitle className="text-xl font-bold tracking-tight break-words [overflow-wrap:anywhere] [word-break:break-word] text-slate-900 dark:text-slate-100 pr-2">
+              {selectedVacancy?.title}
+            </DialogTitle>
+            <DialogDescription className="break-words [overflow-wrap:anywhere] [word-break:break-word] text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
               {selectedVacancy?.department} • {selectedVacancy?.location}
             </DialogDescription>
           </DialogHeader>
+
           {selectedVacancy && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Employment Type</Label>
-                  <p className="capitalize">{(selectedVacancy.employment_type || '').replace('-', ' ')}</p>
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto overflow-x-hidden flex-1 min-w-0 bg-white dark:bg-slate-900">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-xl border-2 border-[#000000] bg-slate-50/70 dark:bg-slate-900/50 min-w-0">
+                <div className="min-w-0">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Employment Type</Label>
+                  <p className="text-sm font-medium capitalize break-words [overflow-wrap:anywhere] text-slate-800 dark:text-slate-200">
+                    {(selectedVacancy.employment_type || '').replace('-', ' ')}
+                  </p>
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Status</Label>
-                  <div className="mt-1">{getStatusBadge(selectedVacancy.status)}</div>
+                <div className="min-w-0">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Status</Label>
+                  <div className="mt-0.5">{getStatusBadge(selectedVacancy.status)}</div>
                 </div>
                 {selectedVacancy.salary_range && (
-                  <div>
-                    <Label className="text-muted-foreground">Salary Range</Label>
-                    <p>{selectedVacancy.salary_range}</p>
+                  <div className="min-w-0">
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Salary Range</Label>
+                    <p className="text-sm font-medium break-words [overflow-wrap:anywhere] text-slate-800 dark:text-slate-200">
+                      {selectedVacancy.salary_range}
+                    </p>
                   </div>
                 )}
-                <div>
-                  <Label className="text-muted-foreground">Candidates</Label>
-                  <p>{selectedVacancy.candidates_count} applications</p>
+                <div className="min-w-0">
+                  <Label className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Candidates</Label>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{selectedVacancy.candidates_count} applications</p>
                 </div>
               </div>
-              <div>
-                <Label className="text-muted-foreground">📝 Job Description</Label>
-                {renderRichText(selectedVacancy.description) || (
-                  <p className="mt-1 text-sm text-muted-foreground">No description provided.</p>
-                )}
+
+              <div className="space-y-1.5 min-w-0">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">📝 Job Description</Label>
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] text-sm text-slate-800 dark:text-slate-200">
+                  {renderRichText(selectedVacancy.description) || (
+                    <p className="text-sm text-muted-foreground italic">No description provided.</p>
+                  )}
+                </div>
               </div>
+
               {selectedVacancy.responsibilities && (
-                <div>
-                  <Label className="text-muted-foreground">🔧 Responsibilities</Label>
-                  {renderRichText(selectedVacancy.responsibilities)}
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">🔧 Responsibilities</Label>
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] text-sm text-slate-800 dark:text-slate-200">
+                    {renderRichText(selectedVacancy.responsibilities)}
+                  </div>
                 </div>
               )}
+
               {selectedVacancy.requirements && (
-                <div>
-                  <Label className="text-muted-foreground">🎯 Requirements</Label>
-                  {renderRichText(selectedVacancy.requirements)}
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">🎯 Requirements</Label>
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] text-sm text-slate-800 dark:text-slate-200">
+                    {renderRichText(selectedVacancy.requirements)}
+                  </div>
                 </div>
               )}
+
               {selectedVacancy.nice_to_have_skills && (
-                <div>
-                  <Label className="text-muted-foreground">✨ Nice-to-Have Skills</Label>
-                  {renderRichText(selectedVacancy.nice_to_have_skills)}
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">✨ Nice-to-Have Skills</Label>
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0 overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word] text-sm text-slate-800 dark:text-slate-200">
+                    {renderRichText(selectedVacancy.nice_to_have_skills)}
+                  </div>
                 </div>
               )}
 
               {/* Vacancy Interview History */}
-              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800 min-w-0">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                   <Calendar className="h-3 w-3" />
                   Recent Interviews for this Role
                 </Label>
                 {vacancyInterviews.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-w-0">
                     {vacancyInterviews.map((int) => (
-                      <div key={int.interview_id} className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between text-xs">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-semibold">{int.candidate_name} • {int.round_type}</span>
+                      <div key={int.interview_id} className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between text-xs min-w-0 gap-3">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="font-semibold break-words [overflow-wrap:anywhere]">{int.candidate_name} • {int.round_type}</span>
                           <span className="text-muted-foreground">
                             {formatDateTimeIST(int.start_time, 'MMM dd, yyyy')} • {formatDateTimeIST(int.start_time, 'hh:mm a')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 shrink-0">
                           <Badge variant="outline" className={cn(
                             "capitalize text-[10px] py-1 border-opacity-50",
                             int.status === 'scheduled' && "bg-blue-50 text-blue-700 border-blue-200",
@@ -2621,10 +2669,9 @@ export default function HiringManagement() {
                 )}
               </div>
             </div>
-
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewVacancyDialogOpen(false)}>
+          <DialogFooter className="shrink-0 border-t-2 border-[#000000] p-4 flex sm:justify-end bg-slate-50/50 dark:bg-slate-900/50">
+            <Button variant="outline" className="border-2 border-[#000000] font-semibold rounded-xl" onClick={() => setIsViewVacancyDialogOpen(false)}>
               Close
             </Button>
           </DialogFooter>
@@ -2634,40 +2681,44 @@ export default function HiringManagement() {
 
 
       {/* View Candidate Dialog */}
-      < Dialog open={isViewCandidateDialogOpen} onOpenChange={setIsViewCandidateDialogOpen} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
-          <DialogHeader>
-            <DialogTitle>Candidate Profile: {selectedCandidate?.name}</DialogTitle>
-            <DialogDescription>{selectedCandidate?.email}</DialogDescription>
+      <Dialog open={isViewCandidateDialogOpen} onOpenChange={setIsViewCandidateDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border-2 border-[#000000] bg-white dark:bg-slate-900 shadow-2xl">
+          <DialogHeader className="!border-b-2 !border-[#000000] shrink-0 p-5 sm:p-6 pr-14 min-w-0 bg-white dark:bg-slate-900">
+            <DialogTitle className="text-xl font-bold tracking-tight break-words [overflow-wrap:anywhere] [word-break:break-word] text-slate-900 dark:text-slate-100 pr-2">
+              Candidate Profile: {selectedCandidate?.name}
+            </DialogTitle>
+            <DialogDescription className="break-words [overflow-wrap:anywhere] [word-break:break-word] text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
+              {selectedCandidate?.email}
+            </DialogDescription>
           </DialogHeader>
           {selectedCandidate && (
-            <div className="space-y-6">
+            <div className="p-5 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden flex-1 min-w-0 bg-white dark:bg-slate-900">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
+                <div className="space-y-3 min-w-0">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <Briefcase className="h-5 w-5 text-blue-500" />
+                    <Briefcase className="h-5 w-5 text-blue-500 shrink-0" />
                     Applied Position
                   </h4>
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <p className="text-sm font-medium">{selectedCandidate.vacancy_title || '-'}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{selectedCandidate.vacancy_department || '-'}</p>
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0 overflow-hidden">
+                    <p className="text-sm font-medium break-words [overflow-wrap:anywhere]">{selectedCandidate.vacancy_title || '-'}</p>
+                    <p className="text-xs text-muted-foreground mt-1 break-words [overflow-wrap:anywhere]">{selectedCandidate.vacancy_department || '-'}</p>
                     <p className="text-xs text-muted-foreground mt-3">
                       Applied on {selectedCandidate.applied_at ? formatDateTimeIST(selectedCandidate.applied_at, 'MMM dd, yyyy') : 'N/A'}
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3 min-w-0">
                   <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-orange-500" />
+                    <MapPin className="h-5 w-5 text-orange-500 shrink-0" />
                     Contact Information
                   </h4>
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 min-w-0 overflow-hidden">
                     {selectedCandidate.phone && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground">Phone:</span>
-                        <span>{selectedCandidate.phone}</span>
+                      <div className="flex items-center gap-2 text-xs min-w-0">
+                        <span className="text-muted-foreground shrink-0">Phone:</span>
+                        <span className="break-words [overflow-wrap:anywhere]">{selectedCandidate.phone}</span>
                       </div>
                     )}
                   </div>
@@ -2675,33 +2726,33 @@ export default function HiringManagement() {
               </div>
 
               {selectedCandidate.status === 'interview' && selectedCandidate.interview_date && (
-                <div className="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50 space-y-3">
+                <div className="bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50 space-y-3 min-w-0">
                   <h4 className="text-sm font-semibold flex items-center gap-2 text-blue-700 dark:text-blue-400">
-                    <Calendar className="h-5 w-5" />
+                    <Calendar className="h-5 w-5 shrink-0" />
                     Scheduled Interview
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                    <div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs min-w-0">
+                    <div className="min-w-0">
                       <span className="text-muted-foreground block mb-1">Date</span>
                       <span className="font-medium">
                         {selectedCandidate.interview_date ? formatDateIST(selectedCandidate.interview_date, 'MMM dd, yyyy') : 'N/A'}
                       </span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-muted-foreground block mb-1">Time</span>
                       <span className="font-medium">{selectedCandidate.interview_time || '-'}</span>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-muted-foreground block mb-1">Mode</span>
                       <Badge variant="secondary" className="capitalize text-[10px] py-0">{selectedCandidate.interview_mode || '-'}</Badge>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="text-muted-foreground block mb-1">Interviewer</span>
-                      <span className="font-medium text-blue-600 dark:text-blue-400">{selectedCandidate.interviewer_name || '-'}</span>
+                      <span className="font-medium text-blue-600 dark:text-blue-400 break-words [overflow-wrap:anywhere]">{selectedCandidate.interviewer_name || '-'}</span>
                     </div>
                   </div>
                   {selectedCandidate.location_or_link && (
-                    <div className="pt-2 border-t border-blue-100 dark:border-blue-800/50">
+                    <div className="pt-2 border-t border-blue-100 dark:border-blue-800/50 min-w-0">
                       <span className="text-muted-foreground text-xs block mb-1">Location / Join Link</span>
                       <p className="text-xs break-all text-blue-600 underline">
                         {selectedCandidate.location_or_link.startsWith('http') ? (
@@ -2714,17 +2765,17 @@ export default function HiringManagement() {
               )}
 
               {selectedCandidate.cover_letter && (
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cover Letter</Label>
-                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800 whitespace-pre-wrap">
+                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">
                     {selectedCandidate.cover_letter}
                   </p>
                 </div>
               )}
 
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Resume</Label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 min-w-0">
                   {selectedCandidate.resume_url && (
                     <Button
                       variant="outline"
@@ -2774,25 +2825,25 @@ export default function HiringManagement() {
               </div>
 
               {/* Candidate Interview History */}
-              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800 min-w-0">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                   <Calendar className="h-3 w-3" />
                   Interview History
                 </Label>
                 {candidateInterviews.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 min-w-0">
                     {candidateInterviews.map((int) => (
-                      <div key={int.interview_id} className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between text-xs">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-semibold">{int.round_type}</span>
+                      <div key={int.interview_id} className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between text-xs min-w-0 gap-3">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="font-semibold break-words [overflow-wrap:anywhere]">{int.round_type}</span>
                           <span className="text-muted-foreground">
                             {formatDateTimeIST(int.start_time, 'MMM dd, yyyy')} • {formatDateTimeIST(int.start_time, 'hh:mm a')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right flex flex-col gap-1">
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right flex flex-col gap-1 min-w-0">
                             <span className="text-muted-foreground">Interviewer</span>
-                            <span className="font-medium">{int.interviewer_name || '-'}</span>
+                            <span className="font-medium break-words [overflow-wrap:anywhere]">{int.interviewer_name || '-'}</span>
                           </div>
                           <Badge variant="outline" className={cn(
                             "capitalize text-[10px] py-1 border-opacity-50",
@@ -2814,54 +2865,56 @@ export default function HiringManagement() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewCandidateDialogOpen(false)}>
+          <DialogFooter className="shrink-0 border-t-2 border-[#000000] p-4 flex sm:justify-end bg-slate-50/50 dark:bg-slate-900/50">
+            <Button variant="outline" className="border-2 border-[#000000] font-semibold rounded-xl" onClick={() => setIsViewCandidateDialogOpen(false)}>
               Close
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* Create/Edit Candidate Dialog */}
-      < Dialog open={isCandidateDialogOpen} onOpenChange={(open) => {
+      <Dialog open={isCandidateDialogOpen} onOpenChange={(open) => {
         setIsCandidateDialogOpen(open);
         if (!open) {
           setSelectedCandidate(null);
           resetCandidateForm();
         }
-      }} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
-          <DialogHeader>
-            <DialogTitle>{selectedCandidate ? 'Edit Candidate' : 'Add New Candidate'}</DialogTitle>
-            <DialogDescription>
+      }}>
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border-2 border-[#000000] bg-white dark:bg-slate-900 shadow-2xl">
+          <DialogHeader className="!border-b-2 !border-[#000000] shrink-0 p-5 sm:p-6 pr-14 min-w-0 bg-white dark:bg-slate-900">
+            <DialogTitle className="text-xl font-bold tracking-tight break-words [overflow-wrap:anywhere] [word-break:break-word] text-slate-900 dark:text-slate-100 pr-2">
+              {selectedCandidate ? 'Edit Candidate' : 'Add New Candidate'}
+            </DialogTitle>
+            <DialogDescription className="break-words [overflow-wrap:anywhere] [word-break:break-word] text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
               {selectedCandidate ? 'Update candidate information.' : 'Enter candidate information and link them to a vacancy.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+          <div className="p-5 sm:p-6 space-y-6 overflow-y-auto overflow-x-hidden flex-1 min-w-0 bg-white dark:bg-slate-900">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="c_first_name">First Name *</Label>
                 <Input
                   id="c_first_name"
                   value={candidateFormData.first_name}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, first_name: e.target.value })}
                   placeholder="John"
-                  className="border-2 border-[#000000]"
+                  className="border-2 border-[#000000] w-full"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="c_last_name">Last Name *</Label>
                 <Input
                   id="c_last_name"
                   value={candidateFormData.last_name}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, last_name: e.target.value })}
                   placeholder="Doe"
-                  className="border-2 border-[#000000]"
+                  className="border-2 border-[#000000] w-full"
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="c_email">Email *</Label>
                 <Input
                   id="c_email"
@@ -2869,11 +2922,11 @@ export default function HiringManagement() {
                   value={candidateFormData.email}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, email: e.target.value })}
                   placeholder="example@gmail.com"
-                  className="border-2 border-[#000000]"
+                  className="border-2 border-[#000000] w-full"
                 />
                 <p className="text-[10px] text-muted-foreground italic">Must be a @gmail.com address</p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="c_phone">Phone Number *</Label>
                 <Input
                   id="c_phone"
@@ -2884,18 +2937,18 @@ export default function HiringManagement() {
                   }}
                   placeholder="10-digit number (starts with 6, 7, 8, or 9)"
                   maxLength={10}
-                  className="border-2 border-[#000000]"
+                  className="border-2 border-[#000000] w-full"
                 />
                 <p className="text-[10px] text-muted-foreground italic">Starts with 6, 7, 8, or 9</p>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0">
               <Label htmlFor="c_vacancy">Vacancy *</Label>
               <Select
                 value={candidateFormData.vacancy_id}
                 onValueChange={(value) => setCandidateFormData({ ...candidateFormData, vacancy_id: value })}
               >
-                <SelectTrigger className="border-2 border-[#000000]">
+                <SelectTrigger className="border-2 border-[#000000] w-full">
                   <SelectValue placeholder="Select a job opening" />
                 </SelectTrigger>
                 <SelectContent>
@@ -2917,47 +2970,53 @@ export default function HiringManagement() {
               </Select>
             </div>
 
-            <div className="border-t pt-4 space-y-4">
+            <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-4 min-w-0">
               <h4 className="text-sm font-semibold">Resume Submission</h4>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="c_resume_file">Upload Resume (PDF/DOCX)</Label>
                 <Input
                   id="c_resume_file"
                   type="file"
                   accept=".pdf,.doc,.docx"
                   onChange={(e) => setCandidateResumeFile(e.target.files?.[0] || null)}
-                  className="border-2 border-[#000000]"
+                  className="border-2 border-[#000000] w-full"
                 />
               </div>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+                  <span className="w-full border-t border-slate-200 dark:border-slate-800" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-muted-foreground">Or provide link</span>
+                  <span className="bg-white dark:bg-slate-900 px-2 text-muted-foreground">Or provide link</span>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 <Label htmlFor="c_resume_url">External Resume/Google Drive Link</Label>
                 <Input
                   id="c_resume_url"
                   value={candidateFormData.resume_external_url}
                   onChange={(e) => setCandidateFormData({ ...candidateFormData, resume_external_url: e.target.value })}
                   placeholder="https://drive.google.com/..."
-                  className="border-2 border-[#000000]"
+                  className="border-2 border-[#000000] w-full"
                 />
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCandidateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={selectedCandidate ? handleUpdateCandidate : handleCreateCandidate} disabled={isCreating || isUpdating}>
+          <DialogFooter className="shrink-0 border-t-2 border-[#000000] p-4 flex sm:justify-end bg-slate-50/50 dark:bg-slate-900/50 gap-3">
+            <Button variant="outline" className="rounded-xl border-2 border-[#000000] font-semibold" onClick={() => setIsCandidateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={selectedCandidate ? handleUpdateCandidate : handleCreateCandidate}
+              disabled={isCreating || isUpdating}
+            >
               {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {selectedCandidate ? 'Update Candidate' : 'Save Candidate'}
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* Shortlist Dialog - Center with Scroll and Slider */}
       <Dialog open={isShortlistDialogOpen} onOpenChange={setIsShortlistDialogOpen}>
