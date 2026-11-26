@@ -519,6 +519,7 @@ const TaskManagement: React.FC = () => {
   const [isProjectsLoading, setIsProjectsLoading] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const createTaskInFlightRef = React.useRef(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithPassMeta | null>(null);
@@ -1015,27 +1016,16 @@ const TaskManagement: React.FC = () => {
       }
 
       // Sort tasks by status priority first, then by deadline within each status
-      const sortedTasks = updatedConverted.sort((a, b) => {
-        // Define status priority order: todo -> in-progress -> overdue -> completed -> cancelled
-        const statusOrder = {
-          todo: 0,
-          "in-progress": 1,
-          overdue: 2,
-          completed: 3,
-          cancelled: 4,
-        };
-        const aStatusPriority = statusOrder[a.status] ?? 999;
-        const bStatusPriority = statusOrder[b.status] ?? 999;
+      
+const sortedTasks = [...updatedConverted].sort((a: any, b: any) => {
+  const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+  const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
 
-        // First sort by status priority
-        if (aStatusPriority !== bStatusPriority) {
-          return aStatusPriority - bStatusPriority;
-        }
+  return dateB - dateA;
+});
 
-        // Within same status, sort by ID (latest first) to show newest tasks at the top
-        return Number(b.id) - Number(a.id);
-      });
-      setTasks(sortedTasks);
+setTasks(sortedTasks);
+
       setTaskHistory({});
       await Promise.all(
         sortedTasks.map((task) => fetchAndStoreHistory(task.id)),
@@ -1986,11 +1976,18 @@ const TaskManagement: React.FC = () => {
           return true;
         });
 
-        return {
-          ...p,
-          filteredTasks: filteredProjectTasks,
-          projectMatchesSearch,
-        };
+        const sortedProjectTasks = [...filteredProjectTasks].sort((a: any, b: any) => {
+  const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+  const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+
+  return dateB - dateA;
+});
+
+return {
+  ...p,
+  filteredTasks: sortedProjectTasks,
+  projectMatchesSearch,
+};
       })
       .filter((p) => p.projectMatchesSearch || p.filteredTasks.length > 0);
   }, [projects, tasks, searchQuery, filterStatus, isOverdueFilterActive, isTaskVisible, taskOwnershipFilter, userId, checkTaskMatchesSearch]);
@@ -2182,6 +2179,8 @@ const TaskManagement: React.FC = () => {
       return;
     }
 
+    if (createTaskInFlightRef.current) return;
+    createTaskInFlightRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -2287,6 +2286,7 @@ const TaskManagement: React.FC = () => {
         variant: "destructive",
       });
     } finally {
+      createTaskInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -3811,10 +3811,17 @@ const TaskManagement: React.FC = () => {
                                     if (checked) {
                                       setNewTask((prev) => ({
                                         ...prev,
-                                        assignedTo: [
-                                          ...prev.assignedTo,
-                                          emp.userId,
-                                        ],
+                                        assignedTo:
+                                          emp.userId !== userId &&
+                                          prev.assignedTo.length === 1 &&
+                                          prev.assignedTo[0] === userId
+                                            ? [emp.userId]
+                                            : Array.from(
+                                                new Set([
+                                                  ...prev.assignedTo,
+                                                  emp.userId,
+                                                ]),
+                                              ),
                                       }));
                                     } else {
                                       setNewTask((prev) => ({
