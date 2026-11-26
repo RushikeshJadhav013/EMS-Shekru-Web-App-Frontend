@@ -605,6 +605,7 @@ const TaskManagement: React.FC = () => {
   const [taskItemsPerPage, setTaskItemsPerPage] = useState(10);
   const [projectCurrentPage, setProjectCurrentPage] = useState(1);
   const [projectItemsPerPage, setProjectItemsPerPage] = useState(10);
+  const [projectTaskPages, setProjectTaskPages] = useState<Record<string, number>>({});
   const [activeScopeError, setActiveScopeError] = useState(false);
   const [debugBranchId, setDebugBranchId] = useState(localStorage.getItem('branchId') || '');
   const [debugCompanyId, setDebugCompanyId] = useState(localStorage.getItem('companyId') || '');
@@ -617,6 +618,7 @@ const TaskManagement: React.FC = () => {
           : p
       )
     );
+    setProjectTaskPages((pages) => ({ ...pages, [projectId]: 1 }));
   }, []);
 
   const isCreateDisabled =
@@ -1999,12 +2001,58 @@ return {
     return filteredProjects.slice(startIndex, endIndex);
   }, [filteredProjects, projectCurrentPage, projectItemsPerPage]);
 
+  const projectsWithPaginatedTasks = useMemo(
+    () =>
+      paginatedProjects.map((project) => {
+        const projectId = String(project.project_id ?? project.id);
+        const taskCount = project.filteredTasks.length;
+        const totalPages = Math.ceil(taskCount / 10);
+        const currentPage = Math.min(
+          projectTaskPages[projectId] || 1,
+          Math.max(totalPages, 1),
+        );
+        const startIndex = (currentPage - 1) * 10;
+
+        return {
+          ...project,
+          taskPagination: {
+            currentPage,
+            totalPages,
+            startIndex,
+            endIndex: Math.min(startIndex + 10, taskCount),
+            paginatedTasks: project.filteredTasks.slice(startIndex, startIndex + 10),
+          },
+        };
+      }),
+    [paginatedProjects, projectTaskPages],
+  );
+
+  useEffect(() => {
+    setProjectTaskPages((currentPages) => {
+      let hasInvalidPage = false;
+      const nextPages = { ...currentPages };
+
+      filteredProjects.forEach((project) => {
+        const projectId = String(project.project_id ?? project.id);
+        const totalPages = Math.ceil(project.filteredTasks.length / 10);
+        const lastPage = Math.max(totalPages, 1);
+        if ((nextPages[projectId] || 1) > lastPage) {
+          nextPages[projectId] = lastPage;
+          hasInvalidPage = true;
+        }
+      });
+
+      return hasInvalidPage ? nextPages : currentPages;
+    });
+  }, [filteredProjects]);
+
   const projectTotalPages = Math.ceil(filteredProjects.length / projectItemsPerPage);
 
   // Reset project pagination when filters change
   useEffect(() => {
     setProjectCurrentPage(1);
-  }, [searchQuery, filterStatus, taskOwnershipFilter]);
+    setProjectTaskPages({});
+  }, [searchQuery, filterStatus, isOverdueFilterActive, taskOwnershipFilter]);
 
   // Counts for the Project View stat cards
   const projectCounts = useMemo(() => {
@@ -4910,7 +4958,7 @@ return {
                 ) : (
                   <>
                     <div className="space-y-4">
-                      {paginatedProjects.map((project) => (
+                      {projectsWithPaginatedTasks.map((project) => (
                         <div key={project.project_id} className="group transition-all">
                           <div className={`p-5 cursor-pointer rounded-2xl transition-all border-2 border-[#000000] ${project.isExpanded ? "bg-violet-50/50" : "bg-white hover:bg-slate-50"}`} onClick={() => toggleProject(project.project_id)}>
                             <div className="flex items-center justify-between gap-6">
@@ -4952,7 +5000,7 @@ return {
                                   </TableHeader>
                                   <TableBody>
                                     {project.filteredTasks && project.filteredTasks.length > 0 ? (
-                                      project.filteredTasks.map((task: any) => {
+                                      project.taskPagination.paginatedTasks.map((task: any) => {
                                         const assignedByInfo = getAssignedByInfo(task.assignedBy, task.assignedByRole, task.assignedByName);
                                         const assignedToInfo = getAssignedToInfo(task.assignedTo[0] || "", task.assignedToRole, task.assignedToName);
                                         const isCreator = task.assignedBy === userId;
@@ -5130,6 +5178,74 @@ return {
                                     )}
                                   </TableBody>
                                 </Table>
+                                {project.filteredTasks.length > 0 && (
+                                  <div className="flex flex-col gap-3 border-t border-black/10 px-4 py-3 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
+                                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                      Showing {project.taskPagination.startIndex + 1}–{project.taskPagination.endIndex} of {project.filteredTasks.length} tasks
+                                    </p>
+                                    {project.taskPagination.totalPages > 1 && (
+                                      <nav
+                                        aria-label={`Pagination for ${project.name} tasks`}
+                                        className="flex flex-wrap items-center justify-center gap-1"
+                                      >
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950"
+                                          disabled={project.taskPagination.currentPage === 1}
+                                          onClick={() =>
+                                            setProjectTaskPages((pages) => ({
+                                              ...pages,
+                                              [String(project.project_id ?? project.id)]: project.taskPagination.currentPage - 1,
+                                            }))
+                                          }
+                                        >
+                                          Previous
+                                        </Button>
+                                        {Array.from(
+                                          { length: project.taskPagination.totalPages },
+                                          (_, index) => index + 1,
+                                        ).map((page) => (
+                                          <Button
+                                            key={page}
+                                            type="button"
+                                            variant={project.taskPagination.currentPage === page ? "default" : "outline"}
+                                            size="sm"
+                                            aria-current={project.taskPagination.currentPage === page ? "page" : undefined}
+                                            aria-label={`Page ${page}`}
+                                            className={project.taskPagination.currentPage === page
+                                              ? "bg-violet-600 text-white hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-600"
+                                              : "border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950"}
+                                            onClick={() =>
+                                              setProjectTaskPages((pages) => ({
+                                                ...pages,
+                                                [String(project.project_id ?? project.id)]: page,
+                                              }))
+                                            }
+                                          >
+                                            {page}
+                                          </Button>
+                                        ))}
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950"
+                                          disabled={project.taskPagination.currentPage === project.taskPagination.totalPages}
+                                          onClick={() =>
+                                            setProjectTaskPages((pages) => ({
+                                              ...pages,
+                                              [String(project.project_id ?? project.id)]: project.taskPagination.currentPage + 1,
+                                            }))
+                                          }
+                                        >
+                                          Next
+                                        </Button>
+                                      </nav>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}
