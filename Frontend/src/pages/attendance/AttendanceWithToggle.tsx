@@ -3467,8 +3467,8 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Attendance History */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-[16px] font-bold" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>{t.attendance.history}</CardTitle>
-              <CardDescription className="text-[14px]" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>Your Attendance records</CardDescription>
+              <CardTitle className="text-[18px] sm:text-[20px] font-bold tracking-tight" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>{t.attendance.history}</CardTitle>
+              <CardDescription className="text-[14px] font-medium mt-1" style={{ color: '#000000', fontFamily: 'Outfit, sans-serif' }}>Your Attendance records</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -3614,40 +3614,40 @@ const AttendanceWithToggle: React.FC = () => {
                         >
                           <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                             <tr>
-                              <th className="text-left p-3 font-bold text-[12px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 Date
                               </th>
-                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.attendance.department}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 Work location
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.attendance.checkInTime}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.attendance.checkOutTime}
                               </th>
-                              <th className="text-center p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap min-w-[120px]">
+                              <th className="text-center p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap min-w-[120px] font-outfit">
                                 {t.attendance.hours}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.attendance.location}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.attendance.selfiePhoto}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.common.status}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.attendance.workSummary}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 {t.attendance.workReport}
                               </th>
-                              <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap">
+                              <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                                 Overdue
                               </th>
                             </tr>
@@ -3967,10 +3967,10 @@ const AttendanceWithToggle: React.FC = () => {
           {/* Employee Attendance View */}
           <Card className="border-slate-200/60 border shadow-sm bg-white rounded-xl overflow-hidden w-full">
             <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
-              <CardTitle className="text-[16px] font-bold text-black dark:text-white">
+              <CardTitle className="text-[18px] sm:text-[20px] font-bold text-black dark:text-white tracking-tight">
                 {t.attendance.employeeAttendance}
               </CardTitle>
-              <CardDescription className="text-[12px] font-medium text-black dark:text-white">
+              <CardDescription className="text-[14px] font-medium text-black dark:text-white mt-1">
                 {t.attendance.viewAndManage}
               </CardDescription>
             </CardHeader>
@@ -4113,42 +4113,42 @@ const AttendanceWithToggle: React.FC = () => {
                   >
                     <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
                       <tr>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700">Date</th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white sticky left-0 z-30 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap font-outfit">Date</th>
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.employeeId}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.employee}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.department}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white">Work location</th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">Work location</th>
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.checkInTime}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.checkOutTime}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.hours}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.location}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.selfiePhoto}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.common.status}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.workSummary}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           {t.attendance.workReport}
                         </th>
-                        <th className="text-left p-3 font-medium text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
+                        <th className="text-left p-3 font-bold text-[14px] text-black dark:text-white whitespace-nowrap font-outfit">
                           Overdue
                         </th>
                       </tr>
