@@ -3401,53 +3401,56 @@ export default function HiringManagement() {
       </Dialog>
 
       {/* View Interview & Feedback Dialog */}
-      < Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-4 pr-10">
-              <div className="min-w-0 pr-4">
-                <DialogTitle className="truncate" title={`${selectedInterview?.candidate_name} • ${selectedInterview?.vacancy_title}`}>
+      {/* View Interview & Feedback Dialog */}
+      <Dialog open={isViewInterviewDialogOpen} onOpenChange={setIsViewInterviewDialogOpen}>
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] flex flex-col p-0 overflow-hidden border-2 border-[#000000] rounded-2xl shadow-2xl bg-white dark:bg-slate-900">
+          <DialogHeader className="!border-b-2 !border-[#000000] shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 pr-12 min-w-0">
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-xl font-bold tracking-tight truncate text-slate-900" title={`${selectedInterview?.candidate_name} • ${selectedInterview?.vacancy_title}`}>
                   Interview Details
                 </DialogTitle>
-                <DialogDescription className="truncate text-xs">
-                  {selectedInterview?.candidate_name} • {selectedInterview?.vacancy_title}
+                <DialogDescription className="truncate text-xs font-medium text-slate-600 mt-0.5" title={`${selectedInterview?.candidate_name} • ${selectedInterview?.vacancy_title}`}>
+                  {selectedInterview?.candidate_name || 'Candidate'} • {selectedInterview?.vacancy_title || 'Position'}
                 </DialogDescription>
               </div>
-              <Badge className={cn(
-                "capitalize px-3 py-1 shrink-0",
-                selectedInterview?.status === 'scheduled' && "bg-blue-500 hover:bg-blue-600",
-                selectedInterview?.status === 'completed' && "bg-emerald-500 hover:bg-emerald-600",
-                selectedInterview?.status === 'cancelled' && "bg-red-500 hover:bg-red-600",
-                selectedInterview?.status === 'rescheduled' && "bg-amber-500 hover:bg-amber-600",
-                selectedInterview?.status === 'no_show' && "bg-slate-500 hover:bg-slate-600"
-              )}>
-                {selectedInterview?.status === 'no_show' ? 'No Show' : selectedInterview?.status?.replace('-', ' ')}
-              </Badge>
+              {selectedInterview?.status && (
+                <Badge className={cn(
+                  "capitalize px-3 py-1 font-semibold text-xs shrink-0 self-start sm:self-center border shadow-sm",
+                  selectedInterview?.status === 'scheduled' && "bg-blue-600 hover:bg-blue-700 text-white border-blue-700",
+                  selectedInterview?.status === 'completed' && "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700",
+                  selectedInterview?.status === 'cancelled' && "bg-red-600 hover:bg-red-700 text-white border-red-700",
+                  selectedInterview?.status === 'rescheduled' && "bg-amber-600 hover:bg-amber-700 text-white border-amber-700",
+                  selectedInterview?.status === 'no_show' && "bg-slate-600 hover:bg-slate-700 text-white border-slate-700"
+                )}>
+                  {selectedInterview?.status === 'no_show' ? 'No Show' : selectedInterview?.status?.replace('-', ' ')}
+                </Badge>
+              )}
             </div>
           </DialogHeader>
 
           {selectedInterview && (
-            <div className="space-y-6 py-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border-2 border-[#000000]">
-                <div className="col-span-2">
+            <div className="p-6 space-y-6 overflow-y-auto overflow-x-hidden flex-1 min-w-0 bg-white dark:bg-slate-900">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border-2 border-[#000000] min-w-0">
+                <div className="col-span-2 min-w-0">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Schedule</span>
-                  <p className="text-sm font-medium">
-                    {selectedInterview.start_time ? formatDateIST(selectedInterview.start_time, 'MMM dd, yyyy') : 'N/A'} |
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {selectedInterview.start_time ? formatDateIST(selectedInterview.start_time, 'MMM dd, yyyy') : 'N/A'} |{' '}
                     {selectedInterview.start_time ? formatDateIST(selectedInterview.start_time, 'hh:mm a') : ''}
                     {selectedInterview.end_time ? ` - ${formatDateIST(selectedInterview.end_time, 'hh:mm a')}` : ''}
                   </p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Mode</span>
-                  <p className="text-sm font-medium capitalize">{selectedInterview.mode}</p>
+                  <p className="text-sm font-medium capitalize text-slate-800 dark:text-slate-200">{selectedInterview.mode || 'N/A'}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Round</span>
-                  <p className="text-sm font-medium">{selectedInterview.round_type}</p>
+                  <p className="text-sm font-medium capitalize text-slate-800 dark:text-slate-200">{selectedInterview.round_type || 'N/A'}</p>
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-4 min-w-0 pt-2 border-t border-slate-200/80 dark:border-slate-800">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Interviewer(s)</span>
-                  <p className="text-sm font-medium break-words leading-relaxed">
+                  <p className="text-sm font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] leading-relaxed text-slate-800 dark:text-slate-200">
                     {selectedInterview.interviewer_name || (selectedInterview.panel_members && selectedInterview.panel_members.length > 0 ? (
                       selectedInterview.panel_members.map(id => {
                         const emp = allEmployees.find(e => Number(e.id || e.user_id) === Number(id));
@@ -3459,43 +3462,47 @@ export default function HiringManagement() {
               </div>
 
               {selectedInterview.location && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Location / Link</Label>
-                  <p className="text-sm">
-                    {selectedInterview.location.startsWith('http') ? (
-                      <a href={selectedInterview.location} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline break-all">
-                        {selectedInterview.location}
-                      </a>
-                    ) : selectedInterview.location}
-                  </p>
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Location / Link</Label>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border-2 border-[#000000] min-w-0 overflow-hidden">
+                    <p className="text-sm font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] text-slate-800 dark:text-slate-200">
+                      {selectedInterview.location.startsWith('http') ? (
+                        <a href={selectedInterview.location} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline break-all inline-block max-w-full">
+                          {selectedInterview.location}
+                        </a>
+                      ) : (
+                        <span className="break-words [overflow-wrap:anywhere] [word-break:break-word]">{selectedInterview.location}</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
               )}
 
               {selectedInterview.notes && (
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</Label>
-                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border-2 border-[#000000] whitespace-pre-wrap italic">
+                <div className="space-y-1.5 min-w-0">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</Label>
+                  <p className="text-sm bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border-2 border-[#000000] whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word] italic text-slate-800 dark:text-slate-200">
                     {selectedInterview.notes}
                   </p>
                 </div>
               )}
 
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500" />
+              <div className="border-t border-slate-200 dark:border-slate-800 pt-6 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 min-w-0">
+                  <h3 className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                    <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
                     Interview Feedback
                   </h3>
                   <Button
-
-                    className="gap-2"
+                    size="sm"
+                    className="gap-2 shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm"
                     onClick={() => {
                       resetFeedbackForm();
                       setSelectedFeedback(null);
                       setIsFeedbackDialogOpen(true);
                     }}
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                     {feedback.length > 0 ? 'Add Another Feedback' : 'Submit Feedback'}
                   </Button>
                 </div>
@@ -3505,22 +3512,22 @@ export default function HiringManagement() {
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : feedback.length === 0 ? (
-                  <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed">
+                  <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
                     <p className="text-sm text-muted-foreground">No feedback submitted yet for this interview.</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 min-w-0">
                     {feedback.map((f) => (
-                      <Card key={f.feedback_id} className="overflow-hidden border-2 border-[#000000]">
-                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex items-center justify-between border-b-2 border-[#000000]">
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <Card key={f.feedback_id} className="overflow-hidden border-2 border-[#000000] min-w-0">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 flex items-center justify-between gap-3 border-b-2 border-[#000000] min-w-0">
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                             By {f.interviewer_name || 'Interviewer'}
                           </span>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 shrink-0">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-blue-600"
+                              className="h-8 w-8 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                               onClick={() => {
                                 setSelectedFeedback(f);
                                 {
@@ -3540,77 +3547,86 @@ export default function HiringManagement() {
                                 setIsFeedbackDialogOpen(true);
                               }}
                             >
-                              <Edit className="h-5 w-5" />
+                              <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-destructive"
+                              className="h-8 w-8 text-destructive hover:bg-red-50 dark:hover:bg-red-950/30"
                               onClick={() => handleDeleteFeedback(f.feedback_id)}
                             >
-                              <Trash2 className="h-5 w-5" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
-                        <CardContent className="pt-4 space-y-4">
-                          <div className="space-y-3">
+                        <CardContent className="pt-4 space-y-4 min-w-0">
+                          <div className="space-y-3 min-w-0">
                             {f.feedback_summary && (
-                              <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border-2 border-[#000000]">
+                              <div className="bg-blue-50/50 dark:bg-blue-900/10 p-3 rounded-lg border-2 border-[#000000] min-w-0 overflow-hidden">
                                 <span className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-400 block mb-1">Feedback Summary</span>
-                                <p className="text-sm font-medium">{f.feedback_summary}</p>
+                                <p className="text-sm font-medium break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap text-slate-800 dark:text-slate-200">
+                                  {f.feedback_summary}
+                                </p>
                               </div>
                             )}
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              <div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 min-w-0">
+                              <div className="min-w-0">
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Overall Rating</span>
                                 <div className="flex items-center gap-1">
-                                  <span className="font-bold text-blue-600">{f.rating}</span>
+                                  <span className="font-bold text-blue-600 text-sm">{f.rating}</span>
                                 </div>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Recommendation</span>
-                                <Badge className={
-                                  f.recommendation === 'hire' ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400' :
-                                    f.recommendation === 'reject' ? 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400' :
-                                      'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                }>
+                                <Badge className={cn(
+                                  "capitalize text-xs font-semibold px-2.5 py-0.5 border shadow-sm",
+                                  f.recommendation === 'hire' ? 'bg-green-100 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400 border-green-200' :
+                                    f.recommendation === 'reject' ? 'bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 border-red-200' :
+                                      'bg-yellow-100 text-yellow-700 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200'
+                                )}>
                                   {f.recommendation}
                                 </Badge>
                               </div>
                               {f.technical_rating !== undefined && f.technical_rating !== null && (
-                                <div>
+                                <div className="min-w-0">
                                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Technical</span>
-                                  <span className="text-sm font-medium">{f.technical_rating}/5</span>
+                                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{f.technical_rating}/5</span>
                                 </div>
                               )}
                               {f.communication_rating !== undefined && f.communication_rating !== null && (
-                                <div>
+                                <div className="min-w-0">
                                   <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-1">Communication</span>
-                                  <span className="text-sm font-medium">{f.communication_rating}/5</span>
+                                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{f.communication_rating}/5</span>
                                 </div>
                               )}
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
                               {f.strengths && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Strengths</span>
-                                  <p className="text-xs text-slate-600 dark:text-slate-400">{f.strengths}</p>
+                                <div className="space-y-1 min-w-0 overflow-hidden">
+                                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Strengths</span>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
+                                    {f.strengths}
+                                  </p>
                                 </div>
                               )}
                               {f.weaknesses && (
-                                <div className="space-y-1">
-                                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Areas for Improvement</span>
-                                  <p className="text-xs text-slate-600 dark:text-slate-400">{f.weaknesses}</p>
+                                <div className="space-y-1 min-w-0 overflow-hidden">
+                                  <span className="text-[10px] uppercase font-bold text-muted-foreground block">Areas for Improvement</span>
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
+                                    {f.weaknesses}
+                                  </p>
                                 </div>
                               )}
                             </div>
 
                             {f.comments && (
-                              <div className="space-y-1">
-                                <span className="text-[10px] uppercase font-bold text-muted-foreground">Detailed Comments</span>
-                                <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{f.comments}"</p>
+                              <div className="space-y-1 min-w-0 overflow-hidden">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground block">Detailed Comments</span>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 italic break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap">
+                                  "{f.comments}"
+                                </p>
                               </div>
                             )}
                           </div>
@@ -3623,15 +3639,17 @@ export default function HiringManagement() {
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewInterviewDialogOpen(false)}>Close</Button>
+          <DialogFooter className="shrink-0 border-t border-slate-200 dark:border-slate-800 p-4 flex sm:justify-end">
+            <Button variant="outline" onClick={() => setIsViewInterviewDialogOpen(false)} className="rounded-xl font-bold">
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog >
+      </Dialog>
 
       {/* Submit/Edit Feedback Dialog */}
-      < Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} >
-        <DialogContent className="max-w-2xl border-2 border-[#000000]">
+      <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-2 border-[#000000]">
           <DialogHeader>
             <DialogTitle>{selectedFeedback ? 'Edit Feedback' : 'Submit Interview Feedback'}</DialogTitle>
             <DialogDescription>
