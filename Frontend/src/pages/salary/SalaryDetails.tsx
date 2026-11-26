@@ -1805,9 +1805,9 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                     )}
                                 </div>
 
-                                <div className="relative flex-1 space-y-4 max-h-[500px] overflow-y-auto px-8 pt-10 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                                <div className="relative flex-1 space-y-4 max-h-[500px] overflow-y-auto overflow-x-hidden min-w-0 px-4 sm:px-8 pt-10 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
                                     {sortedIncrements.length > 0 ? (
-                                        <div className="space-y-4">
+                                        <div className="space-y-4 min-w-0">
                                             {sortedIncrements
                                                 .slice((growthPage - 1) * growthPerPage, growthPage * growthPerPage)
                                                 .map((inc, index) => {
@@ -1816,41 +1816,48 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                     const isLatest = index === 0 && growthPage === 1;
 
                                                     return (
-                                                        <div key={inc.id} className={`group/inc relative p-5 rounded-2xl border-2 border-[#000000] transition-all duration-300 ${isLatest
+                                                        <div key={inc.id} className={`group/inc relative p-4 sm:p-5 rounded-2xl border-2 border-[#000000] min-w-0 transition-all duration-300 ${isLatest
                                                             ? 'bg-gradient-to-br from-emerald-50/80 to-teal-50/80 dark:from-emerald-900/20 dark:to-teal-900/20 shadow-md shadow-emerald-500/5 scale-[1.02] z-10'
                                                             : 'bg-white dark:bg-gray-800/30 hover:bg-slate-50/50 dark:hover:bg-slate-800/50'
                                                             }`}>
                                                             {isLatest && (
-                                                                <div className="absolute -top-3 left-6">
-                                                                    <Badge className="border-none uppercase tracking-widest px-2 shadow-lg shadow-emerald-600/20" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", backgroundColor: "#10B981", color: "#FFFFFF", fontSize: "12px" }}>Active Revision</Badge>
+                                                                <div className="absolute -top-3 left-6 z-20">
+                                                                    <Badge className="border-none uppercase tracking-widest px-2.5 shadow-lg shadow-emerald-600/20" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", backgroundColor: "#10B981", color: "#FFFFFF", fontSize: "12px" }}>Active Revision</Badge>
                                                                 </div>
                                                             )}
 
-                                                            <div className="flex justify-between items-center">
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center border-2 transition-all ${isLatest
+                                                            <div className="flex justify-between items-center gap-3 sm:gap-4 min-w-0 w-full">
+                                                                <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                                                                    <div className={`h-12 w-12 shrink-0 rounded-xl flex items-center justify-center border-2 transition-all ${isLatest
                                                                         ? 'bg-white dark:bg-slate-950 border-emerald-400/30 shadow-inner group-hover/inc:rotate-12'
                                                                         : 'bg-slate-50 dark:bg-slate-800/80 border-slate-100 dark:border-slate-700'
                                                                         }`}>
                                                                         <FileText className={`h-6 w-6 ${isLatest ? 'text-emerald-600' : 'text-slate-400'}`} />
                                                                     </div>
-                                                                    <div>
-                                                                        <div className="flex items-center gap-3">
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                                                             <h4 className={`font-bold text-sm ${isLatest ? 'text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
                                                                                 <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}>Revision: {effectiveDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
                                                                             </h4>
-                                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full transition-all`} style={{ backgroundColor: "#FFFFFF", color: "#10B981", fontSize: "12px", border: "1px solid #10B981" }}>
+                                                                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full shrink-0 transition-all`} style={{ backgroundColor: "#FFFFFF", color: "#10B981", fontSize: "12px", border: "1px solid #10B981" }}>
                                                                                 <TrendingUp className="h-3 w-3" />
                                                                                 <span className="uppercase tracking-tighter font-bold" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#10B981", fontSize: "12px" }}>+{inc.increment_percentage}%</span>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="flex items-center gap-2 mt-1.5">
-                                                                            <Badge variant="outline" className="border-slate-200 dark:border-slate-700 uppercase tracking-tighter h-4 px-1" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{inc.reason}</Badge>
-                                                                            <span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>• Issued on {createdDate.toLocaleDateString()}</span>
+                                                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 min-w-0">
+                                                                            <Badge 
+                                                                                variant="outline" 
+                                                                                className="border-slate-200 dark:border-slate-700 uppercase tracking-tighter h-auto py-0.5 px-2 max-w-[180px] sm:max-w-[260px] truncate inline-block shrink-0" 
+                                                                                title={inc.reason}
+                                                                                style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}
+                                                                            >
+                                                                                {inc.reason}
+                                                                            </Badge>
+                                                                            <span className="shrink-0 text-slate-700 dark:text-slate-300" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px" }}>• Issued on {createdDate.toLocaleDateString()}</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex gap-2">
+                                                                <div className="flex gap-2 shrink-0 items-center">
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
@@ -1946,8 +1953,8 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                             <TableHead className="pl-8 py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Date & Impact</TableHead>
                                             <TableHead className="py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>CTC Transformation</TableHead>
                                             <TableHead className="py-5 text-center" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Growth Factor</TableHead>
-                                            <TableHead className="py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Reasoning</TableHead>
-                                            <TableHead className="text-right pr-8 py-5" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Actions</TableHead>
+                                            <TableHead className="py-5 min-w-[180px] max-w-[260px]" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Reasoning</TableHead>
+                                            <TableHead className="text-right pr-8 py-5 w-[140px] min-w-[140px] shrink-0 whitespace-nowrap" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1997,14 +2004,20 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
                                                                     </Badge>
                                                                 </div>
                                                             </TableCell>
-                                                            <TableCell className="py-5">
-                                                                <div className="max-w-[200px]">
-                                                                    <p className="truncate group-hover:whitespace-normal group-hover:overflow-visible transition-all" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{inc.reason}</p>
-                                                                    <p className="text-[8px] text-muted-foreground font-black uppercase tracking-tighter mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Record UUID: {inc.id.toString().slice(0, 8)}...</p>
+                                                            <TableCell className="py-5 max-w-[260px] min-w-[180px]">
+                                                                <div className="max-w-[260px] min-w-0">
+                                                                    <p 
+                                                                        className="line-clamp-2 break-words [overflow-wrap:anywhere] [word-break:break-word] text-sm leading-snug" 
+                                                                        style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                                                        title={inc.reason}
+                                                                    >
+                                                                        {inc.reason}
+                                                                    </p>
+                                                                    <p className="text-[9px] text-muted-foreground font-semibold uppercase tracking-tight mt-1">Record UUID: {inc.id.toString().slice(0, 8)}...</p>
                                                                 </div>
                                                             </TableCell>
-                                                            <TableCell className="text-right pr-8 py-5">
-                                                                <div className="flex justify-end gap-2 opacity-100 scale-100 transition-all origin-right">
+                                                            <TableCell className="text-right pr-8 py-5 w-[140px] min-w-[140px] shrink-0 whitespace-nowrap">
+                                                                <div className="flex justify-end gap-2 items-center">
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
@@ -2376,77 +2389,84 @@ const SalaryDetails: React.FC<SalaryDetailsProps> = ({ userId: propUserId }) => 
 
             {/* Increment Detail Dialog */}
             <Dialog open={isViewingIncrement} onOpenChange={setIsViewingIncrement}>
-                <DialogContent className="sm:max-w-[500px] border-2 border-[#000000] shadow-2xl p-0 overflow-hidden rounded-[2rem]">
-                    <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 text-white relative">
-                        <div className="absolute top-0 right-0 p-6 opacity-20">
-                            <TrendingUp className="h-24 w-24 rotate-12" />
-                        </div>
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
-                                <History className="h-6 w-6" />
-                                Growth Details
-                            </DialogTitle>
-                            <DialogDescription className="text-indigo-100 font-bold uppercase tracking-widest text-[10px] mt-1">
-                                Official Increment Record
-                            </DialogDescription>
-                        </DialogHeader>
-                    </div>
+                <DialogContent className="sm:max-w-[520px] w-[95vw] max-h-[90vh] flex flex-col p-0 overflow-hidden !border-2 !border-[#000000] !rounded-3xl shadow-2xl bg-white dark:bg-slate-900">
+                    <DialogHeader className="!bg-[#bae6fd] !text-slate-900 !px-6 !py-5 !border-b-2 !border-[#000000] !w-full relative shrink-0">
+                        <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-2.5 !text-slate-900">
+                            <History className="h-5 w-5 text-indigo-600" />
+                            Growth Details
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-600 font-bold uppercase tracking-wider text-[11px] mt-0.5">
+                            Official Increment Record
+                        </DialogDescription>
+                    </DialogHeader>
 
-                    <div className="p-8 space-y-6 bg-white dark:bg-slate-900">
+                    <div className="p-6 space-y-5 overflow-y-auto overflow-x-hidden flex-1 min-w-0 bg-white dark:bg-slate-900">
                         {isLoadingIncrementDetail ? (
                             <div className="py-12 flex flex-col items-center justify-center space-y-4">
                                 <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Retrieving Secure Data...</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Retrieving Secure Data...</p>
                             </div>
                         ) : selectedIncrementDetail ? (
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border-2 border-[#000000]">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Previous CTC</p>
-                                        <p className="text-lg font-black text-slate-600 dark:text-slate-400">{formatCurrency(selectedIncrementDetail.previous_salary)}</p>
+                            <div className="space-y-5 min-w-0">
+                                <div className="grid grid-cols-2 gap-3 sm:gap-4 min-w-0 w-full">
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border-2 border-[#000000] min-w-0 overflow-hidden">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 truncate">Previous CTC</p>
+                                        <p className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-300 truncate" title={formatCurrency(selectedIncrementDetail.previous_salary)}>
+                                            {formatCurrency(selectedIncrementDetail.previous_salary)}
+                                        </p>
                                     </div>
-                                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border-2 border-[#000000]">
-                                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">New CTC</p>
-                                        <p className="text-lg font-black text-emerald-700 dark:text-emerald-400">{formatCurrency(selectedIncrementDetail.new_salary)}</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800">
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Hike Amount</span>
-                                        <span className="text-sm font-black text-indigo-600">{formatCurrency(selectedIncrementDetail.increment_amount)}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800">
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Growth %</span>
-                                        <Badge className="bg-indigo-600 text-white font-black rounded-full px-3">{selectedIncrementDetail.increment_percentage}%</Badge>
-                                    </div>
-                                    <div className="flex items-center justify-between py-3 border-b border-slate-50 dark:border-slate-800">
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Effective From</span>
-                                        <span className="text-sm font-black text-slate-800 dark:text-white">{new Date(selectedIncrementDetail.effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                    <div className="p-3.5 sm:p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/10 border-2 border-[#000000] min-w-0 overflow-hidden">
+                                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1 truncate">New CTC</p>
+                                        <p className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-400 truncate" title={formatCurrency(selectedIncrementDetail.new_salary)}>
+                                            {formatCurrency(selectedIncrementDetail.new_salary)}
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/20 border-2 border-[#000000]">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Revision Reason</p>
-                                    <p className="text-sm font-medium leading-relaxed italic">"{selectedIncrementDetail.reason}"</p>
+                                <div className="space-y-3 min-w-0 w-full rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 p-4">
+                                    <div className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-200/80 dark:border-slate-700/60 min-w-0">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Hike Amount</span>
+                                        <span className="text-sm font-black text-indigo-600 truncate">{formatCurrency(selectedIncrementDetail.increment_amount)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-200/80 dark:border-slate-700/60 min-w-0">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Growth %</span>
+                                        <Badge className="bg-indigo-600 text-white font-black rounded-full px-3 py-0.5 shrink-0">+{selectedIncrementDetail.increment_percentage}%</Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 py-1.5 min-w-0">
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Effective From</span>
+                                        <span className="text-sm font-black text-slate-800 dark:text-white truncate">
+                                            {new Date(selectedIncrementDetail.effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div className="pt-2 text-[9px] text-center text-slate-400 font-bold uppercase tracking-[0.2em]">
+                                <div className="p-4 rounded-2xl bg-slate-900 text-white shadow-md border-2 border-[#000000] min-w-0 overflow-hidden">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Revision Reason</p>
+                                    <p 
+                                        className="text-sm font-medium leading-relaxed italic break-words whitespace-pre-wrap min-w-0 max-w-full"
+                                        style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}
+                                    >
+                                        "{selectedIncrementDetail.reason}"
+                                    </p>
+                                </div>
+
+                                <div className="pt-1 text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest break-all">
                                     System ID: {selectedIncrementDetail.id}
                                 </div>
                             </div>
                         ) : (
                             <div className="py-8 text-center text-slate-500 italic">No record data found.</div>
                         )}
+                    </div>
 
-                        <DialogFooter className="pt-4 flex !justify-center">
-                            <Button
-                                onClick={() => setIsViewingIncrement(false)}
-                                className="w-full rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700 h-10 transition-all border-none"
-                            >
-                                Close Details
-                            </Button>
-                        </DialogFooter>
+                    <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-center bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+                        <Button
+                            type="button"
+                            onClick={() => setIsViewingIncrement(false)}
+                            className="w-full sm:w-auto min-w-[140px] rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 transition-all border-none"
+                        >
+                            Close
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>

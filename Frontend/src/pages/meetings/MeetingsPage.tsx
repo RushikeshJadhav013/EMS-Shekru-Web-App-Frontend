@@ -908,13 +908,13 @@ const MeetingsPage: React.FC = () => {
                                                             {grouped.map((meeting) => {
                                                                 const isSelfCreated = Number(meeting.created_by_id) === Number(user?.id);
                                                                 return (
-                                                                    <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                                    <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden min-w-0 w-full">
                                                                         <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
-                                                                        <CardHeader className="p-8 pb-4">
-                                                                            <div className="flex justify-between items-start mb-6">
-                                                                                <Badge className={`rounded-full px-4 py-1 ${getBadgeColor(meeting.type)}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(meeting.type)}</Badge>
+                                                                        <CardHeader className="p-8 pb-4 min-w-0">
+                                                                            <div className="flex justify-between items-start mb-6 gap-2">
+                                                                                <Badge className={`rounded-full px-4 py-1 shrink-0 ${getBadgeColor(meeting.type)}`} style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(meeting.type)}</Badge>
                                                                                 <DropdownMenu>
-                                                                                    <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
+                                                                                    <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer shrink-0"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
                                                                                     <DropdownMenuContent align="end" className="rounded-xl">
                                                                                         <DropdownMenuItem onClick={() => setViewMeeting(meeting)} className="gap-2 uppercase py-3" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}><ExternalLink className="h-3.5 w-3.5" /> View</DropdownMenuItem>
                                                                                         {isSelfCreated && (
@@ -926,10 +926,10 @@ const MeetingsPage: React.FC = () => {
                                                                                     </DropdownMenuContent>
                                                                                 </DropdownMenu>
                                                                             </div>
-                                                                            <CardTitle className="mb-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>{meeting.title}</CardTitle>
-                                                                            <CardDescription className="line-clamp-2" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{meeting.description}</CardDescription>
+                                                                            <CardTitle className="mb-2 break-words [overflow-wrap:anywhere] min-w-0 line-clamp-2 leading-snug" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "16px", fontWeight: "bold" }}>{meeting.title}</CardTitle>
+                                                                            <CardDescription className="line-clamp-2 break-words [overflow-wrap:anywhere] min-w-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px" }}>{meeting.description}</CardDescription>
                                                                         </CardHeader>
-                                                                        <CardContent className="p-8 pt-0 space-y-6">
+                                                                        <CardContent className="p-8 pt-0 space-y-6 min-w-0">
                                                                             <div className="space-y-3">
                                                                                 <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="uppercase" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
                                                                                 <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "12px", fontWeight: "bold" }}>{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
@@ -963,13 +963,13 @@ const MeetingsPage: React.FC = () => {
                                                 {paginatedMeetings.map((meeting) => {
                                                     const isSelfCreated = Number(meeting.created_by_id) === Number(user?.id);
                                                     return (
-                                                        <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden">
+                                                        <Card key={meeting.id} className="group relative border-2 border-[#000000] shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] overflow-hidden min-w-0 w-full">
                                                             <div className={`absolute top-0 left-0 right-0 h-1.5 ${getBadgeColor(meeting.type).split(' ')[0]}`}></div>
-                                                            <CardHeader className="p-8 pb-4">
-                                                                <div className="flex justify-between items-start mb-6">
-                                                                    <Badge className={`rounded-full px-4 py-1 font-black text-[9px] ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
+                                                            <CardHeader className="p-8 pb-4 min-w-0">
+                                                                <div className="flex justify-between items-start mb-6 gap-2">
+                                                                    <Badge className={`rounded-full px-4 py-1 shrink-0 font-black text-[9px] ${getBadgeColor(meeting.type)}`}>{getDisplayName(meeting.type)}</Badge>
                                                                     <DropdownMenu>
-                                                                        <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
+                                                                        <DropdownMenuTrigger asChild><div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 cursor-pointer shrink-0"><MoreVertical className="h-4 w-4" /></div></DropdownMenuTrigger>
                                                                         <DropdownMenuContent align="end" className="rounded-xl">
                                                                             <DropdownMenuItem onClick={() => setViewMeeting(meeting)} className="gap-2 uppercase py-3" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif", color: "#000000", fontSize: "14px", fontWeight: "bold" }}><ExternalLink className="h-3.5 w-3.5" /> View</DropdownMenuItem>
                                                                             {isSelfCreated && (
@@ -981,10 +981,10 @@ const MeetingsPage: React.FC = () => {
                                                                         </DropdownMenuContent>
                                                                     </DropdownMenu>
                                                                 </div>
-                                                                <CardTitle className="text-xl font-black mb-2">{meeting.title}</CardTitle>
-                                                                <CardDescription className="line-clamp-2 text-sm">{meeting.description}</CardDescription>
+                                                                <CardTitle className="text-xl font-black mb-2 break-words [overflow-wrap:anywhere] min-w-0 line-clamp-2 leading-snug">{meeting.title}</CardTitle>
+                                                                <CardDescription className="line-clamp-2 text-sm break-words [overflow-wrap:anywhere] min-w-0">{meeting.description}</CardDescription>
                                                             </CardHeader>
-                                                            <CardContent className="p-8 pt-0 space-y-6">
+                                                            <CardContent className="p-8 pt-0 space-y-6 min-w-0">
                                                                 <div className="space-y-3">
                                                                     <div className="flex items-center gap-3 text-slate-600"><Calendar className="h-4 w-4" /><span className="text-xs font-black uppercase">{meeting.start_time ? format(new Date(meeting.start_time), 'EEEE, MMM do') : 'TBD'}</span></div>
                                                                     <div className="flex items-center gap-3 text-slate-600"><Clock className="h-4 w-4" /><span className="text-xs font-black">{meeting.start_time ? format(new Date(meeting.start_time), 'hh:mm a') : '--:--'} - {meeting.end_time ? format(new Date(meeting.end_time), 'hh:mm a') : '--:--'}</span></div>
@@ -1019,60 +1019,84 @@ const MeetingsPage: React.FC = () => {
 
             {/* View Meeting Dialog */}
             <Dialog open={!!viewMeeting} onOpenChange={(open) => { if (!open) setViewMeeting(null); }}>
-                <DialogContent className="sm:max-w-[520px] rounded-[2rem] border-none shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-black uppercase tracking-tighter !text-slate-900">Meeting Details</DialogTitle>
+                <DialogContent className="w-[calc(100%-2rem)] sm:w-full sm:max-w-[540px] max-h-[90vh] rounded-[2rem] border-none shadow-2xl p-0 flex flex-col overflow-hidden min-w-0">
+                    <DialogHeader className="pr-12 min-w-0 shrink-0">
+                        <DialogTitle className="text-xl font-black uppercase tracking-tighter !text-slate-900 break-words [overflow-wrap:anywhere] min-w-0">Meeting Details</DialogTitle>
                         <DialogDescription className="!text-slate-700 font-semibold opacity-90 uppercase text-[10px] tracking-widest mt-1">Full meeting information</DialogDescription>
                     </DialogHeader>
                     {viewMeeting && (
-                        <div className="p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <Badge className={`rounded-full px-4 py-1 ${getBadgeColor(viewMeeting.type)}`} style={{ fontSize: "12px", fontWeight: "bold" }}>{getDisplayName(viewMeeting.type)}</Badge>
+                        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)] custom-scrollbar min-w-0 w-full">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <Badge className={`rounded-full px-4 py-1 shrink-0 ${getBadgeColor(viewMeeting.type)}`} style={{ fontSize: "12px", fontWeight: "bold" }}>
+                                    {getDisplayName(viewMeeting.type)}
+                                </Badge>
                             </div>
-                            <div>
+                            <div className="min-w-0 w-full">
                                 <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Title</p>
-                                <p className="font-bold text-base text-slate-900" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.title}</p>
+                                <p className="font-bold text-base text-slate-900 break-words [overflow-wrap:anywhere] leading-snug min-w-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+                                    {viewMeeting.title}
+                                </p>
                             </div>
                             {viewMeeting.description && (
-                                <div>
+                                <div className="min-w-0 w-full">
                                     <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Agenda</p>
-                                    <p className="text-sm text-slate-700" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.description}</p>
+                                    <p className="text-sm text-slate-700 break-words [overflow-wrap:anywhere] whitespace-pre-wrap leading-relaxed min-w-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+                                        {viewMeeting.description}
+                                    </p>
                                 </div>
                             )}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 min-w-0 w-full p-3 sm:p-3.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <div className="min-w-0">
                                     <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Start Time</p>
-                                    <p className="font-bold text-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.start_time ? format(new Date(viewMeeting.start_time), 'MMM do, yyyy hh:mm a') : 'TBD'}</p>
+                                    <p className="font-bold text-sm text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] min-w-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+                                        {viewMeeting.start_time ? format(new Date(viewMeeting.start_time), 'MMM do, yyyy hh:mm a') : 'TBD'}
+                                    </p>
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                     <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">End Time</p>
-                                    <p className="font-bold text-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.end_time ? format(new Date(viewMeeting.end_time), 'MMM do, yyyy hh:mm a') : 'TBD'}</p>
+                                    <p className="font-bold text-sm text-slate-800 dark:text-slate-200 break-words [overflow-wrap:anywhere] min-w-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+                                        {viewMeeting.end_time ? format(new Date(viewMeeting.end_time), 'MMM do, yyyy hh:mm a') : 'TBD'}
+                                    </p>
                                 </div>
                             </div>
-                            <div>
+                            <div className="min-w-0 w-full">
                                 <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Created By</p>
-                                <p className="font-bold text-sm" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>{viewMeeting.created_by_name || 'Unknown'}</p>
+                                <p className="font-bold text-sm text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] min-w-0" style={{ fontFamily: "Inter, system-ui, -apple-system, sans-serif" }}>
+                                    {viewMeeting.created_by_name || 'Unknown'}
+                                </p>
                             </div>
                             {viewMeeting.meeting_url && (
-                                <div>
+                                <div className="min-w-0 w-full">
                                     <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Meeting URL</p>
-                                    <a href={viewMeeting.meeting_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold text-sm underline break-all">{viewMeeting.meeting_url}</a>
+                                    <a
+                                        href={viewMeeting.meeting_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-block text-blue-600 hover:text-blue-700 font-bold text-sm underline break-all [overflow-wrap:anywhere] max-w-full"
+                                    >
+                                        {viewMeeting.meeting_url}
+                                    </a>
                                 </div>
                             )}
                             {viewMeeting.participants && viewMeeting.participants.length > 0 && (
-                                <div>
+                                <div className="min-w-0 w-full">
                                     <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2">Participants ({viewMeeting.participants.length})</p>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-1.5 sm:gap-2 max-w-full min-w-0">
                                         {viewMeeting.participants.map((p, i) => (
-                                            <span key={i} className="bg-slate-100 text-slate-700 rounded-xl px-3 py-1 text-xs font-bold">{p.user_name || p.name || 'Unknown'}</span>
+                                            <span
+                                                key={i}
+                                                className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl px-3 py-1 text-xs font-bold break-words [overflow-wrap:anywhere] max-w-full"
+                                            >
+                                                {p.user_name || p.name || 'Unknown'}
+                                            </span>
                                         ))}
                                     </div>
                                 </div>
                             )}
                         </div>
                     )}
-                    <div className="p-5 bg-slate-50 border-t flex justify-end">
-                        <Button variant="ghost" onClick={() => setViewMeeting(null)} className="rounded-xl h-11 px-6 font-bold text-xs">Close</Button>
+                    <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/50 border-t flex justify-end shrink-0 w-full">
+                        <Button variant="ghost" onClick={() => setViewMeeting(null)} className="rounded-xl h-10 sm:h-11 px-6 font-bold text-xs">Close</Button>
                     </div>
                 </DialogContent>
             </Dialog>
