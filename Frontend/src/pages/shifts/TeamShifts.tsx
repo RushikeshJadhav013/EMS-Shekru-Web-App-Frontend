@@ -226,8 +226,8 @@ export default function TeamShifts() {
         <Tabs defaultValue="calendar" className="space-y-4">
           <TabsList>
             <TabsTrigger value="calendar" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Calendar View</TabsTrigger>
-            <TabsTrigger value="upcoming" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Upcoming Shifts</TabsTrigger>
-            <TabsTrigger value="past" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm" style={{ color: "#000000", fontSize: "14px" }}>Past Shifts</TabsTrigger>
+            <TabsTrigger value="upcoming" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Upcoming Shifts</TabsTrigger>
+            <TabsTrigger value="past" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm" style={{ fontSize: "14px" }}>Past Shifts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="calendar">
