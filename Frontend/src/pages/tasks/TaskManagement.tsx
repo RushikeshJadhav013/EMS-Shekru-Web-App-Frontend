@@ -468,6 +468,8 @@ const TaskManagement: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [projectViewMode, setProjectViewMode] = useState<"list" | "grid">("list");
+  
   const [taskOwnershipFilter, setTaskOwnershipFilter] = useState<
     "all" | "received" | "created"
   >("received");
@@ -4887,59 +4889,95 @@ return {
               <CardHeader className="border-b-2 border-[#000000] bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-900 dark:to-gray-900 pb-6">
                 <div className="flex flex-col gap-6">
                   <div className="flex items-center gap-2 border-b border-black/5 dark:border-white/5 pb-4">
-                    <div className="h-10 w-10 rounded-lg bg-slate-950 dark:bg-slate-50 flex items-center justify-center">
-                      <Filter className="h-5 w-5 text-white dark:text-black" />
+                    <div className="h-10 w-10 rounded-lg bg-[#4F46E5] dark:bg-[#4F46E5] flex items-center justify-center">
+                      <Filter className="h-5 w-5 text-white" />
                     </div>
                     <CardTitle className="text-[20px] font-black text-black dark:text-white uppercase tracking-wider" style={{}}>Filter Projects</CardTitle>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Search</Label>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
-                        <Input
-                          className="pl-9 w-full sm:w-[280px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 focus:ring-1 focus:ring-black rounded-lg shadow-sm"
-                          placeholder="Search projects, tasks, assignees..."
-                          style={{ color: '#000000', fontSize: '14px' }}
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                        />
+                  <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-end gap-4">
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Search</Label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-black dark:text-white" />
+                          <Input
+                            className="pl-9 w-full sm:w-[280px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 focus:ring-1 focus:ring-black rounded-lg shadow-sm"
+                            placeholder="Search projects, tasks, assignees..."
+                            style={{ color: '#000000', fontSize: '14px' }}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Status</Label>
+                        <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
+                          <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="todo">To Do</SelectItem>
+                            <SelectItem value="in-progress">In Progress</SelectItem>
+                            <SelectItem value="overdue">Overdue</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Ownership</Label>
+                        <Select
+                          value={taskOwnershipFilter}
+                          onValueChange={(value: "all" | "received" | "created") =>
+                            setTaskOwnershipFilter(value)
+                          }
+                        >
+                          <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="received">Assigned to Me</SelectItem>
+                            <SelectItem value="created">Created by Me</SelectItem>
+                            <SelectItem value="all">Entire View</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Status</Label>
-                      <Select value={filterStatus} onValueChange={(val) => { setFilterStatus(val); setIsOverdueFilterActive(val === "overdue"); }}>
-                        <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Status</SelectItem>
-                          <SelectItem value="todo">To Do</SelectItem>
-                          <SelectItem value="in-progress">In Progress</SelectItem>
-                          <SelectItem value="overdue">Overdue</SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-[14px] font-black text-black dark:text-white" style={{}}>Ownership</Label>
-                      <Select
-                        value={taskOwnershipFilter}
-                        onValueChange={(value: "all" | "received" | "created") =>
-                          setTaskOwnershipFilter(value)
-                        }
-                      >
-                        <SelectTrigger className="w-full sm:w-[150px] h-11 bg-white dark:bg-gray-950 border-2 border-black/20 dark:border-white/20 text-[14px] text-black dark:text-white font-medium rounded-lg shadow-sm" style={{}}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="received">Assigned to Me</SelectItem>
-                          <SelectItem value="created">Created by Me</SelectItem>
-                          <SelectItem value="all">Entire View</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="ml-auto flex flex-col gap-2">
+                      <Label className="text-[14px] font-black text-black dark:text-white">View Mode</Label>
+                      <div className="flex h-11 rounded-xl border-2 border-black/10 bg-slate-100 p-1 shadow-inner dark:border-white/10 dark:bg-slate-800">
+                        <Button
+                          variant={projectViewMode === "list" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setProjectViewMode("list")}
+                          className={cn(
+                            "h-full rounded-lg px-4 transition-all duration-200",
+                            projectViewMode === "list"
+                              ? "border border-blue-600 bg-blue-600 font-black text-white shadow-md"
+                              : "text-slate-500 hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
+                          )}
+                        >
+                          <ListTodo className="mr-2 h-4 w-4" />
+                          List
+                        </Button>
+                        <Button
+                          variant={projectViewMode === "grid" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setProjectViewMode("grid")}
+                          className={cn(
+                            "h-full rounded-lg px-4 transition-all duration-200",
+                            projectViewMode === "grid"
+                              ? "border border-blue-600 bg-blue-600 font-black text-white shadow-md"
+                              : "text-slate-500 hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
+                          )}
+                        >
+                          <Grid3x3 className="mr-2 h-4 w-4" />
+                          Grid
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4957,10 +4995,26 @@ return {
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-4">
+                    <div className={projectViewMode === "grid"
+                      ? "grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3"
+                      : "space-y-4"}
+                    >
                       {projectsWithPaginatedTasks.map((project) => (
-                        <div key={project.project_id} className="group transition-all">
-                          <div className={`p-5 cursor-pointer rounded-2xl transition-all border-2 border-[#000000] ${project.isExpanded ? "bg-violet-50/50" : "bg-white hover:bg-slate-50"}`} onClick={() => toggleProject(project.project_id)}>
+                        <div
+                          key={project.project_id}
+                          className={cn(
+                            "group transition-all",
+                            projectViewMode === "grid" && project.isExpanded && "col-span-full"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "p-5 cursor-pointer rounded-2xl transition-all border-2 border-[#000000]",
+                              projectViewMode === "grid" && !project.isExpanded && "h-full",
+                              project.isExpanded ? "bg-violet-50/50" : "bg-white hover:bg-slate-50"
+                            )}
+                            onClick={() => toggleProject(project.project_id)}
+                          >
                             <div className="flex items-center justify-between gap-6">
                               <div className="flex items-center gap-5 flex-1 min-w-0">
                                 <div className={`h-14 w-14 rounded-xl flex items-center justify-center transition-all shadow-md ${project.isExpanded ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white" : "bg-slate-100 text-slate-400 group-hover:text-violet-500"}`}>
