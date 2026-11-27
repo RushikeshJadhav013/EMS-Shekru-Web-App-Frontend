@@ -92,6 +92,7 @@ import {
   Layers,
 } from "lucide-react";
 import { format } from "date-fns";
+import { jsPDF } from "jspdf";
 import {
   formatIST,
   formatDateTimeIST,
@@ -601,6 +602,7 @@ const TaskManagement: React.FC = () => {
   const [exportDepartmentFilter, setExportDepartmentFilter] =
     useState<string>("all");
   const [isExporting, setIsExporting] = useState(false);
+  const [isProjectExporting, setIsProjectExporting] = useState(false);
 
   // Pagination states
   const [taskCurrentPage, setTaskCurrentPage] = useState(1);
@@ -2049,6 +2051,9 @@ return {
   }, [filteredProjects]);
 
   const projectTotalPages = Math.ceil(filteredProjects.length / projectItemsPerPage);
+  const expandedProjectsForExport = filteredProjects.filter(
+    (project) => project.isExpanded,
+  );
 
   // Reset project pagination when filters change
   useEffect(() => {
@@ -3392,6 +3397,254 @@ return {
     exportEndDate,
     exportStatusFilter,
     exportDepartmentFilter,
+    toast,
+  ]);
+
+  const handleProjectExport = useCallback(() => {
+    // If no projects are loaded or filtered
+    if (filteredProjects.length === 0) {
+      toast({
+        title: "No projects to export",
+        description: "There are no projects available to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Determine target projects:
+    // 1. If user expanded specific project(s), export those expanded project(s).
+    // 2. If no project is expanded, export all currently filtered projects.
+    const targetProjects = expandedProjectsForExport.length > 0
+      ? expandedProjectsForExport
+      : filteredProjects;
+
+    const totalTasksCount = targetProjects.reduce(
+      (sum, p) => sum + (Array.isArray(p.filteredTasks) ? p.filteredTasks.length : 0),
+      0,
+    );
+
+    if (totalTasksCount === 0) {
+      toast({
+        title: "No tasks to export",
+        description: "The selected project(s) do not contain any tasks to export.",
+      });
+      return;
+    }
+
+    setIsProjectExporting(true);
+
+    const statusLabels: Record<BaseTask["status"], string> = {
+      todo: "To Do",
+      "in-progress": "In Progress",
+      overdue: "Overdue",
+      completed: "Completed",
+      cancelled: "Cancelled",
+    };
+
+    try {
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const margin = 36;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const tableWidth = pageWidth - margin * 2;
+      const columns = [
+        { title: "Task / Description", width: tableWidth * 0.28 },
+        { title: "Assigned To", width: tableWidth * 0.17 },
+        { title: "Assigned By", width: tableWidth * 0.17 },
+        { title: "Priority", width: tableWidth * 0.1 },
+        { title: "Deadline", width: tableWidth * 0.14 },
+        { title: "Status", width: tableWidth * 0.14 },
+      ];
+      const headerHeight = 24;
+      let y = 112;
+
+      const isSingleProject = targetProjects.length === 1;
+      const singleProject = targetProjects[0];
+
+      // Draw Main Header
+      const drawMainHeader = (projectName?: string) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Project Task Report", margin, 48);
+
+        doc.setFontSize(11);
+        if (isSingleProject) {
+          doc.text(`Project: ${singleProject.name}`, margin, 72);
+          doc.setFont("helvetica", "normal");
+          doc.text(`Total Tasks: ${singleProject.filteredTasks?.length || 0}`, pageWidth - margin, 72, {
+            align: "right",
+          });
+        } else {
+          doc.text(
+            projectName ? `Project: ${projectName}` : `All Filtered Projects (${targetProjects.length} Projects)`,
+            margin,
+            72,
+          );
+          doc.setFont("helvetica", "normal");
+          doc.text(`Total Tasks: ${totalTasksCount}`, pageWidth - margin, 72, {
+            align: "right",
+          });
+        }
+
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Generated: ${formatDateIST(new Date(), "MMM dd, yyyy")}`, margin, 90);
+      };
+
+      const drawTableHeader = () => {
+        doc.setFillColor(79, 70, 229);
+        doc.rect(margin, y, tableWidth, headerHeight, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+
+        let x = margin;
+        columns.forEach((column) => {
+          doc.text(column.title, x + 6, y + 16);
+          x += column.width;
+        });
+        y += headerHeight;
+      };
+
+      drawMainHeader();
+      drawTableHeader();
+
+      targetProjects.forEach((proj, projIndex) => {
+        const tasksToExport = Array.isArray(proj.filteredTasks) ? proj.filteredTasks : [];
+
+        // If multiple projects, print a project subheader bar if not single project
+        if (!isSingleProject) {
+          if (y + 36 > pageHeight - margin) {
+            doc.addPage();
+            y = 112;
+            drawMainHeader(proj.name);
+            drawTableHeader();
+          }
+
+          // Project separator section
+          doc.setFillColor(241, 245, 249);
+          doc.rect(margin, y, tableWidth, 24, "F");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.setTextColor(30, 41, 59);
+          doc.text(`📁 Project: ${proj.name} (${tasksToExport.length} task${tasksToExport.length === 1 ? "" : "s"})`, margin + 8, y + 16);
+          y += 24;
+        }
+
+        if (tasksToExport.length === 0) {
+          if (y + 24 > pageHeight - margin) {
+            doc.addPage();
+            y = 112;
+            drawMainHeader(proj.name);
+            drawTableHeader();
+          }
+          doc.setFont("helvetica", "italic");
+          doc.setFontSize(8);
+          doc.setTextColor(100, 116, 139);
+          doc.text("No tasks found for this project.", margin + 12, y + 16);
+          y += 24;
+          return;
+        }
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(15, 23, 42);
+
+        tasksToExport.forEach((task, index) => {
+          const assignedTo = getAssignedToInfo(
+            task.assignedTo?.[0] || "",
+            task.assignedToRole,
+            task.assignedToName,
+          ).name;
+          const assignedBy = getAssignedByInfo(
+            task.assignedBy,
+            task.assignedByRole,
+            task.assignedByName,
+          ).name;
+          const taskDetails = [
+            `#${task.id || "—"} ${task.title || "Untitled task"}`,
+            task.description ? `Description: ${task.description}` : "",
+          ].filter(Boolean).join("\n");
+          const values = [
+            taskDetails,
+            assignedTo,
+            assignedBy,
+            capitalizePriority(task.priority || "medium"),
+            formatDisplayDate(task.deadline),
+            statusLabels[task.status] || String(task.status || "Unknown"),
+          ];
+          const cellLines = values.map((value, cellIndex) => {
+            const lines = doc.splitTextToSize(String(value || "-"), columns[cellIndex].width - 12);
+            if (lines.length <= 5) return lines;
+            const truncatedLines = lines.slice(0, 5);
+            truncatedLines[4] = `${truncatedLines[4].slice(0, -3)}...`;
+            return truncatedLines;
+          });
+          const rowHeight = Math.max(
+            28,
+            Math.max(...cellLines.map((lines) => lines.length)) * 11 + 12,
+          );
+
+          if (y + rowHeight > pageHeight - margin) {
+            doc.addPage();
+            y = 112;
+            drawMainHeader(!isSingleProject ? proj.name : undefined);
+            drawTableHeader();
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.setTextColor(15, 23, 42);
+          }
+
+          doc.setFillColor(index % 2 === 0 ? 248 : 255, index % 2 === 0 ? 250 : 255, 252);
+          doc.setDrawColor(226, 232, 240);
+          doc.rect(margin, y, tableWidth, rowHeight, "FD");
+
+          let x = margin;
+          columns.forEach((column, cellIndex) => {
+            cellLines[cellIndex].forEach((line, lineIndex) => {
+              doc.text(line, x + 6, y + 14 + lineIndex * 11);
+            });
+            x += column.width;
+            if (cellIndex < columns.length - 1) {
+              doc.line(x, y, x, y + rowHeight);
+            }
+          });
+          y += rowHeight;
+        });
+
+        // Add small spacing between projects if multi-project
+        if (!isSingleProject && projIndex < targetProjects.length - 1) {
+          y += 12;
+        }
+      });
+
+      const fileName = isSingleProject
+        ? `${String(singleProject.name || "project").replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase() || "project"}_task_report_${formatDateIST(new Date(), "yyyy-MM-dd")}.pdf`
+        : `projects_task_report_${formatDateIST(new Date(), "yyyy-MM-dd")}.pdf`;
+
+      doc.save(fileName);
+      toast({
+        title: "Export Successful",
+        description: isSingleProject
+          ? `${singleProject.name} task report downloaded as PDF.`
+          : `${targetProjects.length} project(s) task report downloaded as PDF.`,
+      });
+    } catch (error) {
+      console.error("Project task export failed:", error);
+      toast({
+        title: "Export Failed",
+        description: error instanceof Error ? error.message : "Failed to export project report.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProjectExporting(false);
+    }
+  }, [
+    filteredProjects,
+    expandedProjectsForExport,
+    getAssignedByInfo,
+    getAssignedToInfo,
     toast,
   ]);
 
@@ -4946,36 +5199,71 @@ return {
                       </div>
                     </div>
 
-                    <div className="ml-auto flex flex-col gap-2">
-                      <Label className="text-[14px] font-black text-black dark:text-white">View Mode</Label>
-                      <div className="flex h-11 rounded-xl border-2 border-black/10 bg-slate-100 p-1 shadow-inner dark:border-white/10 dark:bg-slate-800">
+                    <div className="ml-auto flex flex-wrap items-end gap-3">
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-[14px] font-black text-black dark:text-white">View Mode</Label>
+                        <div className="flex h-11 rounded-xl border-2 border-black/10 bg-slate-100 p-1 shadow-inner dark:border-white/10 dark:bg-slate-800">
+                          <Button
+                            variant={projectViewMode === "list" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setProjectViewMode("list")}
+                            className={cn(
+                              "h-full rounded-lg px-4 transition-all duration-200",
+                              projectViewMode === "list"
+                                ? "border border-blue-600 bg-blue-600 font-black text-white shadow-md"
+                                : "text-slate-500 hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
+                            )}
+                          >
+                            <ListTodo className="mr-2 h-4 w-4" />
+                            List
+                          </Button>
+                          <Button
+                            variant={projectViewMode === "grid" ? "default" : "ghost"}
+                            size="sm"
+                            onClick={() => setProjectViewMode("grid")}
+                            className={cn(
+                              "h-full rounded-lg px-4 transition-all duration-200",
+                              projectViewMode === "grid"
+                                ? "border border-blue-600 bg-blue-600 font-black text-white shadow-md"
+                                : "text-slate-500 hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
+                            )}
+                          >
+                            <Grid3x3 className="mr-2 h-4 w-4" />
+                            Grid
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <Label className="text-[14px] font-black text-black dark:text-white">Actions</Label>
                         <Button
-                          variant={projectViewMode === "list" ? "default" : "ghost"}
+                          type="button"
+                          variant="outline"
                           size="sm"
-                          onClick={() => setProjectViewMode("list")}
-                          className={cn(
-                            "h-full rounded-lg px-4 transition-all duration-200",
-                            projectViewMode === "list"
-                              ? "border border-blue-600 bg-blue-600 font-black text-white shadow-md"
-                              : "text-slate-500 hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
-                          )}
+                          onClick={handleProjectExport}
+                          disabled={isProjectExporting || filteredProjects.length === 0}
+                          title={
+                            filteredProjects.length === 0
+                              ? "No projects available to export"
+                              : expandedProjectsForExport.length === 1
+                              ? `Export PDF report for ${expandedProjectsForExport[0].name}`
+                              : expandedProjectsForExport.length > 1
+                              ? `Export PDF report for ${expandedProjectsForExport.length} expanded projects`
+                              : "Export PDF report for all projects"
+                          }
+                          className="h-11 gap-2 rounded-lg border-2 border-black/20 bg-white px-6 text-[14px] font-black text-black shadow-sm transition-all duration-200 hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:border-white/20 dark:bg-gray-950 dark:text-white dark:hover:border-blue-600 dark:hover:bg-blue-600 disabled:opacity-50"
                         >
-                          <ListTodo className="mr-2 h-4 w-4" />
-                          List
-                        </Button>
-                        <Button
-                          variant={projectViewMode === "grid" ? "default" : "ghost"}
-                          size="sm"
-                          onClick={() => setProjectViewMode("grid")}
-                          className={cn(
-                            "h-full rounded-lg px-4 transition-all duration-200",
-                            projectViewMode === "grid"
-                              ? "border border-blue-600 bg-blue-600 font-black text-white shadow-md"
-                              : "text-slate-500 hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
+                          {isProjectExporting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Exporting...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4" />
+                              Export PDF
+                            </>
                           )}
-                        >
-                          <Grid3x3 className="mr-2 h-4 w-4" />
-                          Grid
                         </Button>
                       </div>
                     </div>
