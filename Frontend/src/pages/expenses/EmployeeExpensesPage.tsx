@@ -51,7 +51,6 @@ import {
   getCategoryLabel,
   ExpenseCategory,
   ExpenseItem,
-  isExpenseOnOrAfter19Nov2026,
 } from '@/pages/expenses/ExpensesPage';
 
 const EXPENSES_STORAGE_KEY = 'staffly_expenses_data';
@@ -374,8 +373,6 @@ export default function EmployeeExpensesPage() {
   // Safe Filter Logic for My Expenses
   const filteredUserExpenses = userExpenses.filter((item) => {
     if (!item) return false;
-    // Hide all expense transaction records dated before 19 November 2026
-    if (!isExpenseOnOrAfter19Nov2026(item)) return false;
     const emp = item.employee ? item.employee.toLowerCase() : '';
     const desc = item.description ? item.description.toLowerCase() : '';
     const catVal = item.category ? item.category.toLowerCase() : '';

@@ -775,12 +775,12 @@ export default function ExpensesPage() {
     setCurrentPage(1);
   }, [searchQuery, selectedCategory, selectedStatus, selectedDate]);
 
-  // Pending Approval Requests Pagination (filtered for on or after 19 Nov 2026)
+  // Pending Approval Requests Pagination
   const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
   const [pendingItemsPerPage, setPendingItemsPerPage] = useState(10);
 
   const pendingApprovalRequests = expenses.filter(
-    (item) => item.status === 'Pending' && isExpenseOnOrAfter19Nov2026(item)
+    (item) => item.status === 'Pending'
   );
   const pendingTotalPages = Math.ceil(pendingApprovalRequests.length / pendingItemsPerPage) || 1;
   const paginatedPendingRequests = pendingApprovalRequests.slice(
@@ -800,10 +800,6 @@ export default function ExpensesPage() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('All Status');
 
   const filteredHistoryExpenses = expenses.filter((item) => {
-    // Hide all expense records dated before 19 November 2026
-    if (!isExpenseOnOrAfter19Nov2026(item)) {
-      return false;
-    }
     if (historyStatusFilter !== 'All Status' && item.status.toLowerCase() !== historyStatusFilter.toLowerCase()) {
       return false;
     }
@@ -998,8 +994,6 @@ export default function ExpensesPage() {
   // Safe Filter Logic
   const filteredExpenses = expenses.filter((item) => {
     if (!item || isHiddenPlaceholderExpense(item)) return false;
-    // Hide all expense transaction records dated before 19 November 2026
-    if (!isExpenseOnOrAfter19Nov2026(item)) return false;
     const emp = item.employee ? item.employee.toLowerCase() : '';
     const desc = item.description ? item.description.toLowerCase() : '';
     const catVal = item.category ? item.category.toLowerCase() : '';

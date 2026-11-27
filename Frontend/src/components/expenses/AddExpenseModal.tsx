@@ -1096,7 +1096,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {/* Payment Mode */}
                   <div className="space-y-1.5">
                     <Label htmlFor="modalPaymentMode" className="font-bold text-sm text-black dark:text-white">
@@ -1145,23 +1145,6 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                       onChange={(e) => setTransactionNumber(e.target.value)}
                       className="border-border border-black dark:border-slate-700 rounded-[12px] h-[44px] disabled:bg-gray-100 disabled:text-gray-600 dark:disabled:bg-slate-800/60 dark:disabled:text-gray-300 disabled:cursor-not-allowed"
                     />
-                  </div>
-
-                  {/* Payment Status (Locked for employees) */}
-                  <div className="space-y-1.5">
-                    <Label className="font-bold text-sm text-black dark:text-white flex items-center justify-between">
-                      <span>Payment Status</span>
-                      <span className="text-[10px] font-semibold text-gray-500">Locked</span>
-                    </Label>
-                    <div className="h-[44px] px-3.5 border border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/60 rounded-[12px] flex items-center justify-between select-none">
-                      <span className="font-bold text-xs sm:text-sm text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" />
-                        Unpaid
-                      </span>
-                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-extrabold uppercase">
-                        Pending
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
