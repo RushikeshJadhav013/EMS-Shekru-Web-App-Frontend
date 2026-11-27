@@ -205,6 +205,8 @@ export default function Expenses() {
 
   // Core Data State
   const [expenses, setExpenses] = useState(sampleExpenses);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [activeTab, setActiveTab] = useState('my');
 
   // Filters State
@@ -254,6 +256,14 @@ export default function Expenses() {
 
     return matchesSearch && matchesCategory && matchesStatus && matchesDate;
   });
+ 
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredExpenses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedExpenses = filteredExpenses.slice(
+  startIndex,
+  startIndex + itemsPerPage
+);
 
   // Summary Calculations
   const totalExpensesAmount = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
@@ -577,7 +587,7 @@ export default function Expenses() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredExpenses.map((expense) => (
+                    paginatedExpenses.map((expense) => (
                       <TableRow key={expense.id} className="border-b border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <TableCell className="font-semibold text-sm text-gray-900 dark:text-gray-100 py-4 px-4 whitespace-nowrap">
                           {expense.date}

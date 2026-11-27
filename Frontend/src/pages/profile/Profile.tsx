@@ -296,10 +296,23 @@ const Profile: React.FC = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="personal" className="space-y-4">
-          <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 bg-card">
-            <TabsTrigger value="personal">Personal Info</TabsTrigger>
-            <TabsTrigger value="professional">Professional</TabsTrigger>
-          </TabsList>
+          
+<TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-2 bg-card">
+  <TabsTrigger
+    value="personal"
+    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm"
+  >
+    Personal Info
+  </TabsTrigger>
+
+  <TabsTrigger
+    value="professional"
+    className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm"
+  >
+    Professional
+  </TabsTrigger>
+</TabsList>
+
 
           <TabsContent value="personal" className="space-y-4">
             <Card className="border-2 border-[#000000] shadow-lg">

@@ -22,6 +22,8 @@ import {
   FileSpreadsheet,
   XCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   ReceiptText,
   Building2,
@@ -764,6 +766,15 @@ export default function ExpensesPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<string>('');
 
+  // Admin Expense List Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Reset pagination to page 1 whenever search or filter criteria change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedStatus, selectedDate]);
+
   // Pending Approval Requests Pagination (filtered for on or after 19 Nov 2026)
   const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
   const [pendingItemsPerPage, setPendingItemsPerPage] = useState(10);
@@ -1011,6 +1022,18 @@ export default function ExpensesPage() {
 
     return matchesSearch && matchesCategory && matchesStatus && matchesDate;
   });
+
+  // Admin Expense List Derived Pagination
+  const totalPages = Math.ceil(filteredExpenses.length / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedExpenses = filteredExpenses.slice(startIndex, startIndex + itemsPerPage);
+
+  // Auto-adjust page if current page exceeds total pages
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [totalPages, currentPage]);
 
   // Calculate totals
   const totalDashboardAmount = adminDashboardStats
@@ -1691,7 +1714,7 @@ export default function ExpensesPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredExpenses.map((expense) => (
+                    paginatedExpenses.map((expense) => (
                       <TableRow key={expense.id} className="border-b border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                         <TableCell className="font-semibold text-sm text-gray-900 dark:text-gray-100 py-4 px-4 whitespace-nowrap">
                           {expense.date}
@@ -1756,6 +1779,59 @@ export default function ExpensesPage() {
               </Table>
             </div>
           </div>
+
+          {/* Pagination for Admin Expense List */}
+          {filteredExpenses.length > 0 && (
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 px-2 py-3 bg-white dark:bg-slate-900 border-2 border-black dark:border-slate-700 rounded-[14px]">
+              <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Showing {filteredExpenses.length === 0 ? 0 : startIndex + 1}–{Math.min(startIndex + itemsPerPage, filteredExpenses.length)} of {filteredExpenses.length} expenses
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="h-9 px-3 gap-1 border-2 border-slate-300 dark:border-slate-700 text-sm font-bold text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => {
+                    const isSelected = currentPage === page;
+                    return (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        style={isSelected ? { backgroundColor: '#2563EB', color: '#FFFFFF' } : undefined}
+                        className={`h-9 min-w-[36px] px-2.5 rounded-md text-sm font-bold transition-colors ${
+                          isSelected
+                            ? 'bg-[#2563EB] text-white shadow-sm'
+                            : 'border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="h-9 px-3 gap-1 border-2 border-slate-300 dark:border-slate-700 text-sm font-bold text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
